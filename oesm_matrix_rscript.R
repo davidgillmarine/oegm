@@ -103,8 +103,7 @@ nrow(int_list)*nrow(out_list)==nrow(io_counts) # quick check (should be true)
     theme(legend.position="bottom") +
     theme(legend.key.size=unit(1, "cm")) +
     theme(legend.key.width=unit(1, "cm")) +
-    xlab("Conservation Intervention") +
-    ylab("Outcome") +
+    labs(x="Conservation Intervention", y="Outcome", title ="All ecosystems") +
     theme(axis.text.x = element_text(angle=45,hjust=1,size=9)))
 
 ggsave(paste0(plotdir,'all_map_test.png'),width = 8,height = 8)
@@ -251,7 +250,66 @@ max.val=max(c(io_counts_coral$n,io_counts_seagrass$n,io_counts_mangrove$n))
 plot_grid(heat.map.domain.coral,heat.map.domain.seagrass, heat.map.domain.mangrove,labels=letters[1:3], ncol = 3, nrow = 1, hjust=-1)
 ggsave(paste0(plotdir,'habitat_map_test.png'),width = 18,height = 8)
 
-#--- Sub-group ----
+#--- Sub-group intervention ----
+typology_dat_sub_int <- data_all %>% 
+  select(aid, Intervention.subcategory, Outcome_cat) %>% 
+  filter(Intervention.subcategory!="" & !is.na(Intervention.subcategory)) %>%  # just in case
+  rename(int_sub=Intervention.subcategory) %>% 
+  distinct()
+
+anti_join(typology_dat_sub_int,int_sub_list, by="int_sub") # incorrect value entered
+anti_join(int_sub_list,typology_dat_sub_int, by="int_sub") # those that were not observed
+
+# temporarily fix incorrect text
+typology_dat_sub_int <- typology_dat_sub_int %>% 
+  mutate(int_sub=ifelse(grepl("^6a",int_sub),"6a. Protected area designation and/or acquisition",int_sub)) %>% 
+  filter(int_sub!="Local")
+anti_join(typology_dat_sub_int,int_sub_list, by="int_sub") # should be 0 now
+
+head(typology_dat_sub_int)
+# View(io_counts_sub)
+# head(io_counts_sub_int)
+# names(io_counts_sub)
+# head(str_sort(io_counts_sub$out_sub, numeric = TRUE))
+
+#gather data and get counts 
+io_counts_sub_int <- typology_dat_sub_int %>%
+  group_by(int_sub, Outcome_cat) %>% 
+  count() %>%
+  right_join(int_sub_list, by="int_sub") %>%  # get full intervention list
+  full_join(select(out_list,Outcome_cat_abbr), by=c("Outcome_cat"="Outcome_cat_abbr")) %>%  # get full intervention list
+  spread(key=int_sub, value=n) %>%  
+  gather("int_sub","n", -Outcome_cat) %>% 
+  filter(!is.na(Outcome_cat) & int_sub!="<NA>") %>% 
+  mutate(n=ifelse(is.na(n),0,as.integer(n))) %>%
+  mutate(int_sub=factor(int_sub,levels=str_sort(int_sub_list$int_sub, numeric = TRUE))) %>% 
+  arrange(int_sub) %>% 
+  select(int_sub,Outcome_cat,n) 
+
+head(io_counts_sub_int)
+nrow(int_sub_list)*nrow(out_list)==nrow(io_counts_sub_int) # quick check (should be true)
+
+#create heatmap
+(heat.map.domain_sub_int <- ggplot(data=io_counts_sub_int, aes(x=int_sub,y=reorder(Outcome_cat, desc(Outcome_cat)),fill=n)) +
+    geom_tile(color="gray90",size=0.1) +
+    geom_text(aes(label=n),show.legend = F) +
+    scale_fill_gradient2(low="#f7fbff",high="#2171b5",name="# Cases",na.value="gray90", limits=c(0,max(io_counts$n))) +
+    coord_equal() +
+    # theme_tufte(base_family="Helvetica") +	# having issues with font, font colour in windows...
+    theme(axis.ticks=element_line(size=0.4)) +
+    theme(axis.text=element_text(size=9)) +
+    theme(legend.title=element_text(size=10)) +
+    theme(legend.text=element_text(size=10)) +
+    theme(legend.title.align=1) +
+    theme(legend.position="bottom") +
+    theme(legend.key.size=unit(1, "cm")) +
+    theme(legend.key.width=unit(1, "cm")) +
+    labs(x="Conservation Intervention", y="Outcome", title ="Intervention subcategories") +
+    theme(axis.text.x = element_text(angle=45,hjust=1,size=9)))
+
+ggsave(paste0(plotdir,'all_sub_int_map_test.png'),width = 15,height = 8)
+
+#--- Sub-group both ----
 typology_dat_sub <- data_all %>% 
   select(aid, Intervention.subcategory, Outcome.subcategory) %>% 
   filter(Intervention.subcategory!="" & !is.na(Intervention.subcategory)) %>%  # just in case
@@ -308,7 +366,8 @@ nrow(int_sub_list)*nrow(out_sub_list)==nrow(io_counts_sub) # quick check (should
     theme(legend.position="bottom") +
     theme(legend.key.size=unit(1, "cm")) +
     theme(legend.key.width=unit(1, "cm")) +
-    labs(x="Conservation Intervention", y="Outcome", title ="Subcategories") +
+    labs(x="Conservation Intervention", y="Outcome", title ="All subcategories") +
     theme(axis.text.x = element_text(angle=45,hjust=1,size=9)))
 
 ggsave(paste0(plotdir,'all_sub_map_test.png'),width = 15,height = 15)
+
