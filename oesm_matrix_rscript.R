@@ -88,8 +88,28 @@ io_counts <- typology_dat %>%
 head(io_counts)
 nrow(int_list)*nrow(out_list)==nrow(io_counts) # quick check (should be true)
 
+int_list1 <- typology_dat %>% 
+  group_by(Int_cat) %>% 
+  mutate(int_num=n_distinct(aid)) %>% 
+  distinct(Int_cat,int_num) %>% 
+  left_join(int_list,by=c("Int_cat"="Int_cat_abbr"))
+out_list1 <- typology_dat %>% 
+  group_by(Outcome_cat) %>% 
+  mutate(out_num=n_distinct(aid)) %>% 
+  distinct(Outcome_cat,out_num) %>% 
+  left_join(out_list,by=c("Outcome_cat"="Outcome_cat_abbr"))
+
+io_counts1 <- io_counts %>% 
+  left_join(int_list1,by=("Int_cat_orig"))%>% 
+  left_join(out_list1,by=("Outcome_cat_orig")) %>% 
+  mutate(Int_cat_orig=paste0(Int_cat_orig," (",int_num,")"),
+         Outcome_cat_orig=paste0(Outcome_cat_orig," (",out_num,")"),
+         Outcome_cat_orig=gsub("1. Knowledge and behavior","8. Knowledge and behavior", Outcome_cat_orig)) %>% 
+  ungroup() %>% 
+  select(Int_cat_orig,Outcome_cat_orig,n)
+
 #create heatmap
-(heat.map.domain <- ggplot(data=io_counts, aes(x=Int_cat_orig,y=reorder(Outcome_cat_orig, desc(Outcome_cat_orig)),fill=n)) +
+(heat.map.domain <- ggplot(data=io_counts1, aes(x=Int_cat_orig,y=reorder(Outcome_cat_orig, desc(Outcome_cat_orig)),fill=n)) +
     geom_tile(color="gray90",size=0.1) +
     geom_text(aes(label=n),show.legend = F) +
     scale_fill_gradient2(low="#f7fbff",high="#2171b5",name="# Cases",na.value="gray90", limits=c(0,max(io_counts$n))) +
@@ -106,7 +126,7 @@ nrow(int_list)*nrow(out_list)==nrow(io_counts) # quick check (should be true)
     labs(x="Conservation Intervention", y="Outcome", title ="All ecosystems") +
     theme(axis.text.x = element_text(angle=45,hjust=1,size=9)))
 
-ggsave(paste0(plotdir,'all_map_test.png'),width = 8,height = 8)
+ggsave(paste0(plotdir,'all_map_test_update.png'),width = 8,height = 8)
 
 #--- Ecosystem specific map ----
 unique(data_all$Habitat.type)
