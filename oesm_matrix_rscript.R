@@ -1,16 +1,17 @@
 #set wd
-setwd("C:/Users/david/Dropbox/data/analysis/oegm/data")
-plotdir <- "C:/Users/david/Dropbox/data/analysis/oegm/plots/"
-#setwd("C:/Users/dag71/Dropbox/data/analysis/oegm/data")
+#setwd("C:/Users/david/Dropbox/data/analysis/oegm/data")
+workdir <- gsub("git","",getwd())
+inputdir <- paste0(workdir,"data/")
+plotdir <- paste0(workdir,"plots/")
 library(rio)
 library(cowplot)
 library(tidyverse)
 
 #--- Organize data ----
 #read in data, skip first 2 rows
-non.mangrove<-import("Non-Mangrove Data 092519.xlsx", which="Data Extraction Sheet", skip =2, .name_repair = "universal") %>% 
+non.mangrove<-import(paste0(inputdir,"final data MINUS ONE_non mangrove.xlsx"), which="Data Extraction Sheet", skip =2, .name_repair = "universal") %>% 
   mutate(Date=as.character(Date))
-mangrove<-import("Mangrove Data.xlsx", which="Data Extraction Sheet", skip =2,  .name_repair = "universal") %>% 
+mangrove<-import(paste0(inputdir,"final data_mangroves.xlsx"), which="Data Extraction Sheet", skip =2,  .name_repair = "universal") %>% 
   mutate(Date=as.character(Date))
 
 # Something went wrong? shift over rows that were missing a column so the data shifted (aid=772), inspect in original data
@@ -19,13 +20,13 @@ non.mangrove[non.mangrove$Article.ID%in%772,32:42]  <- non.mangrove[non.mangrove
 non.mangrove[non.mangrove$Article.ID%in%772,32:42]  # right
 
 # read in intervention list
-int_list<-import("intervention abbreviations.csv")
-out_list<-import("outcome abbreviations.csv")
-int_sub_list<-import("Non-Mangrove Data 092519.xlsx", which="Dropdowns", skip =1, .name_repair = "universal") %>% 
+int_list<-import(paste0(inputdir,"intervention abbreviations.csv"))
+out_list<-import(paste0(inputdir,"outcome abbreviations.csv"))
+int_sub_list<-import(paste0(inputdir,"Non-Mangrove Data 092519.xlsx"), which="Dropdowns", skip =1, .name_repair = "universal") %>% 
   select(Intervention.subcategory) %>% 
   na.omit() %>% 
   rename(int_sub=Intervention.subcategory)
-out_sub_list<-import("Non-Mangrove Data 092519.xlsx", which="Dropdowns", skip =1, .name_repair = "universal") %>% 
+out_sub_list<-import(paste0(inputdir,"Non-Mangrove Data 092519.xlsx"), which="Dropdowns", skip =1, .name_repair = "universal") %>% 
   select(Outcome.subcategory) %>% 
   na.omit() %>% 
   rename(out_sub=Outcome.subcategory) 
@@ -33,83 +34,75 @@ out_sub_list<-import("Non-Mangrove Data 092519.xlsx", which="Dropdowns", skip =1
 data_all <- non.mangrove %>% 
   bind_rows(mangrove) %>% 
   filter(Full.text.screening.=="Accept" & !is.na(Intervention.category) & !is.na(Outcome.category)) %>% # is this ok to do? would be there cases where NA is ok?
-  rename(Int_cat=Intervention.category,Outcome_cat=Outcome.category, aid=Article.ID) %>%
-  # recodes any value begining with specific number
-  mutate(Int_cat=ifelse(grepl("^10",Int_cat),"Int_10.inst_dev",Int_cat),
-         Int_cat=ifelse(grepl("^1",Int_cat),"Int_1.area_mgmt",Int_cat),
-         Int_cat=ifelse(grepl("^2",Int_cat),"Int_2.sp_mgmt",Int_cat),
-         Int_cat=ifelse(grepl("^3",Int_cat),"Int_3.aware_raising",Int_cat),
-         Int_cat=ifelse(grepl("^4",Int_cat),"Int_4.enforcement",Int_cat),
-         Int_cat=ifelse(grepl("^5",Int_cat),"Int_5.liv_incent",Int_cat),
-         Int_cat=ifelse(grepl("^6",Int_cat),"Int_6.con_plan",Int_cat),
-         Int_cat=ifelse(grepl("^7",Int_cat),"Int_7.legal",Int_cat),
-         Int_cat=ifelse(grepl("^8",Int_cat),"Int_8.research_monit",Int_cat),
-         Int_cat=ifelse(grepl("^9",Int_cat),"Int_9.edu_train",Int_cat),
-         Outcome_cat=ifelse(grepl("^1",Outcome_cat),"Out_1.knowledge",Outcome_cat),
-         Outcome_cat=ifelse(grepl("^2",Outcome_cat),"Out_2.pop_sp",Outcome_cat),
-         Outcome_cat=ifelse(grepl("^3",Outcome_cat),"Out_3.eco_comm",Outcome_cat),
-         Outcome_cat=ifelse(grepl("^4",Outcome_cat),"Out_4.eco_funct",Outcome_cat),
-         Outcome_cat=ifelse(grepl("^5",Outcome_cat),"Out_5.eco_serv",Outcome_cat),
-         Outcome_cat=ifelse(grepl("^6",Outcome_cat),"Out_6.hwb",Outcome_cat),
-         Outcome_cat=ifelse(grepl("^7",Outcome_cat),"Out_7.gov",Outcome_cat))
+  rename(Int_cat=Intervention.category,Outcome_cat=Outcome.category, aid=Article.ID)
+  
+# Clean up: recodes any value begining with specific number
+# interventions
+for (i in 1:nrow(int_list)){
+  num.val=paste0("^",i)
+  data_all <- data_all %>% 
+    mutate(Int_cat=ifelse(grepl(num.val,Int_cat),grep(num.val,int_list$Int_cat_orig,value = T),Int_cat))
+}
+# outcomes
+for (i in 1:nrow(out_list)){
+  num.val=paste0("^",i)
+  data_all <- data_all %>% 
+    mutate(Outcome_cat=ifelse(grepl(num.val,Outcome_cat),grep(num.val,out_list$Outcome_cat_orig,value = T),Outcome_cat))
+}
 
 unique(data_all$Int_cat)  # 10 interventions
 unique(data_all$Outcome_cat) # 7 outcomes
 # these below should both be 0, or else we have a naming issue
-unique(data_all$Int_cat[!data_all$Int_cat%in%int_list$Int_cat_abbr])
-unique(data_all$Outcome_cat[!data_all$Outcome_cat%in%out_list$Outcome_cat_abbr])
+unique(data_all$Int_cat[!data_all$Int_cat%in%int_list$Int_cat_orig])
+unique(data_all$Outcome_cat[!data_all$Outcome_cat%in%out_list$Outcome_cat_orig])
+
 
 #--- All studies ----
+# Get unique article ID, int. and out. list (and sum of articles)
 typology_dat <- data_all %>% 
   select("aid", "Int_cat", "Outcome_cat") %>% 
   filter(Int_cat!="" & !is.na(Int_cat)) %>%  # just in case
-  distinct()
-
+  distinct() %>% 
+  group_by(Int_cat) %>% 
+  mutate(num=n_distinct(aid)) %>% 
+  mutate(int_val=paste0(Int_cat," (",num,")")) %>% 
+  select(-num ) %>% 
+  group_by(Outcome_cat) %>% 
+  mutate(num=n_distinct(aid)) %>% 
+  mutate(out_val=paste0(Outcome_cat," (",num,")")) %>% 
+  mutate(out_val=ifelse(grepl("Knowledge",out_val),gsub("1.","8.", out_val),out_val)) %>% 
+select(-num ) 
+  
 head(typology_dat)
-#View(io_counts)
-#head(io_counts)
+
+# Get full intervention list
+int_list <- typology_dat %>%
+  ungroup() %>% 
+  distinct(int_val) %>% 
+  mutate(ord=as.numeric(str_extract(int_val,"^\\d*"))) %>% 
+  arrange(ord) 
+out_list <- typology_dat %>% 
+  ungroup() %>% 
+  distinct(out_val) %>% 
+  arrange(out_val)
+io_list <- expand.grid(int_list$int_val,out_list$out_val) %>% 
+  rename(int_val=Var1,out_val=Var2)
+head(io_list)
+
 #gather data and get counts 
 io_counts <- typology_dat %>%
-  group_by(Int_cat, Outcome_cat) %>% 
+  group_by(int_val, out_val) %>% 
   count() %>%
-  right_join(int_list, by=c("Int_cat"="Int_cat_abbr")) %>%  # get full intervention list
-  select(-Int_cat_orig) %>% 
-  spread(key=Int_cat, value=n) %>%  
-  gather("Int_cat_abbr","n", Int_1.area_mgmt:Int_9.edu_train) %>% 
-  filter(!is.na(Outcome_cat)) %>% 
-  mutate(n=ifelse(is.na(n),0,as.integer(n))) %>%
-  left_join(int_list,by="Int_cat_abbr") %>% 
-  mutate(Int_cat_orig=factor(Int_cat_orig, 
-                             levels=int_list$Int_cat_orig)) %>% 
-  left_join(out_list,by=c("Outcome_cat"="Outcome_cat_abbr")) %>% 
+  full_join(io_list) %>% 
+  mutate(n=replace_na(n,0)) %>%
   ungroup() %>% 
-  select(Int_cat_orig,Outcome_cat_orig,n) 
+  mutate(int_val=factor(int_val,levels=int_list$int_val)) 
   
 head(io_counts)
 nrow(int_list)*nrow(out_list)==nrow(io_counts) # quick check (should be true)
 
-int_list1 <- typology_dat %>% 
-  group_by(Int_cat) %>% 
-  mutate(int_num=n_distinct(aid)) %>% 
-  distinct(Int_cat,int_num) %>% 
-  left_join(int_list,by=c("Int_cat"="Int_cat_abbr"))
-out_list1 <- typology_dat %>% 
-  group_by(Outcome_cat) %>% 
-  mutate(out_num=n_distinct(aid)) %>% 
-  distinct(Outcome_cat,out_num) %>% 
-  left_join(out_list,by=c("Outcome_cat"="Outcome_cat_abbr"))
-
-io_counts1 <- io_counts %>% 
-  left_join(int_list1,by=("Int_cat_orig"))%>% 
-  left_join(out_list1,by=("Outcome_cat_orig")) %>% 
-  mutate(Int_cat_orig=paste0(Int_cat_orig," (",int_num,")"),
-         Outcome_cat_orig=paste0(Outcome_cat_orig," (",out_num,")"),
-         Outcome_cat_orig=gsub("1. Knowledge and behavior","8. Knowledge and behavior", Outcome_cat_orig)) %>% 
-  ungroup() %>% 
-  select(Int_cat_orig,Outcome_cat_orig,n)
-
 #create heatmap
-(heat.map.domain <- ggplot(data=io_counts1, aes(x=Int_cat_orig,y=reorder(Outcome_cat_orig, desc(Outcome_cat_orig)),fill=n)) +
+(heat.map.domain <- ggplot(data=io_counts, aes(x=int_val,y=reorder(out_val, desc(out_val)),fill=n)) +
     geom_tile(color="gray90",size=0.1) +
     geom_text(aes(label=n),show.legend = F) +
     scale_fill_gradient2(low="#f7fbff",high="#2171b5",name="# Cases",na.value="gray90", limits=c(0,max(io_counts$n))) +
@@ -148,76 +141,135 @@ unique(typology_dat_hab$Habitat.type[typology_dat_hab$mangrove==1])
 # head(io_counts_hab)
 
 # Coral
-# gather data and get counts 
+
+int.cat.tot.coral <- typology_dat_hab %>% 
+  filter(coral==1) %>% 
+  group_by(Int_cat) %>% 
+  summarise(num=n_distinct(aid)) %>% 
+  mutate(int_val=paste0(Int_cat," (",num,")")) %>% 
+  select(-num ) %>% 
+  mutate(Int_cat=factor(Int_cat,levels=int_list$Int_cat_orig)) %>% 
+  arrange(Int_cat)
+
+out.cat.tot.coral <- typology_dat_hab %>% 
+  filter(coral==1) %>% 
+  group_by(Outcome_cat) %>% 
+  summarise(num=n_distinct(aid)) %>% 
+  mutate(out_val=paste0(Outcome_cat," (",num,")")) %>% 
+  select(-num )
+
+head(typology_dat)
+#View(io_counts)
+#head(io_counts)
+#gather data and get counts 
 io_counts_coral <- typology_dat_hab %>%
   filter(coral==1) %>% 
   group_by(Int_cat, Outcome_cat) %>% 
   count() %>%
-  right_join(int_list, by=c("Int_cat"="Int_cat_abbr")) %>%  # get full intervention list
-  select(-Int_cat_orig) %>% 
-  spread(key=Int_cat, value=n) %>%  
-  gather("Int_cat_abbr","n", Int_1.area_mgmt:Int_9.edu_train) %>% 
-  filter(!is.na(Outcome_cat)) %>% 
-  mutate(n=ifelse(is.na(n),0,as.integer(n))) %>%
-  left_join(int_list,by="Int_cat_abbr") %>% 
-  mutate(Int_cat_orig=factor(Int_cat_orig, 
-                             levels=int_list$Int_cat_orig)) %>% 
-  left_join(out_list,by=c("Outcome_cat"="Outcome_cat_abbr")) %>% 
+  full_join(int.cat.tot.coral, by=c("Int_cat")) %>%  # get full intervention list (if all not there)
+  full_join(out.cat.tot.coral,by=c("Outcome_cat")) %>% # get full outcome list (if all not there)
   ungroup() %>% 
-  select(Int_cat_orig,Outcome_cat_orig,n) 
+  select(-Int_cat,-Outcome_cat) %>% 
+  spread(key=int_val, value=n) %>%  
+  gather("int_val","n", -out_val) %>% 
+  filter(!is.na(out_val)) %>% 
+  mutate(n=replace_na(n,0)) %>%
+  mutate(int_val=factor(int_val,levels=int.cat.tot.coral$int_val)) %>% 
+  ungroup() %>% 
+  select(int_val,out_val,n) %>% 
+  mutate(out_val=ifelse(grepl("Knowledge",out_val),gsub("1.","8.", out_val),out_val))
 
 head(io_counts_coral)
 nrow(int_list)*nrow(out_list)==nrow(io_counts_coral) # quick check (should be true)
 
 # Seagrass
 # gather data and get counts 
+int.cat.tot.seagrass <- typology_dat_hab %>% 
+  filter(seagrass==1) %>% 
+  group_by(Int_cat) %>% 
+  summarise(num=n_distinct(aid)) %>% 
+  mutate(int_val=paste0(Int_cat," (",num,")")) %>% 
+  select(-num ) %>% 
+  mutate(Int_cat=factor(Int_cat,levels=int_list$Int_cat_orig)) %>% 
+  arrange(Int_cat)
+
+out.cat.tot.seagrass <- typology_dat_hab %>% 
+  filter(seagrass==1) %>% 
+  group_by(Outcome_cat) %>% 
+  summarise(num=n_distinct(aid)) %>% 
+  mutate(out_val=paste0(Outcome_cat," (",num,")")) %>% 
+  select(-num )
+
+head(typology_dat)
+#View(io_counts)
+#head(io_counts)
+#gather data and get counts 
 io_counts_seagrass <- typology_dat_hab %>%
   filter(seagrass==1) %>% 
   group_by(Int_cat, Outcome_cat) %>% 
   count() %>%
-  right_join(int_list, by=c("Int_cat"="Int_cat_abbr")) %>%  # get full intervention list
-  select(-Int_cat_orig) %>% 
-  spread(key=Int_cat, value=n) %>%  
-  gather("Int_cat_abbr","n", Int_1.area_mgmt:Int_9.edu_train) %>% 
-  filter(!is.na(Outcome_cat)) %>% 
-  mutate(n=ifelse(is.na(n),0,as.integer(n))) %>%
-  left_join(int_list,by="Int_cat_abbr") %>% 
-  mutate(Int_cat_orig=factor(Int_cat_orig, 
-                             levels=int_list$Int_cat_orig)) %>% 
-  left_join(out_list,by=c("Outcome_cat"="Outcome_cat_abbr")) %>% 
+  full_join(int.cat.tot.seagrass, by=c("Int_cat")) %>%  # get full intervention list (if all not there)
+  full_join(out.cat.tot.seagrass,by=c("Outcome_cat")) %>% # get full outcome list (if all not there)
   ungroup() %>% 
-  select(Int_cat_orig,Outcome_cat_orig,n) 
+  select(-Int_cat,-Outcome_cat) %>% 
+  spread(key=int_val, value=n) %>%  
+  gather("int_val","n", -out_val) %>% 
+  filter(!is.na(out_val)) %>% 
+  mutate(n=replace_na(n,0)) %>%
+  mutate(int_val=factor(int_val,levels=int.cat.tot.seagrass$int_val)) %>% 
+  ungroup() %>% 
+  select(int_val,out_val,n) %>% 
+  mutate(out_val=ifelse(grepl("Knowledge",out_val),gsub("1.","8.", out_val),out_val))
 
 head(io_counts_seagrass)
 nrow(int_list)*nrow(out_list)==nrow(io_counts_seagrass) # quick check (should be true)
 
+
 # Mangrove
 # gather data and get counts 
+int.cat.tot.mangrove <- typology_dat_hab %>% 
+  filter(mangrove==1) %>% 
+  group_by(Int_cat) %>% 
+  summarise(num=n_distinct(aid)) %>% 
+  mutate(int_val=paste0(Int_cat," (",num,")")) %>% 
+  select(-num ) %>% 
+  mutate(Int_cat=factor(Int_cat,levels=int_list$Int_cat_orig)) %>% 
+  arrange(Int_cat)
+
+out.cat.tot.mangrove <- typology_dat_hab %>% 
+  filter(mangrove==1) %>% 
+  group_by(Outcome_cat) %>% 
+  summarise(num=n_distinct(aid)) %>% 
+  mutate(out_val=paste0(Outcome_cat," (",num,")")) %>% 
+  select(-num )
+
+head(typology_dat)
+#View(io_counts)
+#head(io_counts)
+#gather data and get counts 
 io_counts_mangrove <- typology_dat_hab %>%
   filter(mangrove==1) %>% 
   group_by(Int_cat, Outcome_cat) %>% 
   count() %>%
-  right_join(int_list, by=c("Int_cat"="Int_cat_abbr")) %>%  # get full intervention list
-  select(-Int_cat_orig) %>% 
-  spread(key=Int_cat, value=n) %>%  
-  gather("Int_cat_abbr","n", Int_1.area_mgmt:Int_9.edu_train) %>% 
-  filter(!is.na(Outcome_cat)) %>% 
-  mutate(n=ifelse(is.na(n),0,as.integer(n))) %>%
-  left_join(int_list,by="Int_cat_abbr") %>% 
-  mutate(Int_cat_orig=factor(Int_cat_orig, 
-                             levels=int_list$Int_cat_orig)) %>% 
-  left_join(out_list,by=c("Outcome_cat"="Outcome_cat_abbr")) %>% 
+  full_join(int.cat.tot.mangrove, by=c("Int_cat")) %>%  # get full intervention list (if all not there)
+  full_join(out.cat.tot.mangrove,by=c("Outcome_cat")) %>% # get full outcome list (if all not there)
   ungroup() %>% 
-  select(Int_cat_orig,Outcome_cat_orig,n) 
+  select(-Int_cat,-Outcome_cat) %>% 
+  spread(key=int_val, value=n) %>%  
+  gather("int_val","n", -out_val) %>% 
+  filter(!is.na(out_val)) %>% 
+  mutate(n=replace_na(n,0)) %>%
+  mutate(int_val=factor(int_val,levels=int.cat.tot.mangrove$int_val)) %>% 
+  ungroup() %>% 
+  select(int_val,out_val,n) %>% 
+  mutate(out_val=ifelse(grepl("Knowledge",out_val),gsub("1.","8.", out_val),out_val))
 
 head(io_counts_mangrove)
 nrow(int_list)*nrow(out_list)==nrow(io_counts_mangrove) # quick check (should be true)
 
-# get max # articles to put all 3 maps on the same colour scale
-max.val=max(c(io_counts_coral$n,io_counts_seagrass$n,io_counts_mangrove$n))
-
+max.val <- max(io_counts_mangrove$n,io_counts_coral$n,io_counts_seagrass$n)
 #create heatmaps
-(heat.map.domain.coral <- ggplot(data=io_counts_coral, aes(x=Int_cat_orig,y=reorder(Outcome_cat_orig, desc(Outcome_cat_orig)),fill=n)) +
+(heat.map.domain.coral <- ggplot(data=io_counts_coral, aes(x=int_val,y=reorder(out_val, desc(out_val)),fill=n)) +
     geom_tile(color="gray90",size=0.1) +
     geom_text(aes(label=n),show.legend = F) +
     scale_fill_gradient2(low="#f7fbff",high="red3",name="# Cases",na.value="gray90", limits=c(0,max.val)) +
@@ -234,7 +286,7 @@ max.val=max(c(io_counts_coral$n,io_counts_seagrass$n,io_counts_mangrove$n))
     labs(x="Conservation Intervention", y="Outcome", title ="Coral") +
     theme(axis.text.x = element_text(angle=45,hjust=1,size=9)))
 
-(heat.map.domain.seagrass <- ggplot(data=io_counts_seagrass, aes(x=Int_cat_orig,y=reorder(Outcome_cat_orig, desc(Outcome_cat_orig)),fill=n)) +
+(heat.map.domain.seagrass <- ggplot(data=io_counts_seagrass, aes(x=int_val,y=reorder(out_val, desc(out_val)),fill=n)) +
     geom_tile(color="gray90",size=0.1) +
     geom_text(aes(label=n),show.legend = F) +
     scale_fill_gradient2(low="#f7fbff",high="green4",name="# Cases",na.value="gray90", limits=c(0,max.val)) +
@@ -250,7 +302,7 @@ max.val=max(c(io_counts_coral$n,io_counts_seagrass$n,io_counts_mangrove$n))
     theme(legend.key.width=unit(1, "cm")) +
     labs(x="Conservation Intervention", y="Outcome", title ="Seagrass") +
     theme(axis.text.x = element_text(angle=45,hjust=1,size=9)))
-(heat.map.domain.mangrove <- ggplot(data=io_counts_mangrove, aes(x=Int_cat_orig,y=reorder(Outcome_cat_orig, desc(Outcome_cat_orig)),fill=n)) +
+(heat.map.domain.mangrove <- ggplot(data=io_counts_mangrove, aes(x=int_val,y=reorder(out_val, desc(out_val)),fill=n)) +
     geom_tile(color="gray90",size=0.1) +
     geom_text(aes(label=n),show.legend = F) +
     scale_fill_gradient2(low="#f7fbff",high="orangered4",name="# Cases",na.value="gray90", limits=c(0,max.val)) +
@@ -268,7 +320,7 @@ max.val=max(c(io_counts_coral$n,io_counts_seagrass$n,io_counts_mangrove$n))
     theme(axis.text.x = element_text(angle=45,hjust=1,size=9)))
 
 plot_grid(heat.map.domain.coral,heat.map.domain.seagrass, heat.map.domain.mangrove,labels=letters[1:3], ncol = 3, nrow = 1, hjust=-1)
-ggsave(paste0(plotdir,'habitat_map_test.png'),width = 18,height = 8)
+ggsave(paste0(plotdir,'habitat_map_test_update.png'),width = 18,height = 8)
 
 #--- Sub-group intervention ----
 typology_dat_sub_int <- data_all %>% 
