@@ -9,17 +9,21 @@ library(tidyverse)
 
 #--- Organize data ----
 #read in data, skip first 2 rows
-non.mangrove<-import(paste0(inputdir,"final data MINUS ONE_non mangrove.xlsx"), which="Data Extraction Sheet", skip =2, .name_repair = "universal") %>% 
-  mutate(Date=as.character(Date))
-mangrove<-import(paste0(inputdir,"final data_mangroves.xlsx"), which="Data Extraction Sheet", skip =2,  .name_repair = "universal") %>% 
+# non.mangrove<-import(paste0(inputdir,"Non-mangrove_FINAL.xlsx"), which="Data Extraction Sheet", skip =2, .name_repair = "universal") %>% 
+#   mutate(Date=as.character(Date))
+# mangrove<-import(paste0(inputdir,"Mangrove_FINAL.xlsx"), which="Data Extraction Sheet", skip =2,  .name_repair = "universal") %>% 
+#   mutate(Date=as.character(Date))
+
+all.data<-import(paste0(inputdir,"All Data_FINAL.xlsx"), skip =2, .name_repair = "universal") %>% 
   mutate(Date=as.character(Date))
 
-# Something went wrong? shift over rows that were missing a column so the data shifted (aid=772), inspect in original data
-non.mangrove[non.mangrove$Article.ID%in%772,32:42] # wrong
-non.mangrove[non.mangrove$Article.ID%in%772,32:42]  <- non.mangrove[non.mangrove$Article.ID%in%772,31:41] 
-non.mangrove[non.mangrove$Article.ID%in%772,32:42]  # right
+# Select accepted papers
+data_all <- all.data %>%  
+  filter(Full.text.screening.=="Accept" & !is.na(Intervention.category) & !is.na(Outcome.category)) %>% # is this ok to do? would be there cases where NA is ok?
+  rename(Int_cat=Intervention.category,Outcome_cat=Outcome.category, aid=Article.ID)
 
-# read in intervention list
+
+# read in full intervention lists
 int_list<-import(paste0(inputdir,"intervention abbreviations.csv"))
 out_list<-import(paste0(inputdir,"outcome abbreviations.csv"))
 int_sub_list<-import(paste0(inputdir,"Non-Mangrove Data 092519.xlsx"), which="Dropdowns", skip =1, .name_repair = "universal") %>% 
@@ -31,15 +35,17 @@ out_sub_list<-import(paste0(inputdir,"Non-Mangrove Data 092519.xlsx"), which="Dr
   na.omit() %>% 
   rename(out_sub=Outcome.subcategory) 
 
-data_all <- non.mangrove %>% 
-  bind_rows(mangrove) %>% 
-  filter(Full.text.screening.=="Accept" & !is.na(Intervention.category) & !is.na(Outcome.category)) %>% # is this ok to do? would be there cases where NA is ok?
-  rename(Int_cat=Intervention.category,Outcome_cat=Outcome.category, aid=Article.ID)
-  
-# Clean up: recodes any value begining with specific number
+
+#--- Clean up data ----
+# Something went wrong? shift over rows that were missing a column so the data shifted (aid=772), inspect in original data
+data_all[data_all$aid%in%772,32:42] # wrong
+data_all[data_all$aid%in%772,32:42]  <- data_all[data_all$aid%in%772,31:41] 
+data_all[data_all$aid%in%772,32:42]  # right
+
+# Recodes any value begining with specific number to the correct version 
 # interventions
 for (i in 1:nrow(int_list)){
-  num.val=paste0("^",i)
+  num.val=paste0("^",i,"\\. *")
   data_all <- data_all %>% 
     mutate(Int_cat=ifelse(grepl(num.val,Int_cat),grep(num.val,int_list$Int_cat_orig,value = T),Int_cat))
 }
@@ -50,11 +56,24 @@ for (i in 1:nrow(out_list)){
     mutate(Outcome_cat=ifelse(grepl(num.val,Outcome_cat),grep(num.val,out_list$Outcome_cat_orig,value = T),Outcome_cat))
 }
 
+# quick checks
 unique(data_all$Int_cat)  # 10 interventions
 unique(data_all$Outcome_cat) # 7 outcomes
 # these below should both be 0, or else we have a naming issue
 unique(data_all$Int_cat[!data_all$Int_cat%in%int_list$Int_cat_orig])
 unique(data_all$Outcome_cat[!data_all$Outcome_cat%in%out_list$Outcome_cat_orig])
+# test <- filter(data_all,Int_cat=="1. Land/water management")
+# length(unique(test$aid))
+
+# Add habitat fields
+data_all <- data_all %>% 
+mutate(coral=ifelse(grepl("Coral",Habitat.type,ignore.case = T),1,0),
+       seagrass=ifelse(grepl("Seagrass",Habitat.type,ignore.case = T),1,0),
+       mangrove=ifelse(grepl("mangrove",Habitat.type,ignore.case = T),1,0),)
+# check
+unique(data_all$Habitat.type[data_all$coral==1])
+unique(data_all$Habitat.type[data_all$seagrass==1])
+unique(data_all$Habitat.type[data_all$mangrove==1])
 
 
 #--- All studies ----
@@ -64,14 +83,16 @@ typology_dat <- data_all %>%
   filter(Int_cat!="" & !is.na(Int_cat)) %>%  # just in case
   distinct() %>% 
   group_by(Int_cat) %>% 
-  mutate(num=n_distinct(aid)) %>% 
-  mutate(int_val=paste0(Int_cat," (",num,")")) %>% 
-  select(-num ) %>% 
+  mutate(int_val=paste0(Int_cat," (",n_distinct(aid),")")) %>% 
+  # group_by(Intervention.subcategory) %>% 
+  # mutate(sub_int_val=paste0(Intervention.subcategory," (",n_distinct(aid),")")) %>% 
   group_by(Outcome_cat) %>% 
-  mutate(num=n_distinct(aid)) %>% 
-  mutate(out_val=paste0(Outcome_cat," (",num,")")) %>% 
+  mutate(out_val=paste0(Outcome_cat," (",n_distinct(aid),")")) %>% 
+  # group_by(Outcome.subcategory) %>% 
+  # mutate(sub_out_val=paste0(Outcome.subcategory," (",n_distinct(aid),")")) %>% 
   mutate(out_val=ifelse(grepl("Knowledge",out_val),gsub("1.","8.", out_val),out_val)) %>% 
-select(-num ) 
+  ungroup() %>% 
+  select(-c(Int_cat,Outcome_cat))
   
 head(typology_dat)
 
@@ -79,7 +100,7 @@ head(typology_dat)
 int_list <- typology_dat %>%
   ungroup() %>% 
   distinct(int_val) %>% 
-  mutate(ord=as.numeric(str_extract(int_val,"^\\d*"))) %>% 
+  mutate(ord=as.numeric(str_extract(int_val,"^\\d*"))) %>% # extract digit to sort list
   arrange(ord) 
 out_list <- typology_dat %>% 
   ungroup() %>% 
@@ -400,31 +421,47 @@ typology_dat_sub <- typology_dat_sub %>%
   filter(int_sub!="Local")
 anti_join(typology_dat_sub,int_sub_list, by="int_sub") # should be 0 now
 
+typology_dat_sub <- typology_dat_sub %>% 
+  group_by(int_sub) %>% 
+  mutate(int_sub_val=paste0(int_sub," (",n_distinct(aid),")")) %>% 
+  group_by(out_sub) %>% 
+  mutate(out_sub_val=paste0(out_sub," (",n_distinct(aid),")")) %>% 
+  mutate(out_sub_val=ifelse(grepl("Knowledge",out_sub_val),gsub("1.","8.", out_sub_val),out_sub_val)) %>% 
+  ungroup() %>% 
+  select(-c(int_sub,out_sub))
+
 head(typology_dat_sub)
-# View(io_counts_sub)
-# head(io_counts_sub)
-# names(io_counts_sub)
-# head(str_sort(io_counts_sub$out_sub, numeric = TRUE))
+
+# Get full intervention list
+int_list <- typology_dat_sub %>%
+  ungroup() %>% 
+  distinct(int_sub_val) %>% 
+  mutate(ord=as.numeric(str_extract(int_sub_val,"^\\d*"))) %>% 
+  arrange(ord) 
+out_list <- typology_dat_sub %>% 
+  ungroup() %>% 
+  distinct(out_sub_val) %>% 
+  arrange(out_sub_val)
+io_list <- expand.grid(int_list$int_sub_val,out_list$out_sub_val) %>% 
+  rename(int_sub_val=Var1,out_sub_val=Var2)
+head(io_list)
 
 #gather data and get counts 
 io_counts_sub <- typology_dat_sub %>%
-  group_by(int_sub, out_sub) %>% 
+  group_by(int_sub_val, out_sub_val) %>% 
   count() %>%
-  right_join(int_sub_list, by="int_sub") %>%  # get full intervention list
-  full_join(out_sub_list, by="out_sub") %>%  # get full intervention list
-  spread(key=int_sub, value=n) %>%  
-  gather("int_sub","n", -out_sub) %>% 
-  filter(!is.na(out_sub) & int_sub!="<NA>") %>% 
-  mutate(n=ifelse(is.na(n),0,as.integer(n))) %>%
-  mutate(int_sub=factor(int_sub,levels=str_sort(int_sub_list$int_sub, numeric = TRUE))) %>% 
-  arrange(int_sub) %>% 
-  select(int_sub,out_sub,n) 
+  full_join(io_list) %>% 
+  mutate(n=replace_na(n,0)) %>%
+  ungroup() %>% 
+  mutate(int_sub_val=factor(int_sub_val,levels=int_list$int_sub_val)) 
+
 
 head(io_counts_sub)
+
 nrow(int_sub_list)*nrow(out_sub_list)==nrow(io_counts_sub) # quick check (should be true)
 
 #create heatmap
-(heat.map.domain_sub <- ggplot(data=io_counts_sub, aes(x=int_sub,y=reorder(out_sub, desc(out_sub)),fill=n)) +
+(heat.map.domain_sub <- ggplot(data=io_counts_sub, aes(x=int_sub_val,y=reorder(out_sub_val, desc(out_sub_val)),fill=n)) +
     geom_tile(color="gray90",size=0.1) +
     geom_text(aes(label=n),show.legend = F) +
     scale_fill_gradient2(low="#f7fbff",high="#2171b5",name="# Cases",na.value="gray90", limits=c(0,max(io_counts$n))) +
@@ -441,5 +478,5 @@ nrow(int_sub_list)*nrow(out_sub_list)==nrow(io_counts_sub) # quick check (should
     labs(x="Conservation Intervention", y="Outcome", title ="All subcategories") +
     theme(axis.text.x = element_text(angle=45,hjust=1,size=9)))
 
-ggsave(paste0(plotdir,'all_sub_map_test.png'),width = 15,height = 15)
+ggsave(paste0(plotdir,'all_sub_map_test+update.png'),width = 15,height = 15)
 
