@@ -15,7 +15,7 @@ library(tidyverse)
 # mangrove<-import(paste0(inputdir,"Mangrove_FINAL.xlsx"), which="Data Extraction Sheet", skip =2,  .name_repair = "universal") %>% 
 #   mutate(Date=as.character(Date))
 
-all.data<-import(paste0(inputdir,"All Data_FINAL.xlsx"), skip =2, .name_repair = "universal") %>% 
+all.data<-import(paste0(inputdir,"20191022_All Data.xlsx"), skip =2, .name_repair = "universal") %>% 
   mutate(Date=as.character(Date))
 
 # Select accepted papers, rename variables
@@ -27,11 +27,12 @@ data_all <- all.data %>%
 # read in full intervention lists
 int_list<-import(paste0(inputdir,"intervention abbreviations.csv"))
 out_list<-import(paste0(inputdir,"outcome abbreviations.csv"))
-int_sub_list<-import(paste0(inputdir,"Non-Mangrove Data 092519.xlsx"), which="Dropdowns", skip =1, .name_repair = "universal") %>% 
+drop.down.lists<-import(paste0(inputdir,"20191022_All Data.xlsx"), which="Dropdowns", skip =1, .name_repair = "universal")
+int_sub_list <-  drop.down.lists %>% 
   select(Intervention.subcategory) %>% 
   na.omit() %>% 
   rename(int_sub=Intervention.subcategory)
-out_sub_list<-import(paste0(inputdir,"Non-Mangrove Data 092519.xlsx"), which="Dropdowns", skip =1, .name_repair = "universal") %>% 
+out_sub_list <-  drop.down.lists %>% 
   select(Outcome.subcategory) %>% 
   na.omit() %>% 
   rename(out_sub=Outcome.subcategory) 
