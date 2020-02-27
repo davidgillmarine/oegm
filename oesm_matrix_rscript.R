@@ -1,12 +1,13 @@
 #set working directory to the correct folders on your machine
-#setwd("C:/Users/david/Dropbox/data/analysis/oegm/data")
-workdir <- gsub("git","",getwd())
-inputdir <- paste0(workdir,"data/")
-plotdir <- paste0(workdir,"plots/")
+workdir <- "R:/Gill/research/oegm/"
+inputdir <- paste0(workdir,"tables/raw/")
+plotdir <- paste0(workdir,"output/plots/")
 library(rio)
 library(gtools)
 library(cowplot)
 library(tidyverse)
+today.date <- gsub("-","",Sys.Date())
+
 
 #--- Organize data ----
 #read in data, skip first 2 rows
@@ -18,16 +19,17 @@ library(tidyverse)
 all.data<-import(paste0(inputdir,"20191022_All Data.xlsx"), skip =2, .name_repair = "universal") %>% 
   mutate(Date=as.character(Date))
 
-# Select accepted papers, rename variables
+# Select accepted papers, rename variables==
 data_all <- all.data %>%  
   filter(Full.text.screening.=="Accept" & !is.na(Intervention.category) & !is.na(Outcome.category)) %>% # is this ok to do? would be there cases where NA is ok?
   rename(Int_cat=Intervention.category,Outcome_cat=Outcome.category, aid=Article.ID)
-
+length(unique(data_all$aid))
 
 # read in full intervention lists
 int_list<-import(paste0(inputdir,"intervention abbreviations.csv"))
 out_list<-import(paste0(inputdir,"outcome abbreviations.csv"))
 drop.down.lists<-import(paste0(inputdir,"20191022_All Data.xlsx"), which="Dropdowns", skip =1, .name_repair = "universal")
+
 int_sub_list <-  drop.down.lists %>% 
   select(Intervention.subcategory) %>% 
   na.omit() %>% 
@@ -91,14 +93,34 @@ data_all$Outcome_cat[!data_all$Outcome_cat%in%out_list$Outcome_cat_orig]
 data_all$Outcome.subcategory[!data_all$Outcome.subcategory%in%out_sub_list$out_sub] 
 
 # Add habitat fields
+unique(data_all$Habitat.type) 
 data_all <- data_all %>% 
 mutate(coral=ifelse(grepl("Coral",Habitat.type,ignore.case = T),1,0),
        seagrass=ifelse(grepl("Seagrass",Habitat.type,ignore.case = T),1,0),
        mangrove=ifelse(grepl("mangrove",Habitat.type,ignore.case = T),1,0),)
-# check habitat coding
+
+  # check habitat coding
 unique(data_all$Habitat.type[data_all$coral==1])
 unique(data_all$Habitat.type[data_all$seagrass==1])
 unique(data_all$Habitat.type[data_all$mangrove==1])
+
+test <- data_all %>% 
+  filter(coral==0 & mangrove==0 & seagrass==0) %>% 
+  select(Habitat.type)
+unique(test$Habitat.type)
+
+# Move Knowledge and behaviour to the bottom of the list
+test.cat <- unique(data_all$Outcome_cat)
+test.sub.cat <- unique(data_all$Outcome.subcategory)
+gsub("\\d\\w.\\s","",test.sub.cat)
+gsub("\\d.\\s","",test)
+
+data_all <- data_all %>% 
+  mutate()
+
+
+
+my_heat_map(data_all,"Int_cat","Outcome_cat")
 
 #--- Heat map function ----
 my_heat_map <- function (.data,intc, outc, high.col="#2171b5") {
@@ -139,7 +161,16 @@ my_heat_map <- function (.data,intc, outc, high.col="#2171b5") {
     full_join(io_list) %>%   # inserts missing combinations
     mutate(n=replace_na(n,0)) %>%
     ungroup() %>% 
-    mutate(int_val=factor(int_val,levels=mixedsort(int_list$int_val)))  # set int list in right order
+    mutate(int_val=factor(int_val,levels=mixedsort(int_list$int_val)),  # set int list in right order
+           out_val=gsub("^1","6temp",out_val),
+           out_val=gsub("^2","1",out_val),
+           out_val=gsub("^3","2",out_val),
+           out_val=gsub("^4","3",out_val),
+           out_val=gsub("^5","4",out_val),
+           out_val=gsub("^6","5",out_val),
+           out_val=gsub("^7","7",out_val),
+           out_val=gsub("5temp","6",out_val)
+           )
   
   # head(io_counts)
   # nrow(int_list)*nrow(out_list)==nrow(io_counts) # quick check (should be true)
@@ -167,26 +198,27 @@ my_heat_map <- function (.data,intc, outc, high.col="#2171b5") {
 # All ecosystems
 my_heat_map(data_all,"Int_cat","Outcome_cat")
 io_counts.all <- io_counts
-(heat.map.all <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="All ecosystems"))
-ggsave(paste0(plotdir,'all_map_test_update.png'),width = 8,height = 8)
+(heat.map.all <- heat.map +
+    labs(x="Conservation Intervention", y="Outcome", title ="All ecosystems"))
+ggsave(paste0(plotdir,today.date,'_int_out_map.png'),width = 8,height = 8)
 
 # All ecosystems - Intervention subcategory X Outcome
 my_heat_map(data_all,"Intervention.subcategory", "Outcome_cat")
 io_counts.subint <- io_counts
 (heat.map.subint <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="All ecosystems"))
-ggsave(paste0(plotdir,'all_sub_int_map_test.png'),width = 15,height = 8)
+ggsave(paste0(plotdir,today.date,'_sub.int_out_map.png'),width = 16,height = 8)
 
 # All ecosystems - Intervention  X Outcome subcategory
 my_heat_map(data_all,"Int_cat", "Outcome.subcategory")
 io_counts.subint <- io_counts
 (heat.map.subint <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="All ecosystems"))
-ggsave(paste0(plotdir,'all_sub_out_map_test.png'),width = 8,height = 15)
+ggsave(paste0(plotdir,today.date,'_int_sub.out_map.png'),width = 8,height = 16)
 
 # All ecosystems - Intervention subcategory X Outcome subcategory
 my_heat_map(data_all,"Intervention.subcategory", "Outcome.subcategory")
 io_counts.subintout <- io_counts
 (heat.map.subint <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="All ecosystems"))
-ggsave(paste0(plotdir,'all_sub_map_test+update.png'),width = 15,height = 15)
+ggsave(paste0(plotdir,today.date,'_sub.int_sub.out_map.png'),width = 8,height = 8)
 
 # Coral
 my_heat_map(filter(data_all,coral==1),"Int_cat","Outcome_cat", high.col = "red3")
@@ -209,5 +241,5 @@ plot_grid(heat.map.coral + scale_fill_gradient2(low="#f7fbff",high= "red3",name=
           heat.map.seagrass + scale_fill_gradient2(low="#f7fbff",high= "green4",name="# Cases",na.value="gray90", limits=c(0,max.val)),
           heat.map.mangrove + scale_fill_gradient2(low="#f7fbff",high= "orangered4",name="# Cases",na.value="gray90", limits=c(0,max.val)),
           labels=letters[1:3], ncol = 3, nrow = 1, hjust=-1, align = "hv")
-ggsave(paste0(plotdir,'habitat_map_test_update.png'),width = 18,height = 8)
+ggsave(paste0(plotdir,today.date,'_habitat_int_out_map.png'),width = 17,height = 8)
 
