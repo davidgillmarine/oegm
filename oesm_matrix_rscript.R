@@ -18,6 +18,7 @@ today.date <- gsub("-","",Sys.Date())
 
 all.data<-import(paste0(inputdir,"20191022_All Data.xlsx"), skip =2, .name_repair = "universal") %>% 
   mutate(Date=as.character(Date))
+country <- import(paste0(inputdir,"allcountries.csv"))
 
 # Select accepted papers, rename variables==
 data_all <- all.data %>%  
@@ -120,8 +121,6 @@ data_all <- data_all %>%
 
 
 
-my_heat_map(data_all,"Int_cat","Outcome_cat")
-
 #--- Heat map function ----
 my_heat_map <- function (.data,intc, outc, high.col="#2171b5") {
   
@@ -191,7 +190,11 @@ my_heat_map <- function (.data,intc, outc, high.col="#2171b5") {
       theme(legend.key.size=unit(1, "cm")) +
       theme(legend.key.width=unit(1, "cm")) +
       #  labs(x="Conservation Intervention", y="Outcome", title ="All ecosystems") +
-      theme(axis.text.x = element_text(angle=45,hjust=1,size=9))
+      theme(axis.text.x = element_text(angle=45,hjust=0,vjust=1,size=9)) +
+      scale_x_discrete(position = "top") +
+      scale_y_discrete(position = "right") 
+  
+  
 }
 
 #--- Create maps ----
@@ -243,3 +246,70 @@ plot_grid(heat.map.coral + scale_fill_gradient2(low="#f7fbff",high= "red3",name=
           labels=letters[1:3], ncol = 3, nrow = 1, hjust=-1, align = "hv")
 ggsave(paste0(plotdir,today.date,'_habitat_int_out_map.png'),width = 17,height = 8)
 
+
+
+#---- World map ----
+unique(data_all$Country.ies..of.study)
+# fix data in country column
+ctry <- data_all %>%
+  mutate(study.ctry=gsub(",",";",Country.ies..of.study),
+         study.ctry=gsub("Tanzania; United Republic Of","Tanzania, United Republic Of",study.ctry),
+         study.ctry=gsub("Taiwan; Province Of China","Taiwan, Province Of China",study.ctry)) %>%
+  group_by(aid,study.ctry) %>%
+  summarise() %>% 
+  filter(!is.na(study.ctry))
+head(ctry)
+
+
+ctry$study.ctry[is.na(str_count(ctry$study.ctry, ";"))] # come have NA countries
+# no. articles per country
+max.ctry <- paste0("ctry",rep(1:max(str_count(ctry$study.ctry, ";")+1))) # create vector of column names for each country
+ctry_sum <-ctry %>% 
+  separate(study.ctry,max.ctry, sep="; ",fill="right") %>% # fill=right fills blanks with NAs
+  gather("X","Country", max.ctry) %>% 
+  filter(!is.na(Country)) %>% 
+  select(-X) %>% 
+  group_by(Country) %>% 
+  count() 
+arrange(ctry_sum,desc(n))
+
+# Countries that need to be fixed
+ctry_sum$Country[!ctry_sum$Country%in%country$Country]
+
+# join to full country list
+ctry_sum1 <- country %>% 
+  left_join(ctry_sum,by="Country") %>%
+  mutate(n=replace(n, is.na(n), 0)) 
+
+ctry_sum$Country[!ctry_sum$Country%in%ctry_sum1$Country] # any missing?
+
+# read in map
+map <- rgdal::readOGR(paste0(mapdir,"TM_WORLD_BORDERS-0.3/TM_WORLD_BORDERS-0.3.shp"))
+map <-broom::tidy(map,region="ISO3")
+#map@data[map@data$NAME=="Turks and Caicos Islands",]
+
+
+#--------------------- Author institution location (country)
+auth_ctry_sum <-data %>% 
+  gather("X","Country", auth_ctry1:auth_ctry2) %>% 
+  filter(!is.na(Country)) %>% 
+  select(-X) %>% 
+  group_by(Country) %>% 
+  summarise(n=n_distinct(aid), pct=n/75) %>% 
+  arrange(desc(pct))
+auth_ctry_sum
+
+#load in full country list
+auth_ctry_sum1 <- country %>% 
+  left_join(auth_ctry_sum,by="Country") %>%
+  mutate(n=replace(n, is.na(n), 0)) 
+
+auth_ctry_sum$Country[!auth_ctry_sum$Country%in%auth_ctry_sum1$Country] # any missing?
+
+#plot study map
+(study_ctry_map <- ggplot() +
+    geom_map(data=ctry_sum1, aes(map_id=code, fill=n),map=map) +
+    expand_limits(x=map$long,y=map$lat) +
+    theme(panel.background = element_rect(fill = "#CCCCCC", colour = "#CCCCCC"), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    scale_fill_gradient2(low="white",mid="#2171b5",high="#08519c",
+                         midpoint=(pmax(max(auth_ctry_sum1$n),max(ctry_sum1$n))/2),limits=c(0,pmax(max(auth_ctry_sum1$n),max(ctry_sum1$n)))))
