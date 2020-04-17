@@ -325,7 +325,7 @@ treemap(outcomes2,index=c("out.cat","Outcome.subcategory"),
         ),
         overlap.labels=0.5,
         inflate.labels=F,
-        title="All interventions")
+        title="Study Outcomes")
 dev.off()
 
 # - Interventions
@@ -356,5 +356,56 @@ treemap(intervention2,index=c("int.cat","Intervention.subcategory"),
         ),
         overlap.labels=0.5,
         inflate.labels=F,
-        title="All interventions")
+        title="Study interventions")
 dev.off()
+
+
+
+#---- Treemapping ----
+All_time_gps <- data_all %>%
+  group_by(Year.of.publication) %>% 
+  summarise(pub.per.yr= n_distinct(aid)) %>% 
+  ungroup() %>% 
+  arrange(Year.of.publication) %>% 
+  mutate(val=cumsum(pub.per.yr),
+         gp="All") %>% 
+  select(Year.of.publication,gp,val) %>% 
+  filter(!is.na(Year.of.publication))
+tail(All_time_gps)
+# growth by decade
+#overall
+(max(All_time_gps$val)-min(All_time_gps$val))/(max(All_time_gps$Year.of.publication)-min(All_time_gps$Year.of.publication))
+#1990s
+(max(All_time_gps$val[All_time_gps$Year.of.publication<2000])-max(All_time_gps$val[All_time_gps$Year.of.publication<1990]))/10
+#2000s
+(max(All_time_gps$val[All_time_gps$Year.of.publication<2010])-max(All_time_gps$val[All_time_gps$Year.of.publication<2000]))/10
+#2000-latest date
+(max(All_time_gps$val)-max(All_time_gps$val[All_time_gps$Year.of.publication<2010]))/(max(All_time_gps$Year.of.publication)-2009)
+
+Int_time_gps <-  data_all %>%
+  group_by(Year.of.publication,Int_cat) %>% 
+  summarise(int_per_yr= n_distinct(aid)) %>% 
+  spread(Int_cat,value = int_per_yr) %>% 
+  mutate_all(funs(replace(., is.na(.), 0))) %>% 
+  ungroup() %>% 
+  arrange(Year.of.publication) %>% 
+  mutate_at(vars(-Year.of.publication),funs(cumsum(.))) %>% 
+  gather("int_typ","val",-Year.of.publication) %>% 
+  bind_rows(All_time_gps %>% rename(int_typ=gp))
+tail(Int_time_gps)
+# non-elegant way to convert units to factor in order to reorder plot legends
+order.gp <- Int_time_gps %>% group_by(int_typ) %>% summarise(order_typ=max(val)) %>% arrange(desc(order_typ)) %>% pull(int_typ)
+Int_time_gps <- Int_time_gps %>%  
+  mutate(int_typ = factor(int_typ, levels = order.gp)) %>% 
+  rename(Intervention=int_typ)
+
+# int.cols <- c("black","blue","orangered1","yellow4","tan1")
+names(int.cols) <- order.gp
+
+(pInt_time_gps <- ggplot(Int_time_gps)  + 
+    geom_line(aes(x = Year.of.publication, y = val, group = Intervention, colour = Intervention), size = 1.3)  +
+    ylab("Cumulative frequency") +
+  #  scale_x_continuous(name="Year", breaks=seq(1985,2025,5)) +
+  #  scale_colour_manual(values=int.cols) +
+    ggtitle('Intervention') )
+   # scale_y_continuous(limits=c(0,80), breaks=seq(0,80,10), labels=c("0","","20","","40","","60","","80")))
