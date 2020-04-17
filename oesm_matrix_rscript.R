@@ -1,8 +1,10 @@
 #set working directory to the correct folders on your machine
 workdir <- "R:/Gill/research/oegm/"
 inputdir <- paste0(workdir,"tables/raw/")
+mapdir <-  paste0(workdir,"spatial/raw/")
 plotdir <- paste0(workdir,"output/plots/")
 library(rio)
+library(treemap)
 library(gtools)
 library(cowplot)
 library(tidyverse)
@@ -23,7 +25,7 @@ country <- import(paste0(inputdir,"allcountries.csv"))
 # Select accepted papers, rename variables==
 data_all <- all.data %>%  
   filter(Full.text.screening.=="Accept" & !is.na(Intervention.category) & !is.na(Outcome.category)) %>% # is this ok to do? would be there cases where NA is ok?
-  rename(Int_cat=Intervention.category,Outcome_cat=Outcome.category, aid=Article.ID)
+  rename(Int_cat=Intervention.category,Outcome_cat=Outcome.category, aid=Article.ID, study.ctry=Country.ies..of.study)
 length(unique(data_all$aid))
 
 # read in full intervention lists
@@ -105,20 +107,10 @@ unique(data_all$Habitat.type[data_all$coral==1])
 unique(data_all$Habitat.type[data_all$seagrass==1])
 unique(data_all$Habitat.type[data_all$mangrove==1])
 
-test <- data_all %>% 
+habitat.test <- data_all %>% 
   filter(coral==0 & mangrove==0 & seagrass==0) %>% 
   select(Habitat.type)
-unique(test$Habitat.type)
-
-# Move Knowledge and behaviour to the bottom of the list
-test.cat <- unique(data_all$Outcome_cat)
-test.sub.cat <- unique(data_all$Outcome.subcategory)
-gsub("\\d\\w.\\s","",test.sub.cat)
-gsub("\\d.\\s","",test)
-
-data_all <- data_all %>% 
-  mutate()
-
+unique(habitat.test$Habitat.type) # should just be "other"
 
 
 #--- Heat map function ----
@@ -249,10 +241,13 @@ ggsave(paste0(plotdir,today.date,'_habitat_int_out_map.png'),width = 17,height =
 
 
 #---- World map ----
-unique(data_all$Country.ies..of.study)
+unique(data_all$study.ctry)
 # fix data in country column
 ctry <- data_all %>%
-  mutate(study.ctry=gsub(",",";",Country.ies..of.study),
+  mutate(study.ctry=gsub(",",";",study.ctry),  # replace "," with ";" to help with splitting
+         study.ctry=gsub("Korea; South","Korea, South",study.ctry),
+         study.ctry=gsub("Turks and Caicos","Turks and Caicos Islands",study.ctry),
+         study.ctry=gsub(".*Virgin Islands","U.S. Virgin Islands",study.ctry),
          study.ctry=gsub("Tanzania; United Republic Of","Tanzania, United Republic Of",study.ctry),
          study.ctry=gsub("Taiwan; Province Of China","Taiwan, Province Of China",study.ctry)) %>%
   group_by(aid,study.ctry) %>%
@@ -261,9 +256,8 @@ ctry <- data_all %>%
 head(ctry)
 
 
-ctry$study.ctry[is.na(str_count(ctry$study.ctry, ";"))] # come have NA countries
-# no. articles per country
-max.ctry <- paste0("ctry",rep(1:max(str_count(ctry$study.ctry, ";")+1))) # create vector of column names for each country
+# get no. articles per country to create vector of column names for each country by counting the number of ";" 
+max.ctry <- paste0("ctry",rep(1:max(str_count(ctry$study.ctry, ";")+1))) 
 ctry_sum <-ctry %>% 
   separate(study.ctry,max.ctry, sep="; ",fill="right") %>% # fill=right fills blanks with NAs
   gather("X","Country", max.ctry) %>% 
@@ -273,13 +267,16 @@ ctry_sum <-ctry %>%
   count() 
 arrange(ctry_sum,desc(n))
 
+View(ctry_sum1)
+
 # Countries that need to be fixed
 ctry_sum$Country[!ctry_sum$Country%in%country$Country]
+# agrep("Virgin Islands",country$Country, value = T) - search original list
 
 # join to full country list
 ctry_sum1 <- country %>% 
   left_join(ctry_sum,by="Country") %>%
-  mutate(n=replace(n, is.na(n), 0)) 
+  mutate(n=na.replace(n,0)) 
 
 ctry_sum$Country[!ctry_sum$Country%in%ctry_sum1$Country] # any missing?
 
@@ -289,27 +286,75 @@ map <-broom::tidy(map,region="ISO3")
 #map@data[map@data$NAME=="Turks and Caicos Islands",]
 
 
-#--------------------- Author institution location (country)
-auth_ctry_sum <-data %>% 
-  gather("X","Country", auth_ctry1:auth_ctry2) %>% 
-  filter(!is.na(Country)) %>% 
-  select(-X) %>% 
-  group_by(Country) %>% 
-  summarise(n=n_distinct(aid), pct=n/75) %>% 
-  arrange(desc(pct))
-auth_ctry_sum
-
-#load in full country list
-auth_ctry_sum1 <- country %>% 
-  left_join(auth_ctry_sum,by="Country") %>%
-  mutate(n=replace(n, is.na(n), 0)) 
-
-auth_ctry_sum$Country[!auth_ctry_sum$Country%in%auth_ctry_sum1$Country] # any missing?
-
 #plot study map
 (study_ctry_map <- ggplot() +
     geom_map(data=ctry_sum1, aes(map_id=code, fill=n),map=map) +
     expand_limits(x=map$long,y=map$lat) +
     theme(panel.background = element_rect(fill = "#CCCCCC", colour = "#CCCCCC"), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
     scale_fill_gradient2(low="white",mid="#2171b5",high="#08519c",
-                         midpoint=(pmax(max(auth_ctry_sum1$n),max(ctry_sum1$n))/2),limits=c(0,pmax(max(auth_ctry_sum1$n),max(ctry_sum1$n)))))
+                         midpoint=max(ctry_sum1$n)/2,limits=c(0,max(ctry_sum1$n)))+
+    labs(title="Study countries"))
+ggsave(paste0(plotdir,today.date,'_study_country_map.png'),width = 10,height = 6)
+
+
+#---- Treemapping ----
+# - Outcomes
+unique(data_all$Outcome.subcategory)
+
+outcomes2 <-data_all %>% 
+  filter(!is.na(Outcome.subcategory)) %>% 
+  select(aid,Outcome_cat,Outcome.subcategory) %>% 
+  group_by(Outcome_cat) %>% 
+  mutate(out.cat=paste0(Outcome_cat,"\n (",n_distinct(aid),")")) %>% 
+  group_by(Outcome_cat,Outcome.subcategory) %>% 
+  mutate(n=n_distinct(aid)) %>% 
+  arrange(Outcome.subcategory)
+unique(outcomes2$out.cat)
+
+pdf(file=paste0(plotdir,today.date,"_outcomes_treemap.pdf"))
+treemap(outcomes2,index=c("out.cat","Outcome.subcategory"),
+        vSize="n",
+        type="index",
+        fontsize.labels = c(15,10),
+        fontcolor.labels=c("white","black"),
+        fontface.labels=c(2,1),
+        bg.labels=c("transparent"),
+        align.labels=list(
+          c("center","top"),
+          c("left","bottom")
+        ),
+        overlap.labels=0.5,
+        inflate.labels=F,
+        title="All interventions")
+dev.off()
+
+# - Interventions
+unique(data_all$Intervention.subcategory)
+
+intervention2 <-data_all %>% 
+  filter(!is.na(Intervention.subcategory)) %>% 
+  select(aid,Int_cat,Intervention.subcategory) %>% 
+  group_by(Int_cat) %>% 
+  mutate(int.cat=paste0(Int_cat,"\n (",n_distinct(aid),")")) %>% 
+  group_by(Int_cat,Intervention.subcategory) %>% 
+  mutate(n=n_distinct(aid)) %>% 
+  arrange(Intervention.subcategory)
+
+unique(intervention2$int.cat)
+
+pdf(file=paste0(plotdir,today.date,"_intervention_treemap.pdf"))
+treemap(intervention2,index=c("int.cat","Intervention.subcategory"),
+        vSize="n",
+        type="index",
+        fontsize.labels = c(15,10),
+        fontcolor.labels=c("white","black"),
+        fontface.labels=c(2,1),
+        bg.labels=c("transparent"),
+        align.labels=list(
+          c("center","top"),
+          c("left","bottom")
+        ),
+        overlap.labels=0.5,
+        inflate.labels=F,
+        title="All interventions")
+dev.off()
