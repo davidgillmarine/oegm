@@ -256,18 +256,21 @@ ctry <- data_all %>%
 head(ctry)
 
 
-# get no. articles per country to create vector of column names for each country by counting the number of ";" 
+# get no. articles per country (and percentage) to create vector of column names for each country by counting the number of ";" 
 max.ctry <- paste0("ctry",rep(1:max(str_count(ctry$study.ctry, ";")+1))) 
+num.studies <- length(unique(data_all$aid))
+
 ctry_sum <-ctry %>% 
   separate(study.ctry,max.ctry, sep="; ",fill="right") %>% # fill=right fills blanks with NAs
   gather("X","Country", max.ctry) %>% 
   filter(!is.na(Country)) %>% 
   select(-X) %>% 
   group_by(Country) %>% 
-  count() 
+  count() %>% 
+  mutate(pct=n/num.studies)
+
 arrange(ctry_sum,desc(n))
 
-View(ctry_sum1)
 
 # Countries that need to be fixed
 ctry_sum$Country[!ctry_sum$Country%in%country$Country]
@@ -294,7 +297,7 @@ map <-broom::tidy(map,region="ISO3")
     scale_fill_gradient2(low="white",mid="#2171b5",high="#08519c",
                          midpoint=max(ctry_sum1$n)/2,limits=c(0,max(ctry_sum1$n)))+
     labs(title="Study countries"))
-ggsave(paste0(plotdir,today.date,'_study_country_map.png'),width = 10,height = 6)
+ggsave(paste0(plotdir,today.date,'_study_country_map.png'),width = 10,height = 5)
 
 
 #---- Treemapping ----
@@ -361,7 +364,7 @@ dev.off()
 
 
 
-#---- Treemapping ----
+#---- Studies over time ----
 All_time_gps <- data_all %>%
   group_by(Year.of.publication) %>% 
   summarise(pub.per.yr= n_distinct(aid)) %>% 
@@ -409,3 +412,71 @@ names(int.cols) <- order.gp
   #  scale_colour_manual(values=int.cols) +
     ggtitle('Intervention') )
    # scale_y_continuous(limits=c(0,80), breaks=seq(0,80,10), labels=c("0","","20","","40","","60","","80")))
+
+
+# Outcomes
+
+out_time_gps <-  data_all %>%
+  group_by(Year.of.publication,Outcome_cat) %>% 
+  summarise(out_per_yr= n_distinct(aid)) %>% 
+  spread(Outcome_cat,value = out_per_yr) %>% 
+  mutate_all(funs(replace(., is.na(.), 0))) %>% 
+  ungroup() %>% 
+  arrange(Year.of.publication) %>% 
+  mutate_at(vars(-Year.of.publication),funs(cumsum(.))) %>% 
+  gather("out_typ","val",-Year.of.publication) %>% 
+  bind_rows(All_time_gps %>% rename(out_typ=gp))
+tail(out_time_gps)
+# non-elegant way to convert units to factor in order to reorder plot legends
+order.gp <- out_time_gps %>% group_by(out_typ) %>% summarise(order_typ=max(val)) %>% arrange(desc(order_typ)) %>% pull(out_typ)
+out_time_gps <- out_time_gps %>%  
+  mutate(out_typ = factor(out_typ, levels = order.gp)) %>% 
+  rename(Outcome=out_typ)
+
+# int.cols <- c("black","blue","orangered1","yellow4","tan1")
+# names(int.cols) <- order.gp
+
+(pout_time_gps <- ggplot(out_time_gps)  + 
+    geom_line(aes(x = Year.of.publication, y = val, group = Outcome, colour = Outcome), size = 1.3)  +
+    ylab("Cumulative frequency") +
+    #  scale_x_continuous(name="Year", breaks=seq(1985,2025,5)) +
+    #  scale_colour_manual(values=int.cols) +
+    ggtitle('Outcome') )
+# scale_y_continuous(limits=c(0,80), breaks=seq(0,80,10), labels=c("0","","20","","40","","60","","80")))
+plot_grid(pInt_time_gps,pout_time_gps)
+ggsave(paste0(plotdir,today.date,'_studies_over_time.png'),width = 12,height = 4)
+
+
+
+# --- Percentaages --- #
+# test <-  data_all %>%
+#   select(aid, Int_cat, Intervention.subcategory, Outcome_cat,Outcome.subcategory)
+
+num.studies <- length(unique(data_all$aid))
+
+data_all %>%
+  group_by(Outcome_cat) %>% 
+  summarise(num=n_distinct(aid), pct=num/num.studies)
+
+data_all %>%
+  group_by(Int_cat) %>% 
+  summarise(num=n_distinct(aid), pct=num/num.studies)
+
+data_all %>%
+  group_by(Intervention.subcategory) %>% 
+  summarise(num=n_distinct(aid), pct=num/num.studies)
+
+data_all %>%
+  group_by(Outcome.subcategory) %>% 
+  summarise(num=n_distinct(aid), pct=num/num.studies)
+
+data_all %>%
+  group_by(coral) %>% 
+  summarise(num=n_distinct(aid), pct=num/num.studies)
+
+# make barplot
+test.dat <- data_all %>%
+            group_by(Outcome_cat) %>% 
+            summarise(num=n_distinct(aid), pct=num/num.studies)
+ggplot(test.dat,aes(Outcome_cat,num)) +
+  geom_bar(stat = )
