@@ -22,6 +22,9 @@ all.data<-import(paste0(inputdir,"20191022_All Data.xlsx"), skip =2, .name_repai
   mutate(Date=as.character(Date))
 country <- import(paste0(inputdir,"allcountries.csv"))
 
+# Count total papers in Full Text Screening
+length(unique(all.data$Article.ID))
+
 # Select accepted papers, rename variables==
 data_all <- all.data %>%  
   filter(Full.text.screening.=="Accept" & !is.na(Intervention.category) & !is.na(Outcome.category)) %>% # is this ok to do? would be there cases where NA is ok?
@@ -447,36 +450,238 @@ plot_grid(pInt_time_gps,pout_time_gps)
 ggsave(paste0(plotdir,today.date,'_studies_over_time.png'),width = 12,height = 4)
 
 
+########################
+# DIG IN PROGRESS:
 
-# --- Percentaages --- #
+# --- Percentages --- #
 # test <-  data_all %>%
 #   select(aid, Int_cat, Intervention.subcategory, Outcome_cat,Outcome.subcategory)
 
+#Total number of studies
 num.studies <- length(unique(data_all$aid))
+
+#List of data headings
+head(data_all,0)
+
+#########Geographies: IN PROGRESS
+
+# P: Geographies (aka intervention location)
+
+# Continent
+data_all %>%
+  group_by(Continent) %>% 
+  summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
+  arrange (desc(num))  # this arranges them in descending order 
+##### Need to do the "search for term within a row" method here                                  
+
+# Country
+data_all %>%
+  group_by(study.ctry) %>% 
+  summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
+  arrange (desc(num))  # this arranges them in descending order 
+##### Need to do the "search for term within a row" method here   
+
+# Scale of Study
+data_all %>%
+  group_by(Scale.of.study) %>% 
+  summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
+  arrange (desc(num))  # this arranges them in descending order 
+##### Need to do the "search for term within a row" method here
+
+# Geographic Scale of Intervention
+data_all %>%
+  group_by(Geographic.scale.of.intervention) %>% 
+  summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
+  arrange (desc(num))  # this arranges them in descending order 
+##### Need to pinpoint 1993 aticle, NAs, L vs L for local
+
+
+#########Habitats: IN PROGRESS
+
+# P: Habitats
+data_all %>%
+  group_by(Habitat.type) %>% 
+  summarise(num=n_distinct(aid), pct=num/num.studies*100)
+# now, need to figure out how to do some data wrangling here to split up the habitat types, 
+# or I can just type each of them in separately.... naw
+#look at he changes data.all to datal_all, and then make a habiat_type specific one
+# what does "other" mean???
+# can I do counts? (like, if "coral reef" yes, if not, no, then count yeses?)
+
+data_all %>%
+  group_by(Habitat.type) %>% 
+  summarise(num=n_distinct(aid), pct=num/num.studies*100)
+
+quick.stats <- data_all %>%  
+  filter(Habitat.type== "Coral Reef"| Habitat.type== "Coral reef")
+summarise(quick.stats, num=n_distinct(aid), pct=num/num.studies*100)
+
+quick.stats <- data_all %>%  
+  filter(Habitat.type %in% "Coral Reef"| Habitat.type %in% "Coral reef")
+summarise(quick.stats, num=n_distinct(aid), pct=num/num.studies*100)
+#not doing what I wanted it to, just working the same as ==, but want all
+# values that contain that value. Needs to be >106
+# also tried is.element(), still only get the 106
+# #### ASK DAVID  -aka come back to!
+
+
+
+# I: Interventions
+data_all %>%
+  group_by(Int_cat) %>% 
+  summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
+  #arrange (desc(num))  # this arranges them in descending order 
+  arrange (num) # for ascending order, swap
+
+####### Quest for David: Data Issue: 2C subcategory pops up as a category AND
+  # 6. occurs twice (p vs P)
+
+  # Highest: % in cons desig and planning, species management, and 
+    # research and monitoring 
+data_all %>%  
+  filter(Int_cat== "2. Species management"| 
+           Int_cat== "6. Conservation designation & planning"| 
+           Int_cat== "6. Conservation designation & Planning"|
+           Int_cat== "8. Research & monitoring") %>%  
+  summarise(num=n_distinct(aid), pct=num/num.studies*100)
+
+  # Lowest: % in Enforcement and Protection, awareness raising, and 
+    # Education and Training
+data_all %>%  
+  filter(Int_cat== "4. Enforcement & protection"| 
+           Int_cat== "3. Awareness raising"| 
+           Int_cat== "9. Education & training") %>%  
+  summarise(num=n_distinct(aid), pct=num/num.studies*100)
+
+  # Subcategories (want % of each):
+data_all %>%
+  group_by(Intervention.subcategory) %>% 
+  summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
+  arrange (desc(num))  # this arranges them in descending order 
+  # arrange (num) # for ascending order, swap
+
+
+
+#########comparators: IN PROGRESS
+
+# Discuss w David: what do we want from this section/how in depth?
+# Still playing around
+
+# C: Comparators, Study Designs Used
+
+  # Primary vs Secondary Data
+data_all %>%
+  group_by(Primary.or.secondary.data.) %>% 
+  summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
+  arrange (desc(num))  # this arranges them in descending order 
+
+  # Study Design
+data_all %>%
+  group_by(Study.design) %>% 
+  summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
+  arrange (desc(num))  # this arranges them in descending order 
+##### Need to do the "search for term within a row" method here
+
+  # Type of Data
+data_all %>%
+  group_by(What.type.of.data.does.this.study.consider.) %>% 
+  summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
+  arrange (desc(num))  # this arranges them in descending order 
+##### Need to do the "search for term within a row" method here
+
+  # Comparator Type
+data_all %>%
+  group_by(Comparator.type) %>% 
+  summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
+  arrange (desc(num))  # this arranges them in descending order 
+  # arrange (num) # for ascending order, swap
+##### Need to do the "search for term within a row" method here
+
+  # Does the Study population considers human groups?
+data_all %>%
+  group_by(Does.the.study.explicitly.examine.impacts.on.different.human.groups.) %>% 
+  summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
+  arrange (desc(num))  # this arranges them in descending order 
+  # arrange (num) # for ascending order, swap
+
+  ####Find and look at the ONE NA Study here... what are the notes on this?
+  # Note: That 1 NA is tech number 205, so there must be a duplicate or an NA that got in
+data_all %>%  
+  filter(Does.the.study.explicitly.examine.impacts.on.different.human.groups.
+         == "NA") %>%  
+ summarise(aid, Full.text.screening., Comparator.type, What.is.the.study.population., 
+            Does.the.study.explicitly.examine.impacts.on.different.human.groups.,
+            If.so..what.types.of.different.groups., Notes.on.study)
+########### This won't work, neither will moving it into Quick Stats, it then just
+  # doesn't ID the column
+######## Look Back at NAs in R on help
+
+  # If so, what types?
+data_all %>%
+  group_by(If.so..what.types.of.different.groups.) %>% 
+  summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
+  arrange (desc(num))  # this arranges them in descending order 
+  # arrange (num) # for ascending order, swap
+##### Need to do the "search for term within a row" method here
+#### Also, data wrangle to remove NAs from the list 
+    #### (I think need new quick.stats for that) 
+
+                           
+                                                 
+
+
+# O: Outcomes:
 
 data_all %>%
   group_by(Outcome_cat) %>% 
-  summarise(num=n_distinct(aid), pct=num/num.studies)
+  summarise(num=n_distinct(aid), pct=num/num.studies*100)
 
-data_all %>%
-  group_by(Int_cat) %>% 
-  summarise(num=n_distinct(aid), pct=num/num.studies)
+  # % Pop/Species and Ecological Community combined (no overlaps):
+data_all %>%  
+  filter(Outcome_cat== "2. Population/species"| 
+         Outcome_cat==  "3. Ecological community") %>%  
+  summarise(num=n_distinct(aid), pct=num/num.studies*100)
 
-data_all %>%
-  group_by(Intervention.subcategory) %>% 
-  summarise(num=n_distinct(aid), pct=num/num.studies)
+  # % in human well-being, knowledge and behavior, and governance
+data_all %>%  
+  filter(Outcome_cat== "6. Human well-being"| 
+          Outcome_cat== "1. Knowledge and behavior"| 
+          Outcome_cat== "7. Governance") %>%  
+  summarise(num=n_distinct(aid), pct=num/num.studies*100)
 
-data_all %>%
+  # % in ecosystem function and ecosystem service
+data_all %>%  
+  filter(Outcome_cat== "4. Ecosystem function"| 
+          Outcome_cat==  "5. Ecosystem services") %>%  
+  summarise(num=n_distinct(aid), pct=num/num.studies*100)
+  
+  # Subcategories (want % of each):
+data_all %>% 
   group_by(Outcome.subcategory) %>% 
-  summarise(num=n_distinct(aid), pct=num/num.studies)
+  summarise(num=n_distinct(aid), pct=num/num.studies*100) %>%
+  arrange (desc(num))  # this arranges them in descending order 
+  # arrange (num) # for ascending order, swap
+  
 
-data_all %>%
-  group_by(coral) %>% 
-  summarise(num=n_distinct(aid), pct=num/num.studies)
+#########time periods: IN PROGRESS
+
+# Extra: Time Period:
+
+  # % of studies after 2000
+  # % of studies in the year:....
+  # % of studies in [specific intervention area] during [specific time]
+  
+  # % of studies in top 2 interventions (cons desig and spec management) 
+    # during [specific time]
+  
+  # could do ^ for outcome, could also try to get a chart that gives # of each
+    # intervention and outcome for each year. Should be able to do this!
+
+
 
 # make barplot
 test.dat <- data_all %>%
             group_by(Outcome_cat) %>% 
             summarise(num=n_distinct(aid), pct=num/num.studies)
-ggplot(test.dat,aes(Outcome_cat,num)) +
+ggplot(test.dates(Outcome_cat,num)) +
   geom_bar(stat = )
