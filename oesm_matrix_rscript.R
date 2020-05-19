@@ -500,7 +500,7 @@ data_all %>%
 
 # P: Habitats
 data_all %>%
-  group_by(Habitat.type) %>% 
+  group_by(coral) %>% 
   summarise(num=n_distinct(aid), pct=num/num.studies*100)
 # now, need to figure out how to do some data wrangling here to split up the habitat types, 
 # or I can just type each of them in separately.... naw
@@ -604,7 +604,15 @@ data_all %>%
   arrange (desc(num))  # this arranges them in descending order 
   # arrange (num) # for ascending order, swap
 
-  ####Find and look at the ONE NA Study here... what are the notes on this?
+# data_all$aid[is.na(data_all$Does.the.study.explicitly.examine.impacts.on.different.human.groups.)]
+# 
+# View(data_all %>% 
+# #  select(aid,Does.the.study.explicitly.examine.impacts.on.different.human.groups.) %>% 
+#   filter(is.na(Does.the.study.explicitly.examine.impacts.on.different.human.groups.)))
+# 
+# View(data_all[is.na(data_all$Does.the.study.explicitly.examine.impacts.on.different.human.groups.),])
+
+####Find and look at the ONE NA Study here... what are the notes on this?
   # Note: That 1 NA is tech number 205, so there must be a duplicate or an NA that got in
 data_all %>%  
   filter(Does.the.study.explicitly.examine.impacts.on.different.human.groups.
