@@ -467,6 +467,42 @@ head(data_all,0)
 
 # P: Geographies (aka intervention location)
 
+
+################DANA IN PROGRESS
+
+#######
+# 1st step, clean up coutry columns and lists
+
+###MAKING COUNTRY COLUMNS
+
+#### Add country list
+cty <- country$Country
+
+# What David did for habitat:
+# come back to
+
+# Add habitat fields
+unique(data_all$Habitat.type) 
+data_all <- data_all %>% 
+  mutate(coral=ifelse(grepl("Coral",Habitat.type,ignore.case = T),1,0),
+         seagrass=ifelse(grepl("Seagrass",Habitat.type,ignore.case = T),1,0),
+         mangrove=ifelse(grepl("mangrove",Habitat.type,ignore.case = T),1,0),)
+
+# check habitat coding
+unique(data_all$Habitat.type[data_all$coral==1])
+unique(data_all$Habitat.type[data_all$seagrass==1])
+unique(data_all$Habitat.type[data_all$mangrove==1])
+
+habitat.test <- data_all %>% 
+  filter(coral==0 & mangrove==0 & seagrass==0) %>% 
+  select(Habitat.type)
+unique(habitat.test$Habitat.type) # should just be "other"
+
+###
+
+
+#############
+
 # Continent
 data_all %>%
   group_by(Continent) %>% 
@@ -479,6 +515,7 @@ data_all %>%
   group_by(study.ctry) %>% 
   summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
   arrange (desc(num))  # this arranges them in descending order 
+  # arrange(num)
 ##### Need to do the "search for term within a row" method here   
 
 # Scale of Study
@@ -488,53 +525,87 @@ data_all %>%
   arrange (desc(num))  # this arranges them in descending order 
 ##### Need to do the "search for term within a row" method here
 
+
+##
+# Add habitat fields
+unique(data_all$Habitat.type) 
+data_all <- data_all %>% 
+  mutate(coral=ifelse(grepl("Coral",Habitat.type,ignore.case = T),1,0),
+         seagrass=ifelse(grepl("Seagrass",Habitat.type,ignore.case = T),1,0),
+         mangrove=ifelse(grepl("mangrove",Habitat.type,ignore.case = T),1,0),)
+
+# check habitat coding
+unique(data_all$Habitat.type[data_all$coral==1])
+unique(data_all$Habitat.type[data_all$seagrass==1])
+unique(data_all$Habitat.type[data_all$mangrove==1])
+
+habitat.test <- data_all %>% 
+  filter(coral==0 & mangrove==0 & seagrass==0) %>% 
+  select(Habitat.type)
+unique(habitat.test$Habitat.type) # should just be "other"
+##
+
+
 # Geographic Scale of Intervention
 data_all %>%
   group_by(Geographic.scale.of.intervention) %>% 
   summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
   arrange (desc(num))  # this arranges them in descending order 
-##### Need to pinpoint 1993 aticle, NAs, L vs L for local
+##### Need to pinpoint NAs, L vs L for local
 
 
-#########Habitats: IN PROGRESS
 
 # P: Habitats
-data_all %>%
-  group_by(coral) %>% 
-  summarise(num=n_distinct(aid), pct=num/num.studies*100)
-# now, need to figure out how to do some data wrangling here to split up the habitat types, 
-# or I can just type each of them in separately.... naw
-#look at he changes data.all to datal_all, and then make a habiat_type specific one
-# what does "other" mean???
-# can I do counts? (like, if "coral reef" yes, if not, no, then count yeses?)
 
+# Coral
+data_all %>%
+  filter(coral==1) %>% 
+  summarise(num=n_distinct(aid), pct=num/num.studies*100)
+
+# Seagrass
+data_all %>%
+  filter (seagrass==1) %>% 
+  summarise(num=n_distinct(aid), pct=num/num.studies*100) 
+
+# Mangrove
+data_all %>%
+  filter (mangrove==1) %>% 
+  summarise(num=n_distinct(aid), pct=num/num.studies*100) 
+
+# Note: these DO contain overlap, ie. some studies have multiple habitats:
 data_all %>%
   group_by(Habitat.type) %>% 
+  summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
+  arrange (desc(num)) 
+
+# How many studies took place in only one of three habitats?
+data_all %>% 
+  filter(coral + seagrass + mangrove == 1) %>% 
   summarise(num=n_distinct(aid), pct=num/num.studies*100)
 
-quick.stats <- data_all %>%  
-  filter(Habitat.type== "Coral Reef"| Habitat.type== "Coral reef")
-summarise(quick.stats, num=n_distinct(aid), pct=num/num.studies*100)
+# How many studies took place in multiple habitats? (2 or more)
+  #doesn't inlcude "other"
+data_all %>% 
+  filter(coral + seagrass + mangrove >= 2) %>% 
+  summarise(num=n_distinct(aid), pct=num/num.studies*100)
 
-quick.stats <- data_all %>%  
-  filter(Habitat.type %in% "Coral Reef"| Habitat.type %in% "Coral reef")
-summarise(quick.stats, num=n_distinct(aid), pct=num/num.studies*100)
-#not doing what I wanted it to, just working the same as ==, but want all
-# values that contain that value. Needs to be >106
-# also tried is.element(), still only get the 106
-# #### ASK DAVID  -aka come back to!
+# How many studies took place in all 3 habitats?
+data_all %>% 
+  filter(coral + seagrass + mangrove == 3) %>% 
+  summarise(num=n_distinct(aid), pct=num/num.studies*100)
 
+# What are the "other" studies that don't define a habitat?
+  unique(data_all$aid[data_all$Habitat.type=="Other"])
+  # ONLY for the habitat types that are ONLY other, aka doesn't include 
+    # studies that have a "real" habitat and an "Other"
 
-
+  
+  
 # I: Interventions
 data_all %>%
   group_by(Int_cat) %>% 
   summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
-  #arrange (desc(num))  # this arranges them in descending order 
-  arrange (num) # for ascending order, swap
-
-####### Quest for David: Data Issue: 2C subcategory pops up as a category AND
-  # 6. occurs twice (p vs P)
+  arrange (desc(num))  # arranges them in descending order 
 
   # Highest: % in cons desig and planning, species management, and 
     # research and monitoring 
@@ -557,8 +628,8 @@ data_all %>%
 data_all %>%
   group_by(Intervention.subcategory) %>% 
   summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
-  arrange (desc(num))  # this arranges them in descending order 
-  # arrange (num) # for ascending order, swap
+  arrange (desc(num))  # arranges them in descending order 
+  # arrange (num) # arranges in ascending order, swap
 
 
 
@@ -602,40 +673,28 @@ data_all %>%
   group_by(Does.the.study.explicitly.examine.impacts.on.different.human.groups.) %>% 
   summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
   arrange (desc(num))  # this arranges them in descending order 
-  # arrange (num) # for ascending order, swap
 
-# data_all$aid[is.na(data_all$Does.the.study.explicitly.examine.impacts.on.different.human.groups.)]
-# 
-# View(data_all %>% 
-# #  select(aid,Does.the.study.explicitly.examine.impacts.on.different.human.groups.) %>% 
-#   filter(is.na(Does.the.study.explicitly.examine.impacts.on.different.human.groups.)))
-# 
-# View(data_all[is.na(data_all$Does.the.study.explicitly.examine.impacts.on.different.human.groups.),])
+#Find and look at the ONE NA Study here... what are the notes on this?
+quick.stats <- data_all %>% 
+         filter(is.na(Does.the.study.explicitly.examine.impacts.on.different.human.groups.))
+unique(quick.stats$aid)
+    # way to filter it without looking at data/one line, no quick.stats:
+    # unique(data_all %>% 
+      # filter(is.na(Does.the.study.explicitly.examine.impacts.on.different.human.groups.)) %>% 
+      # select(aid))
+    # non-piping way to do it:
+      # unique(data_all$aid[is.na(data_all$Does.the.study.explicitly.examine.impacts.on.different.human.groups)])
 
-####Find and look at the ONE NA Study here... what are the notes on this?
-  # Note: That 1 NA is tech number 205, so there must be a duplicate or an NA that got in
-data_all %>%  
-  filter(Does.the.study.explicitly.examine.impacts.on.different.human.groups.
-         == "NA") %>%  
- summarise(aid, Full.text.screening., Comparator.type, What.is.the.study.population., 
-            Does.the.study.explicitly.examine.impacts.on.different.human.groups.,
-            If.so..what.types.of.different.groups., Notes.on.study)
-########### This won't work, neither will moving it into Quick Stats, it then just
-  # doesn't ID the column
-######## Look Back at NAs in R on help
+  # Note: This 1 NA is tech number 205, so there must be a duplicate that got in
+  # One section has both an N and a Y...
+###########How do I ID which one has an overlap?
 
   # If so, what types?
-data_all %>%
-  group_by(If.so..what.types.of.different.groups.) %>% 
-  summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
-  arrange (desc(num))  # this arranges them in descending order 
-  # arrange (num) # for ascending order, swap
-##### Need to do the "search for term within a row" method here
-#### Also, data wrangle to remove NAs from the list 
-    #### (I think need new quick.stats for that) 
-
-                           
-                                                 
+  # NOT worth analysis, most of these are NAs:
+    # data_all %>%
+    #  group_by(If.so..what.types.of.different.groups.) %>% 
+    #  summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
+    #  arrange (desc(num))  # this arranges them in descending order 
 
 
 # O: Outcomes:
