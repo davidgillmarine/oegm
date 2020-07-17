@@ -13,13 +13,8 @@ workdir <- "R:/Gill/research/oegm/"
 inputdir <- paste0(workdir,"tables/raw/")
 mapdir <-  paste0(workdir,"spatial/raw/")
 plotdir <- paste0(workdir,"output/plots/")
-library(rio)
-library(treemap)
-library(gtools)
-library(cowplot)
-library(tidyverse)
+pacman::p_load(rio,treemap,gtools,cowplot,rnaturalearth,rnaturalearthdata,tidyverse)
 today.date <- gsub("-","",Sys.Date())
-
 
 #--- Organize data ----
 #read in data, skip first 2 rows
@@ -279,7 +274,7 @@ ctry.all <- ctry.fix %>%
   group_by(aid,study.ctry) %>%
   summarise() %>% 
   filter(!is.na(study.ctry))
-head(ctry)
+head(ctry.all)
 
 
 # get no. articles per country (and percentage) to create vector of column names for each country by counting the number of ";" 
@@ -297,7 +292,6 @@ ctry_sum <-ctry.all %>%
 
 arrange(ctry_sum,desc(n))
 
-
 # Countries that need to be fixed
 ctry_sum$Country[!ctry_sum$Country%in%country$Country]
 # agrep("Virgin Islands",country$Country, value = T) - search original list
@@ -309,20 +303,18 @@ ctry_sum1 <- country %>%
 
 ctry_sum$Country[!ctry_sum$Country%in%ctry_sum1$Country] # any missing?
 
-# read in map
-map <- rgdal::readOGR(paste0(mapdir,"TM_WORLD_BORDERS-0.3/TM_WORLD_BORDERS-0.3.shp"))
-map <-broom::tidy(map,region="ISO3")
-#map@data[map@data$NAME=="Turks and Caicos Islands",]
-
-
 #plot study map
-(study_ctry_map_all <- ggplot() +
-    geom_map(data=ctry_sum1, aes(map_id=code, fill=n),map=map) +
-    expand_limits(x=map$long,y=map$lat) +
-    theme(panel.background = element_rect(fill = "#CCCCCC", colour = "#CCCCCC"), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
-    scale_fill_gradient2(low="white",mid="#2171b5",high="#08519c",
-                         midpoint=max(ctry_sum1$n)/2,limits=c(0,max(ctry_sum1$n)))+
-    labs(title="Study countries -all habitats"))
+world <- ne_countries(scale = "medium", returnclass = "sf") # read in world map from rnaturalearth as sf
+world.data <- world %>% 
+  left_join(ctry_sum1,by=c("iso_a3"="code"))
+
+(study_ctry_map_all <- ggplot(world.data) + 
+  geom_sf(aes(fill = n)) +
+  theme(panel.background = element_rect(fill = "#CCCCCC", colour = "#CCCCCC"), 
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  scale_fill_gradient2(low="white",mid="#2171b5",high="#08519c",
+                         midpoint=max(ctry_sum1$n)/2,limits=c(0,max(ctry_sum1$n))) +
+  labs(title="Study countries -all habitats"))
 ggsave(paste0(plotdir,today.date,'_study_country_map.png'),width = 10,height = 5)
 
 
