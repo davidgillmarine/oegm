@@ -13,7 +13,7 @@ workdir <- "R:/Gill/research/oegm/"
 inputdir <- paste0(workdir,"tables/raw/")
 mapdir <-  paste0(workdir,"spatial/raw/")
 plotdir <- paste0(workdir,"output/plots/")
-pacman::p_load(rio,treemap,gtools,cowplot,rnaturalearth,rnaturalearthdata,tidyverse)
+pacman::p_load(rio,rgeos,treemap,gtools,cowplot,rnaturalearth,rnaturalearthdata,tidyverse)
 today.date <- gsub("-","",Sys.Date())
 
 #--- Organize data ----
