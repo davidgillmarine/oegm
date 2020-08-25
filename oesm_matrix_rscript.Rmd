@@ -118,7 +118,44 @@ unique(data_all$Habitat.type[data_all$mangrove==1])
 habitat.test <- data_all %>% 
   filter(coral==0 & mangrove==0 & seagrass==0) %>% 
   select(Habitat.type)
-unique(habitat.test$Habitat.type) # should just be "other"```
+unique(habitat.test$Habitat.type) # should just be "other"
+
+
+data_all <-data_all %>% 
+  filter(Int_cat!="8. Research & monitoring")%>% 
+  mutate_at(vars(Int_cat,Intervention.subcategory), ~gsub("^9","8",.)) %>% 
+  mutate_at(vars(Int_cat,Intervention.subcategory), ~gsub("^10","9",.)) %>% 
+  mutate_at(vars(Outcome_cat,Outcome.subcategory), ~gsub("^1","9",.)) %>% 
+  mutate_at(vars(Outcome_cat,Outcome.subcategory), ~gsub("^2","1",.)) %>% 
+  mutate_at(vars(Outcome_cat,Outcome.subcategory), ~gsub("^3","2",.)) %>% 
+  mutate_at(vars(Outcome_cat,Outcome.subcategory), ~gsub("^4","3",.)) %>% 
+  mutate_at(vars(Outcome_cat,Outcome.subcategory), ~gsub("^5","4",.)) %>% 
+  mutate_at(vars(Outcome_cat,Outcome.subcategory), ~gsub("^6","5",.)) %>% 
+  mutate_at(vars(Outcome_cat,Outcome.subcategory), ~gsub("^9","6",.)) 
+
+
+# # Get full intervention list
+  int_list <- data_all %>%
+    ungroup() %>%
+    distinct(Int_cat) %>%
+    rename(int_val=Int_cat) %>% 
+    arrange(int_val)
+  out_list <- data_all %>%
+    ungroup() %>%
+    distinct(Outcome_cat) %>%
+    rename(out_val=Outcome_cat) %>% 
+    arrange(out_val)
+# Get full sub-intervention list
+  int_sub_list <- data_all %>%
+    ungroup() %>%
+    distinct(Intervention.subcategory) %>%
+    rename(int_val=Intervention.subcategory) %>% 
+    arrange(int_val)
+  out_sub_list <- data_all %>%
+    ungroup() %>%
+    distinct(Outcome.subcategory) %>%
+    rename(out_val=Outcome.subcategory) %>% 
+    arrange(out_val)
 
 ```
 
@@ -128,52 +165,56 @@ unique(habitat.test$Habitat.type) # should just be "other"```
 #--- Heat map function ----
 my_heat_map <- function (.data,intc, outc, high.col="#2171b5") {
   
+  
 # don't know why... but this works
   .data$intc<- as.vector(.data %>%  pull(intc))
   .data$outc<- as.vector(.data %>%  pull(outc))
+
+# Set full intervention list type  
+if(intc=="Int_cat"){int_list_full=int_list}
+if(intc=="Intervention.subcategory"){int_list_full=int_sub_list}
+if(outc=="Outcome_cat"){out_list_full=out_list}
+if(outc=="Outcome.subcategory"){out_list_full=out_sub_list}
 
 # Get unique article ID, int. and out. list (and sum of articles)
   typology_dat <- .data %>% 
     select(aid, intc, outc) %>% 
     filter(intc!="" & !is.na(intc)) %>%  # just in case
     distinct() %>% 
+    full_join(int_list_full,by =c("intc"="int_val")) %>% 
+    full_join(out_list_full,by =c("outc"="out_val")) %>% 
     group_by(intc) %>% 
-    mutate(int_val=paste0(intc," (",n_distinct(aid),")")) %>% 
+    mutate(int_val=paste0(intc," (",n_distinct(aid,na.rm = T),")")) %>% 
     group_by(outc) %>% 
-    mutate(out_val=paste0(outc," (",n_distinct(aid),")")) %>% 
+    mutate(out_val=paste0(outc," (",n_distinct(aid,na.rm = T),")")) %>% 
     ungroup() %>% 
-    select(-c(intc,outc))
+    select(-c(intc,outc)) 
   
-  # Get full intervention list
+  # Get expanded intervention-outcome list for this dataset
   int_list <- typology_dat %>%
-    ungroup() %>% 
-    distinct(int_val) %>% 
+    ungroup() %>%
+    filter(int_val!="NA (0)") %>% 
+    distinct(int_val) %>%
     arrange(int_val)
-  out_list <- typology_dat %>% 
-    ungroup() %>% 
-    distinct(out_val) %>% 
+  out_list <- typology_dat %>%
+    ungroup() %>%
+    distinct(out_val) %>%
+    filter(out_val!="NA (0)") %>% 
     arrange(out_val)
   io_list <- expand.grid(int_list$int_val,out_list$out_val) %>% 
     rename(int_val=Var1,out_val=Var2)
-  head(io_list)
+
+#head(io_list)
   
   #gather data and get counts 
   io_counts <<- typology_dat %>%
     group_by(int_val, out_val) %>% 
     count() %>%
-    full_join(io_list) %>%   # inserts missing combinations
+    full_join(io_list,by = c("int_val", "out_val")) %>%   # inserts missing combinations
+    filter(int_val!="NA (0)" &  out_val!="NA (0)") %>% 
     mutate(n=replace_na(n,0)) %>%
     ungroup() %>% 
-    mutate(int_val=factor(int_val,levels=mixedsort(int_list$int_val)),  # set int list in right order
-           out_val=gsub("^1","6temp",out_val),
-           out_val=gsub("^2","1",out_val),
-           out_val=gsub("^3","2",out_val),
-           out_val=gsub("^4","3",out_val),
-           out_val=gsub("^5","4",out_val),
-           out_val=gsub("^6","5",out_val),
-           out_val=gsub("^7","7",out_val),
-           out_val=gsub("5temp","6",out_val)
-           )
+    mutate(int_val=factor(int_val,levels=mixedsort(int_list$int_val)))  # set int list in right order
   
   # head(io_counts)
   # nrow(int_list)*nrow(out_list)==nrow(io_counts) # quick check (should be true)
