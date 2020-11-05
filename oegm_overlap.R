@@ -24,17 +24,18 @@ review.ovrlp %>%
 
 # generate unique id for each citation
 review.ovrlp <- review.ovrlp %>% 
-  mutate(across(c(title,abstract,author),~replace_na(.,""))) %>% 
-  mutate(across(c(title,abstract,author),~str_to_lower(.))) %>% 
-  mutate(across(c(title,abstract,author),~str_replace_all(.,"[[:punct:]]", ""))) %>% 
-  mutate(rec.id=str_c(str_sub(title,1,5),
+  mutate(across(c(title,abstract),list(z=~replace_na(.,"")))) %>%  # replace NAs with "" (for combining strings)
+  mutate(across(c(title_z,abstract_z),~str_to_lower(.))) %>%   # lower case
+  mutate(across(c(title_z,abstract_z),~str_replace_all(.,"\\W", ""))) %>% # remove anything that isn't a word character
+  mutate(rec.id=str_c(str_sub(title_z,1,5),
                       year,
-                      str_sub(abstract,1,5),
-                      sep="_"),
-         rec.id=str_replace_all(rec.id,"\\s",""))
+                      str_sub(abstract_z,1,5),
+                      sep="_")) %>% 
+  select(-c(title_z,abstract_z))
+
+review.ovrlp$rec.id[1:20]
 
 # ID duplicates
-review.ovrlp$rec.id[1:20]
 nrow(review.ovrlp)==length(unique(review.ovrlp$rec.id))
 View(review.ovrlp %>% get_dupes(rec.id))
 
@@ -59,18 +60,27 @@ clndr.export %>%
 
 # generate unique id for each citation
 clndr.export <- clndr.export %>% 
-  mutate(across(c(title,abstract,author),~replace_na(.,""))) %>% 
-  mutate(across(c(title,abstract,author),~str_to_lower(.))) %>% 
-  mutate(across(c(title,abstract,author),~str_replace_all(.,"[[:punct:]]", ""))) %>% 
-  mutate(rec.id=str_c(str_sub(title,1,5),
+  mutate(across(c(title,abstract),list(z=~replace_na(.,"")))) %>%  # replace NAs with "" (for combining strings)
+  mutate(across(c(title_z,abstract_z),~str_to_lower(.))) %>%   # lower case
+  mutate(across(c(title_z,abstract_z),~str_replace_all(.,"\\W", ""))) %>% # remove anything that isn't a word character
+  mutate(rec.id=str_c(str_sub(title_z,1,5),
                       year,
-                      str_sub(abstract,1,5),
-                      sep="_"),
-         rec.id=str_replace_all(rec.id,"\\s",""))
+                      str_sub(abstract_z,1,5),
+                      sep="_")) %>% 
+  select(-c(title_z,abstract_z))
 
+clndr.export$rec.id[1:20]
+
+# finish screening
+clndr.export$title[grepl("rebui_2010",clndr.export$rec.id)]
+clndr.export$screen.status[grepl("rebui_2010",clndr.export$rec.id)] <- "excluded"
+clndr.export$title[grepl("marin_2007",clndr.export$rec.id)]
+clndr.export$screen.status[grepl("marin_2007",clndr.export$rec.id)] <- "included"
+clndr.export$title[grepl("trade_2009",clndr.export$rec.id)]
+clndr.export$screen.status[grepl("trade_2009",clndr.export$rec.id)] <- "included"
+table(clndr.export$screen.status)
 
 # ID duplicates
-clndr.export$rec.id[1:20]
 nrow(clndr.export)==length(unique(clndr.export$rec.id))
 View(clndr.export %>% get_dupes(rec.id))
 
@@ -94,14 +104,17 @@ review.ovrlp$rec.id[!review.ovrlp$rec.id%in%clndr.export$rec.id]
 clndr.export$rec.id[!clndr.export$rec.id%in%review.ovrlp$rec.id]
 
 # names line up?
-comb.ovrlp <- review.ovrlp %>% 
+comb.ovrlp.check <- review.ovrlp %>% 
   left_join(clndr.export,by="rec.id") %>% 
-  select(rec.id,author.x,author.y,title.x,title.y,year.x,year.y,everything())
+  select(rec.id,author.x,author.y,title.x,title.y,year.x,year.y,abstract.x,abstract.y)
 
-comb.ovrlp %>% 
+View(comb.ovrlp.check)
+comb.ovrlp.check %>% 
   summarise(across(everything(), n_distinct))
 
-comb.ovrlp <- comb.ovrlp %>% 
+# combine datasets
+comb.ovrlp <- review.ovrlp %>% 
+  left_join(clndr.export,by="rec.id") %>% 
   select(rec.id,author=author.x,title=title.x,year=year.x,keywords=keywords.x,incl.excl,screen.status)
 table(comb.ovrlp$incl.excl,comb.ovrlp$screen.status)
 
@@ -111,11 +124,11 @@ comb.ovrlp %>%
   group_by(incl.excl, screen.status) %>%
   summarise(num = n()) %>%
   ggplot(aes(x = incl.excl, y = screen.status, fill = num)) +
-  geom_tile(color = "gray90", size = 0.1) +
+  geom_tile(color = "white", size = 0.1) +
   geom_text(aes(label = num), show.legend = F) +
-  scale_fill_gradient2(low = "#f7fbff",high = "blue",name = "# Cases",na.value = "gray90",guide = FALSE) +
+  scale_fill_gradient2(low = "lightblue",high = "blue",name = "# Cases",na.value = "gray90",guide = FALSE) +
   coord_equal() +
-  labs(x = "Review overlap", y = "Current screening") +
+  labs(x = "Previous screened group", y = "Current screening") +
   theme(legend.position = "none") +
   scale_x_discrete(position = "top") +
   scale_y_discrete(position = "right") +

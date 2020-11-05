@@ -1,11 +1,11 @@
 ##Randomly select citations
-pacman::p_load(rio,rcrossref,bib2df,revtools,tidyverse)
+pacman::p_load(rio,rcrossref,bib2df,revtools,janitor,tidyverse)
 
 workdir <- "R:/Gill/research/oegm/"
 #workdir <- gsub("git","data",getwd())
 inputdir <- paste0(workdir,"tables/raw/")
 inputdir2 <- paste0(workdir,"tables/raw/overlap/")
-outputdir <- paste0(workdir,"output/tables")
+outputdir <- paste0(workdir,"output/tables/")
 plotdir <- paste0(workdir,"output/plots/")
 today.date <- gsub("-","",Sys.Date())
 list.files(inputdir)
@@ -60,24 +60,42 @@ comb.data <- unique_90.edit %>%
 
 # Export as csv
 export(comb.data,paste0(outputdir,today.date,"_oegm_all.rds"))
+export(comb.data,paste0(outputdir,today.date,"_oegm_all.csv"))
 
-##Convert to dataframe
-df$id <- rownames(df)
 
-##Randomly select some - change number for different random amount
-rand <- df[sample(nrow(df), 5000),]
+# --- Update 
+data <- last.file(outputdir,"_oegm_all.rds")
 
-##Remove random rows from rest of citations
-remaining <- anti_join(df,rand, by="id")
+data.edit <- data %>% 
+  mutate(across(c(title,abstract),list(z=~replace_na(.,"")))) %>%  # replace NAs with "" (for combining strings)
+  mutate(across(c(title_z,abstract_z),~str_to_lower(.))) %>%   # lower case
+  mutate(across(c(title_z,abstract_z),~str_replace_all(.,"\\W", ""))) %>% # remove anything that isn't a word character
+  mutate(rec.id=str_c(str_sub(title_z,1,5),
+                      year,
+                      str_sub(abstract_z,1,5),
+                      sep="_")) %>% 
+  mutate(temp.id=paste(str_sub(title_z,1,16),
+                       year,
+                       sep="_")) 
 
-##Convert format and write to an .RIS file
-rand <- select(rand,-id)
-remaining <- select(remaining,-id)
+head(data.edit$rec.id)  
+nrow(data.edit %>% get_dupes(rec.id))
+View(data.edit %>% get_dupes(rec.id))
 
-randombib <- as.bibliography(as.data.frame(rand))
-remainingbib <- as.bibliography(as.data.frame(remaining))
+full_include<-import(paste0(inputdir,"20191022_All Data.xlsx"), skip =2, .name_repair = "universal") %>% 
+  filter(Full.text.screening.=="Accept") %>% 
+  distinct(Article.ID, .keep_all = T) %>% 
+  select(Article.ID,
+         title=Title,
+         year=Year.of.publication)  %>% 
+  mutate(across(c(title),list(z=~replace_na(.,"")))) %>%  # replace NAs with "" (for combining strings)
+  mutate(across(c(title_z),~str_to_lower(.))) %>%   # lower case
+  mutate(across(c(title_z),~str_replace_all(.,"\\W", ""))) %>% # remove anything that isn't a word character
+  mutate(temp.id=paste(str_sub(title_z,1,16),
+                      year,
+                      sep="_")) 
 
-write_bibliography(randombib, filename=paste0(outputdir,"random.ris"),format="ris")
-write_bibliography(remainingbib, filename=paste0(outputdir,"remaining.bib",format="bib")) ##make sure you write the remaining to a bibtex file as it is faster for R to read this in than an RIS don't ask me why, for other purposes you can also write to .ris like importing to endnote, just change the file extension and the format type in this command
+  test <- full_include %>% 
+    anti_join(data.edit,by="title_z")
 
-##Import into colandr directly OR into citation manager etc...
+
