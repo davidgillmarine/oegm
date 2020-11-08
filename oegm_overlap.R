@@ -2,6 +2,7 @@ pacman::p_load(rio,hrbrthemes,viridis,revtools,janitor,tidyverse)
 workdir <- "R:/Gill/research/oegm/"
 #workdir <- gsub("git","data",getwd())
 inputdir <- paste0(workdir,"tables/raw/overlap/")
+outputdir <- paste0(workdir,"output/tables/")
 plotdir <- paste0(workdir,"output/plots/")
 today.date <- gsub("-","",Sys.Date())
 
@@ -135,3 +136,7 @@ comb.ovrlp %>%
   theme_minimal()
 
 ggsave(str_c(plotdir,today.date,"_review_overlap.png"),width=6,height=4)
+
+mismatch <- comb.ovrlp %>% 
+  filter(incl.excl=="Included" &  screen.status=="excluded")
+export(mismatch,str_c(outputdir,today.date,"_mismatch.csv"))
