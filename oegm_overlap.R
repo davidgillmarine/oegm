@@ -140,6 +140,7 @@ comb.ovrlp %>%
 
 ggsave(str_c(plotdir,today.date,"_review_overlap.png"),width=6,height=4)
 
+
 # 90% overlap
 e90_ovrlp.colandr.export <- import(paste0(inputdir,"OESM Screening_Fall 2020_90percent_review_overlap_tmp.csv"))
 sapply(e90_ovrlp.colandr.export, function(x) sum(is.na(x))/length(x))
@@ -200,3 +201,7 @@ remain.overlap <- e90_ovrlp.no.abstract.update %>%
   bind_rows(hwb.screen.ovrlp) %>% 
   distinct(title,abstract,.keep_all = T)
 write_bibliography(remain.overlap,str_c(outputdir,today.date,"_OEGM_90_Overlap_Reviews_remaining.ris")) # export to try to find missing abstracts
+
+mismatch <- comb.ovrlp %>% 
+  filter(incl.excl=="Included" &  screen.status=="excluded")
+export(mismatch,str_c(outputdir,today.date,"_mismatch.csv"))
