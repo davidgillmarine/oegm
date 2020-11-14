@@ -1,0 +1,142 @@
+---
+title: "Literature Network"
+author: "Whitney Friedman"
+date: "11/5/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+##Randomly select citations
+pacman::p_load(rio,rcrossref,bib2df,tidytext,revtools,fuzzyjoin,igraph,ggraph,janitor,tidyverse)
+
+workdir <- "R:/Gill/research/oegm/"
+#workdir <- gsub("git","data",getwd())
+inputdir <- paste0(workdir,"tables/raw/Cons-HWB-citations-from-reviews/")
+outputdir <- paste0(workdir,"output/tables/")
+plotdir <- paste0(workdir,"output/plots/")
+today.date <- gsub("-","",Sys.Date())
+list.files(inputdir)
+last.file <- function(dir.nam,nam){
+  import(paste0(dir.nam,last(sort(grep(nam,list.files(dir.nam), value=T)))))
+}
+
+```
+
+# Literature overlap network
+This RMD demonstrates how the literature overlap network used in the OECM meta-review was created. 
+
+## Prior work
+In order to create this network, lists of references were extracted from the 
+supplementary materials for the 7 studies included in the OECM meta-review. This
+was an ugly process involving PDF scanning, some manual formatting, and google docs. 
+This document picks up from the formatted and combined version of that work. 
+
+Note that I did not attempt to format the full citation. I simply extracted the 
+first author and year from each citation and then manually double checked to make sure that any 
+duplicate author_year values were given a unique code (a,b,c...) when there were multiple papers 
+by that first author in a given year.
+
+## Read file of combined refs
+
+```{r}
+
+file.list <- list.files(inputdir,full.names = T)
+tmp <- read_bibliography(file.list[42]) 
+file.list <- file.list[-42]
+wanted.var <- c("label","type","title","author","year","keywords","journal","doi","abstract")
+names(tmp)names(wanted.var)
+r.data <- data.frame()
+
+for (i in 1:length(file.list)){
+study_id <- gsub(inputdir,"",file.list[i],file.list[i])
+tmp <- read_bibliography(file.list[i])  %>% 
+  mutate(study_id=gsub(".ris","",study_id))
+r.data <- bind_rows(r.data,tmp)
+print(i)
+}
+
+sapply(r.data, function(x) sum(is.na(x))/length(x))
+table(r.data$study_id)
+
+refs_reviewed <- r.data %>% 
+ select(label,type,title,author,year,keywords,journal,doi,abstract,study_id) %>% 
+  mutate(first_author=sub("\\,.*", "", author),
+         author_year=str_c(first_author,year,sep = " ")) %>% 
+  mutate(across(c(title,abstract),list(z=~replace_na(.,"")))) %>%  # replace NAs with "" (for combining strings)
+  mutate(across(c(title_z,abstract_z),~str_to_lower(.))) %>%   # lower case
+  mutate(across(c(title_z,abstract_z),~str_replace_all(.,"\\W", ""))) 
+
+head(select(refs_reviewed,author,first_author,author_year))
+
+```
+
+## List studies that are cited in multiple review papers
+
+```{r}
+# Studies cited in multiple reviews:
+refs_overlap <- refs_reviewed %>% 
+  get_dupes(label)
+
+refs_overlap %>% view
+
+refs_overlap_short <- refs_overlap %>% 
+  distinct(label,.keep_all = T) %>% 
+  select(label,title,author,year,title_z, study_id) # No longer unique to the values
+
+# 493 unique studies are contained in the 6 reviews. 
+# Of those, 43 studies are repeated across the 6 reviews
+# 43/493 = 0.0872211
+refs_overlap_short %>% view
+
+```
+
+
+## Network of overlapping studies
+Helpful tutorials: 
+https://cbail.github.io/ids704/social-networks/Intro_to_Network_Analysis_in_R.html
+https://www.data-imaginist.com/2017/ggraph-introduction-layouts/
+
+Only 2 columns are necessary: 
+- "from" will be mapped to "study_id" (one of the 7 review papers)
+- "to" will be mapped to "author_year" (one of the 493 studies cited by the review papers)
+
+```{r}
+
+refs_network <- refs_reviewed %>% 
+  mutate(from = study_id, 
+         to = label) %>% 
+  select(from, to, study_id)
+
+refs_network <- graph_from_data_frame(refs_network)
+
+# Add degree (# of connections to each node; here, # of review citing each study)
+V(refs_network)$degree<-degree(refs_network)
+
+
+# Display networks
+
+# This one is cool but uninformative
+ggraph(refs_network, layout = 'linear', circular = T) + 
+    geom_edge_arc(aes(colour = study_id)) +
+    geom_node_point()
+
+# BEST
+# see optional params: ?layout_with_fr
+# Re-run this until happy with the information quality of the layout.
+g<- ggraph(refs_network, layout = 'kk', niter=5000)+
+    geom_edge_link(aes(colour = study_id)) +
+    geom_node_point() 
+    geom_node_label(aes(label = study_id), repel = TRUE)
+g + theme(legend.position = "none")
+
+# Keep the final iteration
+g_best <- g 
+
+# Save as PNG
+png(paste0(plotdir,"refs_overlap_network_test_all.png"),
+    width=15, height = 9, units = "in", bg = "white", res = 300)
+g_best
+dev.off()
+
+```
