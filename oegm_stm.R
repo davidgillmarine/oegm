@@ -71,7 +71,7 @@ oegm_sparse <- tidy.data %>%
   count(batch.type, word, sort = TRUE) %>%
   cast_sparse(batch.type, word, n)
 
-topic_model <- stm(oegm_dfm, K = 5, 
+topic_model <- stm(oegm_dfm, K = 4, 
                    verbose = FALSE, init.type = "Spectral")
 
 td_beta <- tidy(topic_model)
@@ -90,3 +90,4 @@ td_beta %>%
   labs(x = NULL, y = expression(beta),
        title = "Highest word probabilities for each topic",
        subtitle = "Different words are associated with different topics")
+ggsave(str_c(plotdir,today.date,"_stm_4topics_10percent.png"), width=7, height = 9)
