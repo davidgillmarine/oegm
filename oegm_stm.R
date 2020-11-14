@@ -13,22 +13,33 @@ last.file <- function(dir.nam,nam){
 
 data <- last.file(outputdir,"_oegm_all.rds")
 table(data$batch)
-tidy_sherlock <- data %>% 
+tidy.data_unnest <- data %>% 
   filter(batch%in%c("unique_10_include","unique_10_exclude")) %>% 
   mutate(rec.id=row_number(),
          batch.type=batch,
          across(c(title,abstract,keywords),~replace_na(.,"")),
          comb.var=str_c(title,abstract,keywords),.keep = "used") %>%
   select(-c(title,abstract,keywords)) %>% 
-  unnest_tokens(word, comb.var) %>%
-  anti_join(stop_words) %>% 
-  filter(!word%in%  c("coastal","marine","study","based","data", "change","results", "de", "1","untitled"))
+  unnest_tokens(word, comb.var) 
+  
 
-tidy_sherlock %>%
+tidy.data <- tidy.data_unnest %>% 
+  anti_join(stop_words, by = "word") 
+
+tidy.data %>%
   count(word, sort = TRUE) %>% 
   filter(n>1000)
 
-sherlock_tf_idf <- tidy_sherlock %>%
+# remove "too popular" words
+top.pop.words <- tidy.data %>%
+  count(word, sort = TRUE) %>% 
+  filter(n>1500) %>% 
+  pull(word)
+tidy.data <- tidy.data %>% 
+  filter(!word%in%top.pop.words)
+
+
+oegm_tf_idf <- tidy.data %>%
   count(batch.type, word, sort = TRUE) %>%
   bind_tf_idf(word, batch.type, n) %>%
   arrange(-tf_idf) %>%
@@ -38,7 +49,7 @@ sherlock_tf_idf <- tidy_sherlock %>%
   ungroup
 head(sherlock_tf_idf)
 
-sherlock_tf_idf %>%
+oegm_tf_idf %>%
   mutate(word = reorder_within(word, tf_idf, batch.type)) %>%
   ggplot(aes(word, tf_idf, fill = batch.type)) +
   geom_col(alpha = 0.8, show.legend = FALSE) +
@@ -51,15 +62,16 @@ sherlock_tf_idf %>%
 ggsave(str_c(plotdir,today.date,"_exclude_vs_include_unique.png"), width=7, height = 9)
 
 
-sherlock_dfm <- tidy_sherlock %>%
+# Topic modelling
+oegm_dfm <- tidy.data %>%
   count(batch.type, word, sort = TRUE) %>%
   cast_dfm(batch.type, word, n)
 
-sherlock_sparse <- tidy_sherlock %>%
+oegm_sparse <- tidy.data %>%
   count(batch.type, word, sort = TRUE) %>%
   cast_sparse(batch.type, word, n)
 
-topic_model <- stm(sherlock_dfm, K = 6, 
+topic_model <- stm(oegm_dfm, K = 5, 
                    verbose = FALSE, init.type = "Spectral")
 
 td_beta <- tidy(topic_model)
@@ -78,4 +90,3 @@ td_beta %>%
   labs(x = NULL, y = expression(beta),
        title = "Highest word probabilities for each topic",
        subtitle = "Different words are associated with different topics")
-

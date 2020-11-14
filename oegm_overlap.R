@@ -2,9 +2,13 @@ pacman::p_load(rio,hrbrthemes,viridis,revtools,janitor,tidyverse)
 workdir <- "R:/Gill/research/oegm/"
 #workdir <- gsub("git","data",getwd())
 inputdir <- paste0(workdir,"tables/raw/overlap/")
+outputdir <- paste0(workdir,"output/tables/")
 plotdir <- paste0(workdir,"output/plots/")
 today.date <- gsub("-","",Sys.Date())
-
+list.files(inputdir)
+last.file <- function(dir.nam,nam){
+  import(paste0(dir.nam,last(sort(grep(nam,list.files(dir.nam), value=T)))))
+}
 # Review overlap
 excl_ovrlp <- read_bibliography(paste0(inputdir,"OEGM-Set1_10_excluded_overlap.ris"))
 incl_ovrlp <- read_bibliography(paste0(inputdir,"OEGM-Set2_10_included_overlap.ris"))
@@ -135,3 +139,64 @@ comb.ovrlp %>%
   theme_minimal()
 
 ggsave(str_c(plotdir,today.date,"_review_overlap.png"),width=6,height=4)
+
+# 90% overlap
+e90_ovrlp.colandr.export <- import(paste0(inputdir,"OESM Screening_Fall 2020_90percent_review_overlap_tmp.csv"))
+sapply(e90_ovrlp.colandr.export, function(x) sum(is.na(x))/length(x))
+e90_ovrlp.no.abstract <- filter(e90_ovrlp.colandr.export,citation_abstract=="") %>%
+  rename(title=citation_title,
+         abstract=citation_abstract,
+         year=citation_pub_year,
+         author=citation_authors,
+         journal=citation_journal_name,
+         keywords=citation_keywords) %>% 
+  
+write_bibliography(e90_ovrlp.no.abstract,str_c(outputdir,today.date,"_OEGM_90_Overlap_Reviews_no_abstract.ris")) # export to try to find missing abstracts
+
+
+e90_ovrlp.no.abstract.update <- read_bibliography(paste0(outputdir,"20201113_OEGM_90_Overlap_Reviews_no_abstract_update.ris")) %>% 
+  mutate(title_z=str_replace_all(title,"\\W", ""))
+sapply(e90_ovrlp.no.abstract.update, function(x) sum(is.na(x))/length(x))
+
+# e90.fix <- e90_ovrlp.colandr.export %>% 
+#   filter(citation_abstract=="") %>% 
+#   mutate(title_z=str_replace_all(citation_title,"\\W", "")) %>% 
+#   left_join(select(e90_ovrlp.no.abstract.update,title,abstract),by=c("citation_title"="title")) %>% 
+#   mutate(citation_abstract=ifelse(citation_abstract=="",abstract,citation_abstract)) %>% 
+#   select(-abstract)
+# sapply(e90.fix, function(x) sum(is.na(x))/length(x))
+# export(e90_ovrlp.no.abstract.update,str_c(outputdir,today.date,"_OEGM_90_Overlap_Reviews_fix.csv")) # export to try to find missing abstracts
+# e90.fix$citation_abstract[e90.fix$study_id==2458332]
+# filter(e90.fix,is.na(citation_abstract)) %>% view
+# oegm full map
+oegm <- last.file(outputdir,"_oegm_all.rds") %>% 
+  mutate(across(c(title,abstract),list(z=~replace_na(.,"")))) %>%  # replace NAs with "" (for combining strings)
+  mutate(across(c(title_z,abstract_z),~str_to_lower(.))) %>%   # lower case
+  mutate(across(c(title_z,abstract_z),~str_replace_all(.,"\\W", ""))) %>% # remove anything that isn't a word character
+  mutate(rec.id=str_c(str_sub(title_z,1,10),
+                      year,
+                      str_sub(abstract_z,1,15),
+                      sep="_"))
+
+oegm.90 <- filter(oegm,batch=="unique_90")
+
+hwb.screen <- import(paste0(inputdir,"2044_2020-11-12_Excluded_Marine_FROM_cons-hwb-backwards.csv")) %>% 
+  bind_rows(import(paste0(inputdir,"2044_2020-11-12_Included_Marine_FROM_cons-hwb-backwards.csv"))) %>% 
+  rename(year=publication_year) %>% 
+  mutate(across(c(title,abstract),list(z=~replace_na(.,"")))) %>%  # replace NAs with "" (for combining strings)
+  mutate(across(c(title_z,abstract_z),~str_to_lower(.))) %>%   # lower case
+  mutate(across(c(title_z,abstract_z),~str_replace_all(.,"\\W", ""))) %>% # remove anything that isn't a word character
+  mutate(rec.id=str_c(str_sub(title_z,1,10),
+                      year,
+                      str_sub(abstract_z,1,15),
+                      sep="_"))
+
+hwb.screen.ovrlp <- hwb.screen %>% 
+  filter(title_z%in%oegm.90$title_z)
+sapply(hwb.screen.ovrlp, function(x) sum(is.na(x))/length(x))
+
+remain.overlap <- e90_ovrlp.no.abstract.update %>% 
+  mutate(year=as.integer(year)) %>% 
+  bind_rows(hwb.screen.ovrlp) %>% 
+  distinct(title,abstract,.keep_all = T)
+write_bibliography(remain.overlap,str_c(outputdir,today.date,"_OEGM_90_Overlap_Reviews_remaining.ris")) # export to try to find missing abstracts
