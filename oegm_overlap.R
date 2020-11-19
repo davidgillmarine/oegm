@@ -9,6 +9,7 @@ list.files(inputdir)
 last.file <- function(dir.nam,nam){
   import(paste0(dir.nam,last(sort(grep(nam,list.files(dir.nam), value=T)))))
 }
+
 # Review overlap
 excl_ovrlp <- read_bibliography(paste0(inputdir,"OEGM-Set1_10_excluded_overlap.ris"))
 incl_ovrlp <- read_bibliography(paste0(inputdir,"OEGM-Set2_10_included_overlap.ris"))
@@ -140,8 +141,13 @@ comb.ovrlp %>%
 
 ggsave(str_c(plotdir,today.date,"_review_overlap.png"),width=6,height=4)
 
+# Mismatch betwene previous and current screening
+mismatch <- comb.ovrlp %>% 
+  filter(incl.excl=="Included" &  screen.status=="excluded")
+export(mismatch,str_c(outputdir,today.date,"_mismatch.csv"))
 
-# 90% overlap
+#-----# 90% overlap fix  Colandr export 
+# large set of papers were missing abstracts. Need to export and import them into Mendeley
 e90_ovrlp.colandr.export <- import(paste0(inputdir,"OESM Screening_Fall 2020_90percent_review_overlap_tmp.csv"))
 sapply(e90_ovrlp.colandr.export, function(x) sum(is.na(x))/length(x))
 e90_ovrlp.no.abstract <- filter(e90_ovrlp.colandr.export,citation_abstract=="") %>%
@@ -150,14 +156,14 @@ e90_ovrlp.no.abstract <- filter(e90_ovrlp.colandr.export,citation_abstract=="") 
          year=citation_pub_year,
          author=citation_authors,
          journal=citation_journal_name,
-         keywords=citation_keywords) %>% 
+         keywords=citation_keywords) 
   
 write_bibliography(e90_ovrlp.no.abstract,str_c(outputdir,today.date,"_OEGM_90_Overlap_Reviews_no_abstract.ris")) # export to try to find missing abstracts
 
 
 e90_ovrlp.no.abstract.update <- read_bibliography(paste0(outputdir,"20201113_OEGM_90_Overlap_Reviews_no_abstract_update.ris")) %>% 
   mutate(title_z=str_replace_all(title,"\\W", ""))
-sapply(e90_ovrlp.no.abstract.update, function(x) sum(is.na(x))/length(x))
+sapply(e90_ovrlp.no.abstract.update, function(x) sum(is.na(x))/length(x)) # should only be a handful
 
 # e90.fix <- e90_ovrlp.colandr.export %>% 
 #   filter(citation_abstract=="") %>% 
@@ -170,17 +176,9 @@ sapply(e90_ovrlp.no.abstract.update, function(x) sum(is.na(x))/length(x))
 # e90.fix$citation_abstract[e90.fix$study_id==2458332]
 # filter(e90.fix,is.na(citation_abstract)) %>% view
 # oegm full map
-oegm <- last.file(outputdir,"_oegm_all.rds") %>% 
-  mutate(across(c(title,abstract),list(z=~replace_na(.,"")))) %>%  # replace NAs with "" (for combining strings)
-  mutate(across(c(title_z,abstract_z),~str_to_lower(.))) %>%   # lower case
-  mutate(across(c(title_z,abstract_z),~str_replace_all(.,"\\W", ""))) %>% # remove anything that isn't a word character
-  mutate(rec.id=str_c(str_sub(title_z,1,10),
-                      year,
-                      str_sub(abstract_z,1,15),
-                      sep="_"))
 
-oegm.90 <- filter(oegm,batch=="unique_90")
-
+# --- HWB remaining studies
+# Additional citations screened by Cheng for their updated HWB map
 hwb.screen <- import(paste0(inputdir,"2044_2020-11-12_Excluded_Marine_FROM_cons-hwb-backwards.csv")) %>% 
   bind_rows(import(paste0(inputdir,"2044_2020-11-12_Included_Marine_FROM_cons-hwb-backwards.csv"))) %>% 
   rename(year=publication_year) %>% 
@@ -191,17 +189,34 @@ hwb.screen <- import(paste0(inputdir,"2044_2020-11-12_Excluded_Marine_FROM_cons-
                       year,
                       str_sub(abstract_z,1,15),
                       sep="_"))
+sapply(hwb.screen, function(x) sum(is.na(x))/length(x))
 
+oegm <- last.file(outputdir,"_oegm_all.rds") %>% 
+  mutate(across(c(title,abstract),list(z=~replace_na(.,"")))) %>%  # replace NAs with "" (for combining strings)
+  mutate(across(c(title_z,abstract_z),~str_to_lower(.))) %>%   # lower case
+  mutate(across(c(title_z,abstract_z),~str_replace_all(.,"\\W", ""))) %>% # remove anything that isn't a word character
+  mutate(rec.id=str_c(str_sub(title_z,1,10),
+                      year,
+                      str_sub(abstract_z,1,15),
+                      sep="_"))
+oegm.90 <- filter(oegm,batch=="unique_90")
+
+e90_ovrlp.colandr.export <- e90_ovrlp.colandr.export %>% 
+  mutate(across(c(title,abstract),list(z=~replace_na(.,"")))) %>%  # replace NAs with "" (for combining strings)
+  mutate(across(c(title_z,abstract_z),~str_to_lower(.))) %>%   # lower case
+  mutate(across(c(title_z,abstract_z),~str_replace_all(.,"\\W", ""))) %>% # remove anything that isn't a word character
+  mutate(rec.id=str_c(str_sub(title_z,1,10),
+                      year,
+                      str_sub(abstract_z,1,15),
+                      sep="_"))
+
+# Get papers that overlap with our 90% but aren't already in the previous sets  
 hwb.screen.ovrlp <- hwb.screen %>% 
-  filter(title_z%in%oegm.90$title_z)
+  filter(title_z%in%oegm.90$title_z & !(title_z%in%e90_ovrlp.colandr.export$title_z)) %>% 
+  select(title:doi)
 sapply(hwb.screen.ovrlp, function(x) sum(is.na(x))/length(x))
+filter(hwb.screen.ovrlp,is.na(abstract)|abstract=="") %>% view
+filter(hwb.screen.ovrlp,is.na(abstract)|abstract=="") %>% select(title)
 
-remain.overlap <- e90_ovrlp.no.abstract.update %>% 
-  mutate(year=as.integer(year)) %>% 
-  bind_rows(hwb.screen.ovrlp) %>% 
-  distinct(title,abstract,.keep_all = T)
-write_bibliography(remain.overlap,str_c(outputdir,today.date,"_OEGM_90_Overlap_Reviews_remaining.ris")) # export to try to find missing abstracts
+write_bibliography(hwb.screen.ovrlp,str_c(outputdir,today.date,"_OEGM_90_Overlap_Reviews_remaining.ris")) # export to try to find missing abstracts
 
-mismatch <- comb.ovrlp %>% 
-  filter(incl.excl=="Included" &  screen.status=="excluded")
-export(mismatch,str_c(outputdir,today.date,"_mismatch.csv"))
