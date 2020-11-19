@@ -1,9 +1,5 @@
 ##Randomly select citations
-<<<<<<< HEAD
 pacman::p_load(rio,rcrossref,bib2df,tidytext,revtools,fuzzyjoin,janitor,tidyverse)
-=======
-pacman::p_load(rio,rcrossref,bib2df,revtools,fuzzyjoin,janitor,tidyverse)
->>>>>>> a0e4a1f482acd2c1d9a96a60edaa702cc0868203
 
 workdir <- "R:/Gill/research/oegm/"
 #workdir <- gsub("git","data",getwd())
@@ -22,7 +18,7 @@ last.file <- function(dir.nam,nam){
 }
 
 
-##Read in file
+## Combine 10% and 90%
 # data <- ReadBib("10_OEGM.bib", check = FALSE)
 # df.csv <- import(paste0(inputdir,"OEGM_90_clean.csv"))
 system.time(unique_90 <- bib2df::bib2df(paste0(inputdir,"oegm90_clean.bib")))
@@ -79,13 +75,15 @@ data.edit <- data %>%
   mutate(across(c(title,abstract),list(z=~replace_na(.,"")))) %>%  # replace NAs with "" (for combining strings)
   mutate(across(c(title_z,abstract_z),~str_to_lower(.))) %>%   # lower case
   mutate(across(c(title_z,abstract_z),~str_replace_all(.,"\\W", ""))) %>% # remove anything that isn't a word character
-  mutate(rec.id=str_c(str_sub(title_z,1,10),
+  mutate(rec.id=str_c(str_sub(title_z,1,16),
                       year,
-                      str_sub(abstract_z,1,15),
+                      str_sub(abstract_z,1,25),
                       sep="_")) %>% 
-  mutate(temp.id=paste(str_sub(title_z,1,16),
-                       year,
-                       sep="_")) 
+  # for extra stringent de-duplication to avoid accidental deletions
+  mutate(temp.id=str_c(str_sub(title_z,1,20),
+                      year,
+                      str_sub(abstract_z,1,25),
+                      sep="_"))
 
 head(data.edit$rec.id)
 # Check for duplicates
@@ -103,10 +101,65 @@ excl.dupl <- data.edit %>%
   filter(batch%in%c("unique_90","unique_10_exclude")) %>% 
   get_dupes(rec.id)
   
+# file exported and checked for "true duplicates" by Asha
 export(excl.dupl,paste0(outputdir,today.date,"_10exclude_unique90_duplicates.csv"))
+excl.dupl.checked <- import(paste0(inputdir,"20201105_10exclude_unique90_duplicates_checked.csv")) %>% 
+  select(rec.id:not_duplicate)
+filter(excl.dupl.checked,rec.id=="11thinternationa_NA_theproceedingscontain522p") %>% view
+
+test <- excl.dupl.checked %>% 
+  arrange(rec.id,batch) %>% 
+  group_by(rec.id) %>% 
+  summarise_all(first)
+
+view(test %>% filter(batch=="unique_10_include"))  
+
+# De-duplication steps:
+# 1. de-duplicate by title
+
+# identify which duplicates will be deleted. del.order ensures that duplicates in 90%, then 10% excluded are deleted. Never 10% include
+test <- data.edit %>% 
+  select(rec.id,title, abstract, year,batch) %>%
+  mutate(del.order=case_when(
+    batch=="unique_90" ~ 1,
+    batch=="unique_10_exclude" ~ 2,
+    TRUE ~ 3
+  )) %>% 
+  arrange(rec.id,del.order) %>% 
+  get_dupes(rec.id)
+
+table(test$batch,test$del.order)
+view(test %>% filter(rec.id=="acitizensciencea_2016_subtropicalreefsprovidean"))  
+
+# will take some time (~1min). De-duplicate by title
+test <-  data.edit %>% 
+  mutate(del.order=case_when(
+    batch == "unique_90" ~ 1,
+    batch == "unique_10_exclude" ~ 2,
+    TRUE ~ 3)) %>% 
+  arrange(rec.id,del.order) %>% 
+  group_by(title_z) %>% 
+  summarise_all(last)
+view(test %>% filter(rec.id=="2004estuarinefis_2016_chapter1fishcommunitydata"))  
+paste(nrow(data.edit) - nrow(test),"duplicates removed")
+
+# will take some time. De-duplicate by rec.id based on what Asha checked
+leave.alone.id <- excl.dupl.checked %>% 
+  filter(not_duplicate==1) %>% 
+  pull(rec.id)
+nrow(data.edit %>% filter(rec.id %in% leave.alone.id))
+
+test2 <-  test %>% 
+  filter(!rec.id %in% leave.alone.id) %>% 
+  arrange(rec.id,del.order) %>% 
+  group_by(rec.id) %>% 
+  summarise_all(last) %>% 
+  bind_rows(filter(test,rec.id %in% leave.alone.id))
+paste(nrow(test) - nrow(test2),"duplicates removed")
 
 
-#  ID full screen data
+
+#------  ID full screen data ---------
 data.include <- data.edit %>% 
   filter(batch=="unique_10_include") %>% 
   select(title,year,journal,author) %>% 
