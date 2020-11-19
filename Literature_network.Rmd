@@ -78,7 +78,7 @@ head(select(refs_reviewed,author,first_author,author_year))
 refs_overlap <- refs_reviewed %>% 
   get_dupes(label)
 
-refs_overlap %>% view
+#refs_overlap %>% view
 
 refs_overlap_short <- refs_overlap %>% 
   distinct(label,.keep_all = T) %>% 
@@ -87,7 +87,7 @@ refs_overlap_short <- refs_overlap %>%
 # 493 unique studies are contained in the 6 reviews. 
 # Of those, 43 studies are repeated across the 6 reviews
 # 43/493 = 0.0872211
-refs_overlap_short %>% view
+#refs_overlap_short %>% view
 
 ```
 
@@ -117,14 +117,16 @@ V(refs_network)$degree<-degree(refs_network)
 # Display networks
 
 # This one is cool but uninformative
-ggraph(refs_network, layout = 'linear', circular = T) + 
-    geom_edge_arc(aes(colour = study_id)) +
-    geom_node_point()
+# ggraph(refs_network, layout = 'linear', circular = T) + 
+#     geom_edge_arc(aes(colour = study_id)) +
+#     geom_node_point()
 
 # BEST
 # see optional params: ?layout_with_fr
 # Re-run this until happy with the information quality of the layout.
-g<- ggraph(refs_network, layout = 'kk', niter=5000)+
+E(refs_network)$weight <- 1 # Assign weight
+
+g<- ggraph(refs_network, layout = 'kk', niter=5000, weights = weight)+
     geom_edge_link(aes(colour = study_id)) +
     geom_node_point() 
     geom_node_label(aes(label = study_id), repel = TRUE)
@@ -134,7 +136,7 @@ g + theme(legend.position = "none")
 g_best <- g 
 
 # Save as PNG
-png(paste0(plotdir,"refs_overlap_network_test_all.png"),
+png(paste0(plotdir,"refs_overlap_network_test_all_alt.png"),
     width=15, height = 9, units = "in", bg = "white", res = 300)
 g_best
 dev.off()
