@@ -1,12 +1,12 @@
 ---
 title: "OEGM script"
-author: "David Gill & Dana I. Grieco"
+author: "David A. Gill & Dana I. Grieco"
 date: "12/18/2020"
 output: html_document
 ---
 
 # Setup
-Loads libraries, reads in data, cleans dataset
+Loads libraries, reads in data, cleans datasets
 ```{r eval=T}
 #set working directory to the correct folders on your machine
 workdir <- "R:/Gill/research/oegm/"
@@ -168,6 +168,7 @@ sort(unique(data_all$Outcome.subcategory)) # 41 sub-outcomes?
 
 
 # Heat map function
+Creates a heat map from the OESM accepted articles, based on intervention and outcome categories and subcategories
 ```{r eval=T}
 #--- Heat map function ----
 my_heat_map <- function (.data,intc, outc, high.col="#2171b5") {
@@ -305,6 +306,7 @@ ggsave(paste0(plotdir,today.date,'_habitat_int_out_map.png'),width = 17,height =
 ```
 
 # World map
+Creates a world map of 
 ```{r eval=T}
 #---- World map ----
 
@@ -413,7 +415,7 @@ ctry_sum1 <- country %>%
 ggsave(paste0(plotdir,today.date,'_study_country_coral_map.png'),width = 10,height = 5)
 
 ```
-#---- World map #2 (May 28th fixes)----
+# World map #2 (May 28th fixes)
 
 LOOKS like it's supposed to, but needs to be edited to make sure that none of the data is off!!! 
 May 28th Big edits.... where did they get saved??? I dont think they DID
@@ -484,17 +486,9 @@ ggsave(paste0(plotdir,today.date,'_study_country_map.png'),width = 10,height = 5
 
 ```
 
+# Treemapping
 
-
-```{r eval=T}
-
-
-```
-
-
-#---- Treemapping ----
-
-Outcome and Intervention maps
+Outcome and Intervention tree maps
 
 ```{r eval=T}
 
@@ -562,7 +556,7 @@ dev.off()
 
 ```
 
-#---- Studies over time ----
+# Studies over time 
 
 ```{r eval=T}
 
@@ -651,13 +645,8 @@ ggsave(paste0(plotdir,today.date,'_studies_over_time.png'),width = 12,height = 4
 
 
 ```
-
-
-```{r eval=T}
-
-```
-
 # Stats Section
+This section outputs a lot of the different stats used in the paper. Right now, I am just inputting them by hand, and so definitely would be useful to print out the stats I want to copy/paste and easy access
 
 1. Basic Percentages
 ```{r eval=T}
