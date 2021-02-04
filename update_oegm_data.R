@@ -95,5 +95,5 @@ no.match2 <-filter(no.match,!(title%in%matched.dat$title.x))  # leftovers to try
 # and so on.... when no.match gets small, might be faster to do it manually than to repeat this...
 
 # when we find and confirm all matches, 
-# 1. create variable in main dataframe to identify all studies that were full text screened (full.screen==1)
-# 2. bring over the Article.ID into the main dataset (data.edit) to facilitate joining the main data & full_include at a later date
+# 1. create variable in main dataframe (finaldata) to identify all studies that were full text screened (full.screen==1)
+# 2. bring over the Article.ID (rename to colndr.id) into the main dataset (finaldata) to facilitate joining the main data & full_include at a later date
