@@ -1,10 +1,21 @@
-library(data.table)
-library(stringr)
-library(dplyr)
-library(janitor)
-library(tidyverse)
-#Read the data file
-datanew<-readRDS("20201104_oegm_all.rds")
+pacman::p_load(rio,data.table,janitor,tidyverse)
+
+workdir <- "R:/Gill/research/oegm/"
+#workdir <- gsub("git","data",getwd())
+inputdir <- paste0(workdir,"tables/raw/")
+inputdir2 <- paste0(workdir,"tables/raw/overlap/")
+outputdir <- paste0(workdir,"output/tables/")
+plotdir <- paste0(workdir,"output/plots/")
+today.date <- gsub("-","",Sys.Date())
+list.files(inputdir)
+last.file <- function(dir.nam,nam){
+  import(paste0(dir.nam,last(sort(grep(nam,list.files(dir.nam), value=T)))))
+}
+
+
+#--- read in master data ---#
+datanew <- last.file(outputdir,"_oegm_all.rds")
+
 #View the data
 View(datanew)
 #Display structure
@@ -101,10 +112,10 @@ dataid<-1:nrow(data)
 finaldata<-cbind(dataid,data)
 #Export to csv and rds (directory needs to be created/modified)
 today.date <- gsub("-","",Sys.Date())
-#export(finaldata,paste0(outputdir,today.date,"Deduplication.csv"))
-#export(finaldata,paste0(outputdir,today.date,"Deduplication.rds"))
-export(finaldata,"De-duplication.csv")
-export(finaldata,"De-duplication.rds")
+export(finaldata,paste0(outputdir,today.date,"_oegm_all.csv"))
+export(finaldata,paste0(outputdir,today.date,"_oegm_all.rds"))
+# export(finaldata,"De-duplication.csv")
+# export(finaldata,"De-duplication.rds")
 #View the final dataset
 View(finaldata)
 #Display structure
