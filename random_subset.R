@@ -26,16 +26,20 @@ screened.dat <- last.file(inputdir2,"_OESM Screening_Fall 2020.csv") %>%
   mutate(across(c(title_z),~str_to_lower(.))) %>%   # lower case
   mutate(across(c(title_z),~str_replace_all(.,"\\W", "")))
 
+head(screened.dat$title_z)
+head(dat$titlenospace)
+
 #select data to draw subset
 sub.dat <- dat %>% 
-  filter(batch=="unique_90" & !titlenospace%in%screened.dat$title_z)
+  filter(batch=="unique_90" & !titlenospace%in%screened.dat$title_z) # focus on 90%, exclude those already screened
 
 
 ##Randomly select some - change number for different random amount
 rand.id <- sample(nrow(sub.dat),2500,replace = F) # get indices for 500 x 5 rows
-test <- as.data.frame(slice(sub.dat, rand.id[501:1000]))
+as.data.frame(slice(sub.dat, rand.id[501:1000])) %>% view 
+length(unique(rand.id))==length(rand.id)
 
-
+# create random subsets
 rand1 <- as.bibliography(as.data.frame(slice(sub.dat, rand.id[1:500])))
 rand2 <- as.bibliography(as.data.frame(slice(sub.dat, rand.id[501:1000])))
 rand3 <- as.bibliography(as.data.frame( slice(sub.dat, rand.id[1001:1500])))
