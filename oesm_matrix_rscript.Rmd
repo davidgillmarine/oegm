@@ -170,7 +170,9 @@ sort(unique(data_all$Outcome.subcategory)) # 41 sub-outcomes?
 # Heat map function
 Creates a heat map from the OESM accepted articles, based on intervention and outcome categories and subcategories
 
-Under # Create Heatmap, the "geom_text" line adds text (numbers) on each heat map cell. We #ed that line for the first OEGM paper, since it was only a subsample of the literature, and thus numbers themselves could be misleading. 
+Under # Create Heatmap, the "geom_text" line adds text (numbers) on each heat map cell. We #ed that line for the first OEGM paper, since it was only a subsample of the literature, and thus numbers themselves could be misleading. Similarly, 
+
+In the future, we should be able to make this heat map interactive with plotly (see https://www.r-graph-gallery.com/79-levelplot-with-ggplot2.html)
 
 ```{r eval=T}
 #--- Heat map function ----
@@ -234,19 +236,25 @@ if(outc=="Outcome.subcategory"){out_list_full=out_sub_list}
   heat.map <<- ggplot(data=io_counts, aes(x=int_val,y=reorder(out_val, desc(out_val)),fill=n)) +
       geom_tile(color="gray90",size=0.1) +
       # geom_text(aes(label=n),show.legend = F) + # adds numbers into cells
-      scale_fill_gradient2(low="#f7fbff",high=high.col,name="# Cases",na.value="gray90", limits=c(0,max(io_counts$n))) +
+    scale_fill_gradient2(low="#f7fbff",high=high.col,name="Number of Studies",na.value="black", limits=c(0,max(io_counts$n))) + 
       coord_equal() +
       # theme_tufte(base_family="Helvetica") +	# having issues with font, font colour in windows...
-      theme(axis.ticks=element_line(size=0.4)) +
-      theme(axis.text=element_text(size=9)) +
-      theme(legend.title=element_text(size=10)) +
-      theme(legend.text=element_text(size=10)) +
-      theme(legend.title.align=1) +
-      theme(legend.position="bottom") +
-      theme(legend.key.size=unit(1, "cm")) +
-      theme(legend.key.width=unit(1, "cm")) +
+      theme(axis.ticks=element_line(size=0.3),
+        axis.text=element_text(size=10),
+        axis.text.x = element_text(angle=45,hjust=0,vjust=1),
+        axis.text.y = element_text(angle=0,hjust=0,vjust=0),
+        legend.title=element_text(size=10),
+        legend.title.align=1,
+        legend.text=element_text(size=8,face="bold"),
+        legend.margin = margin(grid::unit(0,"cm")),
+        legend.position ="bottom",
+        legend.direction ="horizontal",
+        legend.key.size=grid::unit(1, "cm"),
+        legend.key.width=grid::unit(1, "cm"),
+        plot.background=element_blank(),
+        panel.border=element_blank(),
+        plot.title=element_text(hjust=0,size=12,face="bold")) +
       #  labs(x="Conservation Intervention", y="Outcome", title ="All ecosystems") +
-      theme(axis.text.x = element_text(angle=45,hjust=0,vjust=1,size=9)) +
       scale_x_discrete(position = "top") +
       scale_y_discrete(position = "right") 
   
@@ -283,12 +291,12 @@ io_counts.subintout <- io_counts
 ggsave(paste0(plotdir,today.date,'_sub.int_sub.out_map.png'),width = 16,height = 12)
 
 # Coral
-my_heat_map(filter(data_all,coral==1),"Int_cat","Outcome_cat", high.col = "red3")
+my_heat_map(filter(data_all,coral==1),"Int_cat","Outcome_cat", high.col = "coral3")
 io_counts.coral <- io_counts
 (heat.map.coral <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="Coral"))
 
 # Mangrove
-my_heat_map(filter(data_all,mangrove==1),"Int_cat","Outcome_cat", high.col = "orangered4")
+my_heat_map(filter(data_all,mangrove==1),"Int_cat","Outcome_cat", high.col = "orange2")
 io_counts.mangrove <- io_counts
 (heat.map.mangrove <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="Mangrove")) 
 
@@ -299,9 +307,9 @@ io_counts.seagrass <- io_counts
 
 # Ecosystem maps on same scale
 max.val <- max(io_counts.mangrove$n,io_counts.coral$n,io_counts.seagrass$n)
-plot_grid(heat.map.coral + scale_fill_gradient2(low="#f7fbff",high= "red3",name="# Cases",na.value="gray90", limits=c(0,max.val)),
-          heat.map.seagrass + scale_fill_gradient2(low="#f7fbff",high= "green4",name="# Cases",na.value="gray90", limits=c(0,max.val)),
-          heat.map.mangrove + scale_fill_gradient2(low="#f7fbff",high= "orangered4",name="# Cases",na.value="gray90", limits=c(0,max.val)),
+plot_grid(heat.map.coral + scale_fill_gradient2(low="#f7fbff",high= "coral3",name="# Cases",na.value="black", limits=c(0,max.val)),
+          heat.map.seagrass + scale_fill_gradient2(low="#f7fbff",high= "green4",name="# Cases",na.value="black", limits=c(0,max.val)),
+          heat.map.mangrove + scale_fill_gradient2(low="#f7fbff",high= "orange2",name="# Cases",na.value="black", limits=c(0,max.val)),
           labels=letters[1:3], ncol = 3, nrow = 1, hjust=-1, align = "hv")
 ggsave(paste0(plotdir,today.date,'_habitat_int_out_map.png'),width = 17,height = 8)
 
