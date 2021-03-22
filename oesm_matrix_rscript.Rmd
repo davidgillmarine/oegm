@@ -51,6 +51,7 @@ out_sub_list <-  drop.down.lists %>%
   select(Outcome.subcategory) %>% 
   na.omit() %>% 
   rename(out_sub=Outcome.subcategory) 
+num.studies <- length(unique(data_all$aid))
 
 
 #--- Clean up data ----
@@ -341,7 +342,6 @@ head(ctry.all)
 
 # get no. articles per country (and percentage) to create vector of column names for each country by counting the number of ";" 
 max.ctry <- paste0("ctry",rep(1:max(str_count(ctry.all$study.ctry, ";")+1))) 
-num.studies <- length(unique(data_all$aid))
 
 ctry_sum <-ctry.all %>% 
   separate(study.ctry,max.ctry, sep="; ",fill="right") %>% # fill=right fills blanks with NAs
@@ -954,22 +954,29 @@ data_all %>%
 
 This was from May 28th, but only partial, try to go back and find the rest...
 ```{r eval=T}
-
-eco.outcomes <- c("3. Ecological community","2. Population/species", "4. Ecosystem function")
-soc.outcomes <- c("1. Knowledge and behavior", "6. Human well-being","7. Governance")
+unique(data_all$Outcome_cat)
+eco.outcomes <- c("2. Ecological community", "1. Population/species", "3. Ecosystem function")
+soc.outcomes <- c("6. Knowledge and behavior", "5. Human well-being","7. Governance")
 
 out.eco.v.soc <- data_all %>%
   # select(aid, Outcome_cat) %>%
   mutate(eco.out=ifelse(Outcome_cat%in%eco.outcomes,1,0),
          soc.out=ifelse(Outcome_cat%in%soc.outcomes,1,0),
-         es.out=ifelse(Outcome_cat=="5. Ecosystem services",1,0)) %>% 
+         es.out=ifelse(Outcome_cat=="4. Ecosystem services",1,0)) %>% 
   group_by(aid) %>% 
-  summarise(eco.out=max(eco.out),
+  mutate(eco.out=max(eco.out),
             soc.out=max(soc.out),
             es.out=max(es.out),
-            sum.out=eco.out+soc.out,
-            sum.es.out=sum.out+es.out) # %>% 
+            sum.out=ifelse(eco.out+soc.out>1,1,0),
+            sum.es.out=ifelse(sum.out+es.out>=1,1,0)) # %>% 
  # mutate(both=ifelse(sum.out>1,"both","other"))
+summary(out.eco.v.soc)
+
+# Which outcomes most common in multi-outcome studies?
+out.eco.v.soc %>%
+  filter(sum.es.out==1) %>% 
+  group_by(Outcome_cat) %>% 
+  summarise(num=n_distinct(aid), pct=num/num.studies*100)
 
 ```
 

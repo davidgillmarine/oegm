@@ -55,7 +55,7 @@ sapply(full_include, function(x) sum(is.na(x))/length(x)) # % NAs
 # All accepted articles were in the 10% included batch (can do with full dataset but subsetting to reduce computing time)
 u10.include <- data.edit %>% 
   filter(batch=="unique_10_include") %>% 
-  select(rec.id,title,title_z,year) %>% 
+  select(dataid,rec.id,title,title_z,year) %>% 
   distinct(title_z,.keep_all = T)
 
 # ---- Optional approach: Fuzzy string matching 
@@ -63,13 +63,14 @@ u10.include <- data.edit %>%
 test <- full_include %>% 
   #  distinct(Article.ID,.keep_all = T) %>% 
   select(Article.ID,title,title_z,year) %>% 
-  stringdist_left_join(select(u10.include, rec.id,title,title_z,year),
-                       by="title_z", ignore_case = T, max_dist = 10, distance_col="dist") %>% 
+  stringdist_left_join(select(u10.include, dataid,rec.id,title,title_z,year),
+                       by="title_z", ignore_case = T, max_dist = 27, distance_col="dist") %>% 
   #  filter(year.y==year.x) %>% 
   group_by(title.x) %>% 
   slice(which.min(dist)) %>% # record with lowest distance
   arrange(desc(dist)) %>% 
-  select(title.x,title.y,year.x,year.y,everything())
+  mutate(diff.yr=year.x-year.y) %>% 
+  select(dataid,title.x,title.y,year.x,year.y,diff.yr,everything())
 #visually check to ensure that title.x is the same as title.y, if not, reduce max_dist or keep till next round
 View(test)
 matched.dat <- test  # ONLY include the ones that were an accurate match
@@ -79,13 +80,20 @@ no.match <-filter(full_include,!(title%in%matched.dat$title.x))  # leftovers to 
 # try again with larger max_dist
 test2 <- no.match %>% 
   select(title,title_z,year) %>% 
-  stringdist_left_join(select(u10.include, rec.id,title,title_z,year),
-                       by="title_z", ignore_case = T, max_dist = 25, distance_col="dist") %>% 
+  stringdist_left_join(select(data.edit, dataid,rec.id,title,title_z,year),
+                       by="title_z", ignore_case = T, max_dist = 100, distance_col="dist") %>% 
   #  filter(year.y==year.x) %>% 
   group_by(title.x) %>% 
   slice(which.min(dist)) %>% 
   arrange(desc(dist)) %>% 
-  select(title.x,title.y,year.x,year.y,everything())
+  mutate(diff.yr=year.x-year.y) %>% 
+  select(dataid,title.x,title.y,year.x,year.y,diff.yr,everything())
+
+
+final.data1 <- data.edit %>% 
+  left_join(select(matched.dat,dataid,Article.ID),by=dataid)
+
+
 
 #visually check to ensure that title.x is the same as title.y, if not, keep till next round or reduce max_dist 
 View(test2)
