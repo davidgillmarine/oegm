@@ -318,7 +318,8 @@ ggsave(paste0(plotdir,today.date,'_habitat_int_out_map.png'),width = 17,height =
 ```
 
 # World map
-Creates a world map of 
+Creates a world map of all habitats
+Note: the read in map section takes about a minute to load!
 ```{r eval=T}
 #---- World map ----
 
@@ -365,124 +366,10 @@ ctry_sum1 <- country %>%
 
 ctry_sum$Country[!ctry_sum$Country%in%ctry_sum1$Country] # any missing?
 
-# plot study map
-world <- ne_countries(scale = "medium", returnclass = "sf") # read in world map from rnaturalearth as sf
-world.data <- world %>% 
-  left_join(ctry_sum1,by=c("iso_a3"="code"))
-
-(study_ctry_map_all <- ggplot(world.data) + 
-  geom_sf(aes(fill = n)) +
-#  expand_limits(x=map$long,y=map$lat) +
-  theme(panel.background = element_rect(fill = "#CCCCCC", colour = "#CCCCCC"), 
-        panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
-  scale_fill_gradient2(low="white",mid="#2171b5",high="#08519c",
-                         midpoint=max(ctry_sum1$n)/2,limits=c(0,max(ctry_sum1$n))) +
-  labs(title="Study countries - all habitats"))
-ggsave(paste0(plotdir,today.date,'_study_country_map.png'),width = 10,height = 5)
-
-
-
-# -- coral 
-ctry.coral <- ctry.fix %>% 
-  filter(coral==1) %>% 
-  group_by(aid,study.ctry) %>%
-  summarise() %>% 
-  filter(!is.na(study.ctry))
-head(ctry.coral)
-
-
-# get no. articles per country (and percentage) to create vector of column names for each country by counting the number of ";" 
-max.ctry <- paste0("ctry",rep(1:max(str_count(ctry.coral$study.ctry, ";")+1))) 
-num.studies <- length(unique(data_all$aid[data_all$coral==1]))
-
-ctry_sum <-ctry.coral %>% 
-  separate(study.ctry,max.ctry, sep="; ",fill="right") %>% # fill=right fills blanks with NAs
-  gather("X","Country", max.ctry) %>% 
-  filter(!is.na(Country)) %>% 
-  select(-X) %>% 
-  group_by(Country) %>% 
-  count() %>% 
-  mutate(pct=n/num.studies)
-
-arrange(ctry_sum,desc(n))
-
-
-# Countries that need to be fixed
-ctry_sum$Country[!ctry_sum$Country%in%country$Country]
-# agrep("Virgin Islands",country$Country, value = T) - search original list
-
-# join to full country list
-ctry_sum1 <- country %>% 
-  left_join(ctry_sum,by="Country") %>%
-  mutate(n=na.replace(n,0)) 
-
-(study_ctry_map_coral <- ggplot() +
-    geom_map(data=ctry_sum1, aes(map_id=code, fill=n),map=map) +
-   # expand_limits(x=map$long,y=map$lat) +
-    theme(panel.background = element_rect(fill = "#CCCCCC", colour = "#CCCCCC"), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
-    scale_fill_gradient2(low="white",mid="#2171b5",high="#08519c",
-                         midpoint=max(ctry_sum1$n)/2,limits=c(0,max(ctry_sum1$n)))+
-    labs(title="Study countries- coral"))
-ggsave(paste0(plotdir,today.date,'_study_country_coral_map.png'),width = 10,height = 5)
-
-```
-# World map #2 (May 28th fixes)
-
-LOOKS like it's supposed to, but needs to be edited to make sure that none of the data is off!!! 
-May 28th Big edits.... where did they get saved??? I dont think they DID
-
-```{r eval=T}
-#---- World map #2 (May 28th fixes)----
-
-
-unique(data_all$study.ctry)
-# fix data in country column
-ctry <- data_all %>%
-  mutate(study.ctry=gsub(",",";",study.ctry),  # replace "," with ";" to help with splitting
-         study.ctry=gsub("Korea; South","Korea, South",study.ctry),
-         study.ctry=gsub("Turks and Caicos","Turks and Caicos Islands",study.ctry),
-         study.ctry=gsub(".*Virgin Islands","U.S. Virgin Islands",study.ctry),
-         study.ctry=gsub("Tanzania; United Republic Of","Tanzania, United Republic Of",study.ctry),
-         study.ctry=gsub("Taiwan; Province Of China","Taiwan, Province Of China",study.ctry)) %>%
-  group_by(aid,study.ctry) %>%
-  summarise() %>% 
-  filter(!is.na(study.ctry)) %>% 
-  mutate(num.ctry=str_count(study.ctry, ";")+1)
-head(ctry)
-
-
-# get no. articles per country (and percentage) to create vector of column names for each country by counting the number of ";" 
-max.ctry <- paste0("ctry",1:max(ctry$num.ctry)) # get vector of column names before we separate them out
-num.studies <- length(unique(data_all$aid)) # number of studies in the dataset
-
-ctry_sum <-ctry %>% 
-  separate(study.ctry,max.ctry, sep="; ",fill="right") %>% # fill=right fills blanks with NAs
-  gather("X","Country", max.ctry) %>%  # make all columns into one
-  filter(!is.na(Country)) %>% 
-  select(-X) %>% 
-  group_by(Country) %>% 
-  count() %>% 
-  mutate(pct=n/num.studies)
-
-arrange(ctry_sum,desc(n))
-
-View(ctry_sum)
-# Countries that need to be fixed
-ctry_sum$Country[!ctry_sum$Country%in%country$Country]
-# agrep("Virgin Islands",country$Country, value = T) - search original list
-
-# join to full country list
-ctry_sum1 <- country %>% 
-  left_join(ctry_sum,by="Country") %>%
-  mutate(n=na.replace(n,0)) 
-
-ctry_sum$Country[!ctry_sum$Country%in%ctry_sum1$Country] # any missing?
-
 # read in map
 map <- rgdal::readOGR(paste0(mapdir,"TM_WORLD_BORDERS-0.3/TM_WORLD_BORDERS-0.3.shp"))
 map <-broom::tidy(map,region="ISO3")
 #map@data[map@data$NAME=="Turks and Caicos Islands",]
-
 
 #plot study map
 (study_ctry_map <- ggplot() +
@@ -493,6 +380,63 @@ map <-broom::tidy(map,region="ISO3")
                          midpoint=max(ctry_sum1$n)/2,limits=c(0,max(ctry_sum1$n)))+
     labs(title="Study countries"))
 ggsave(paste0(plotdir,today.date,'_study_country_map.png'),width = 10,height = 5)
+
+```
+
+# Coral Map
+
+Note: the filter section of this code is not working, and then entire code is not complete
+
+```{r eval=T}
+
+# -- coral map
+ctry.coral <- ctry.fix %>% 
+  filter(coral==1) %>% 
+  group_by(aid,study.ctry) %>%
+  summarise() %>% 
+  filter(!is.na(study.ctry))
+head(ctry.coral)
+
+# get no. articles per country (and percentage) to create vector of column names for each country by counting the number of ";" 
+max.ctry <- paste0("ctry",rep(1:max(str_count(ctry.coral$study.ctry, ";")+1))) 
+num.studies <- length(unique(data_all$aid[data_all$coral==1]))
+
+ctry_sum_coral <-ctry.coral %>% 
+  separate(study.ctry,max.ctry, sep="; ",fill="right") %>% # fill=right fills blanks with NAs
+  gather("X","Country", max.ctry) %>% 
+  filter(!is.na(Country)) %>% 
+  select(-X) %>% 
+  group_by(Country) %>% 
+  count() %>% 
+  mutate(pct=n/num.studies)
+
+arrange(ctry_sum_coral,desc(n))
+
+# Countries that need to be fixed
+ctry_sum_coral$Country[!ctry_sum_coral$Country%in%country$Country]
+# agrep("Virgin Islands",country$Country, value = T) - search original list
+
+# join to full country list
+ctry_sum_coral1 <- country %>% 
+  left_join(ctry_sum_coral,by="Country") %>%
+  mutate(n=na.replace(n,0)) 
+
+ctry_sum_coral$Country[!ctry_sum_coral$Country%in%ctry_sum_coral1$Country] # any missing?
+
+# read in map
+map <- rgdal::readOGR(paste0(mapdir,"TM_WORLD_BORDERS-0.3/TM_WORLD_BORDERS-0.3.shp"))
+map <-broom::tidy(map,region="ISO3")
+#map@data[map@data$NAME=="Turks and Caicos Islands",]
+
+#plot study map
+(study_ctry_coral_map <- ggplot() +
+    geom_map(data=ctry_sum_coral1, aes(map_id=code, fill=n),map=map) +
+    expand_limits(x=map$long,y=map$lat) +
+    theme(panel.background = element_rect(fill = "#CCCCCC", colour = "#CCCCCC"), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    scale_fill_gradient2(low="white",mid="darksalmon",high="coral3",
+                         midpoint=max(ctry_sum_coral1$n)/2,limits=c(0,max(ctry_sum_coral1$n)))+
+    labs(title="Study countries - Coral"))
+ggsave(paste0(plotdir,today.date,'_study_country_coral_map.png'),width = 10,height = 5)
 
 
 ```
