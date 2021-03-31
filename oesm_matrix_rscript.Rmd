@@ -706,17 +706,17 @@ data_all %>%
 # Coral
 data_all %>%
   filter(coral==1) %>% 
-  summarise(num=n_distinct(aid), pct=num/num.studies*100)
+  summarise(habitat="Coral", num=n_distinct(aid), pct=num/num.studies*100)
 
 # Seagrass
 data_all %>%
   filter (seagrass==1) %>% 
-  summarise(num=n_distinct(aid), pct=num/num.studies*100) 
+  summarise(habitat="Seagrass", num=n_distinct(aid), pct=num/num.studies*100) 
 
 # Mangrove
 data_all %>%
   filter (mangrove==1) %>% 
-  summarise(num=n_distinct(aid), pct=num/num.studies*100) 
+  summarise(habitat="Mangrove", num=n_distinct(aid), pct=num/num.studies*100) 
 
 # Note: these DO contain overlap, ie. some studies have multiple habitats:
 data_all %>%
@@ -727,18 +727,18 @@ data_all %>%
 # How many studies took place in only one of three habitats?
 data_all %>% 
   filter(coral + seagrass + mangrove == 1) %>% 
-  summarise(num=n_distinct(aid), pct=num/num.studies*100)
+  summarise(habitat="Only One",num=n_distinct(aid), pct=num/num.studies*100)
 
 # How many studies took place in multiple habitats? (2 or more)
-  #doesn't inlcude "other"
+  #doesn't include "other"
 data_all %>% 
   filter(coral + seagrass + mangrove >= 2) %>% 
-  summarise(num=n_distinct(aid), pct=num/num.studies*100)
+  summarise(habitat="Multiple: 2 or more!", num=n_distinct(aid), pct=num/num.studies*100)
 
 # How many studies took place in all 3 habitats?
 data_all %>% 
   filter(coral + seagrass + mangrove == 3) %>% 
-  summarise(num=n_distinct(aid), pct=num/num.studies*100)
+  summarise(habitat="All 3 Habitats!", num=n_distinct(aid), pct=num/num.studies*100)
 
 # What are the "other" studies that don't define a habitat?
   unique(data_all$aid[data_all$Habitat.type=="Other"])
@@ -758,11 +758,11 @@ data_all %>%
   summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
   arrange (desc(num))  # arranges them in descending order 
 
-  # Highest: % in cons desig and planning, species management
+  # Highest: % in cons design and planning, species management
 data_all %>%  
   filter(Int_cat== "2. Species management"| 
            Int_cat== "6. Conservation designation & planning") %>%  
-  summarise(num=n_distinct(aid), pct=num/num.studies*100)
+  summarise(intervention="Highest", num=n_distinct(aid), pct=num/num.studies*100)
 
   # Lowest: % in Enforcement and Protection, awareness raising, and 
     # Education and Training
@@ -770,7 +770,7 @@ data_all %>%
   filter(Int_cat== "4. Enforcement & protection"| 
            Int_cat== "3. Awareness raising"| 
            Int_cat== "9. Education & training") %>%  
-  summarise(num=n_distinct(aid), pct=num/num.studies*100)
+  summarise(intervention="Lowest", num=n_distinct(aid), pct=num/num.studies*100)
 
   # Subcategories (want % of each):
 data_all %>%
@@ -942,7 +942,8 @@ out.eco.v.soc <- data_all %>%
             sum.out=ifelse(eco.out+soc.out>1,1,0),
             sum.es.out=ifelse(sum.out+es.out>=1,1,0)) # %>% 
  # mutate(both=ifelse(sum.out>1,"both","other"))
-summary(out.eco.v.soc)
+write.csv(out.eco.v.soc,paste0(workdir,"tables/20210331_Eco_and_Soc_Outcomes.csv"))
+
 
 # Which outcomes most common in multi-outcome studies?
 out.eco.v.soc %>%
