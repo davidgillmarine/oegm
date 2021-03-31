@@ -237,7 +237,8 @@ if(outc=="Outcome.subcategory"){out_list_full=out_sub_list}
   heat.map <<- ggplot(data=io_counts, aes(x=int_val,y=reorder(out_val, desc(out_val)),fill=n)) +
       geom_tile(color="gray90",size=0.1) +
       # geom_text(aes(label=n),show.legend = F) + # adds numbers into cells
-    scale_fill_gradient2(low="#f7fbff",high=high.col,name="Number of Studies",na.value="black", limits=c(0,max(io_counts$n))) + 
+    scale_fill_gradient2(low="#f7fbff",high=high.col,name="Number of Studies",
+        na.value="black", limits=c(0,max(io_counts$n))) + 
       coord_equal() +
       # theme_tufte(base_family="Helvetica") +	# having issues with font, font colour in windows...
       theme(axis.ticks=element_line(size=0.3),
@@ -246,7 +247,7 @@ if(outc=="Outcome.subcategory"){out_list_full=out_sub_list}
         axis.text.y = element_text(angle=0,hjust=0,vjust=0),
         legend.title=element_text(size=10),
         legend.title.align=1,
-        legend.text=element_text(size=8,face="bold"),
+        legend.text=element_text(size=8),
         legend.margin = margin(grid::unit(0,"cm")),
         legend.position ="bottom",
         legend.direction ="horizontal",
@@ -254,11 +255,11 @@ if(outc=="Outcome.subcategory"){out_list_full=out_sub_list}
         legend.key.width=grid::unit(1, "cm"),
         plot.background=element_blank(),
         panel.border=element_blank(),
-        plot.title=element_text(hjust=0,size=12,face="bold")) +
-      #  labs(x="Conservation Intervention", y="Outcome", title ="All ecosystems") +
+        plot.title=element_text(hjust=0,size=12,face="bold"),
+        text=element_text(family="sans")) +  # "serif"=TN Roman, "sans" = Arial
       scale_x_discrete(position = "top") +
       scale_y_discrete(position = "right") 
-  
+      #  labs(x="Conservation Intervention", y="Outcome", title ="All ecosystems") +
   
 }
 ```
@@ -375,22 +376,30 @@ map <-broom::tidy(map,region="ISO3")
 (study_ctry_map <- ggplot() +
     geom_map(data=ctry_sum1, aes(map_id=code, fill=n),map=map) +
     expand_limits(x=map$long,y=map$lat) +
-    theme(panel.background = element_rect(fill = "#CCCCCC", colour = "#CCCCCC"),
+    theme(
+        panel.background = element_rect(fill = "#CCCCCC", colour = "#CCCCCC"),
         panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
-        legend.position = "bottom", 
-        axis.ticks = element_blank(), axis.text = element_blank(),
-        axis.title = element_blank()) +
-    scale_fill_gradient2(low="white",mid="#2171b5",high="#08519c",
-        midpoint=max(ctry_sum1$n)/2,limits=c(0,max(ctry_sum1$n)))+
-    labs(title="Study countries"))
-ggsave(paste0(plotdir,today.date,'_study_country_map.png'),width = 10,height = 5)
-
+        panel.border=element_blank(),
+        plot.title=element_text(hjust=0,size=12), # face="bold"
+        axis.ticks = element_blank(), 
+        axis.text = element_blank(),
+        axis.title = element_blank(),
+        legend.title=element_text(size=10),
+        legend.title.align=1,
+        legend.text=element_text(size=8),
+        legend.position ="bottom",
+        text=element_text(family="sans") # "serif"=TN Roman, "sans" = Arial
+        ) +
+    scale_fill_gradient2(
+        name="Number of Studies",
+        low="white",mid="#2171b5",high="#08519c",
+        midpoint=max(ctry_sum1$n)/2,limits=c(0,max(ctry_sum1$n))) )
+    # labs(title="Study countries")  # if axes: x="X axis label", y="Y axis label"
+  ggsave(paste0(plotdir,today.date,'_study_country_map.png'),width = 10,height = 5)
 ```
 
-# Coral Map
-
-Note: the filter section of this code is not working, and then entire code is not complete
+# World Map - Coral
 
 ```{r eval=T}
 
@@ -437,13 +446,27 @@ map <-broom::tidy(map,region="ISO3")
 (study_ctry_coral_map <- ggplot() +
     geom_map(data=ctry_sum_coral1, aes(map_id=code, fill=n),map=map) +
     expand_limits(x=map$long,y=map$lat) +
-    theme(panel.background = element_rect(fill = "#CCCCCC", colour = "#CCCCCC"), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
-    scale_fill_gradient2(low="white",mid="darksalmon",high="coral3",
-                         midpoint=max(ctry_sum_coral1$n)/2,limits=c(0,max(ctry_sum_coral1$n)))+
-    labs(title="Study countries - Coral"))
+    theme(
+        panel.background = element_rect(fill = "#CCCCCC", colour = "#CCCCCC"),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.border=element_blank(),
+        plot.title=element_text(hjust=0,size=12), # face="bold"
+        axis.ticks = element_blank(), 
+        axis.text = element_blank(),
+        axis.title = element_blank(),
+        legend.title=element_text(size=10),
+        legend.title.align=1,
+        legend.text=element_text(size=8),
+        legend.position ="bottom",
+        text=element_text(family="sans") # "serif"=TN Roman, "sans" = Arial
+        ) +
+    scale_fill_gradient2(
+        name="Number of Studies",
+        low="white",mid="darksalmon",high="coral3",
+        midpoint=max(ctry_sum_coral1$n)/2,limits=c(0,max(ctry_sum_coral1$n))) )
+    # labs(title="Study countries - Coral")  # if axes: x="X axis label", y="Y axis label"
 ggsave(paste0(plotdir,today.date,'_study_country_coral_map.png'),width = 10,height = 5)
-
-
 ```
 
 # Treemapping
