@@ -923,46 +923,396 @@ data_all %>%
 ```
 
 # Add eco vs soc outcome counts
-
-This was from May 28th, but only partial, try to go back and find the rest...
 ```{r eval=T}
 unique(data_all$Outcome_cat)
 eco.outcomes <- c("2. Ecological community", "1. Population/species", "3. Ecosystem function")
-soc.outcomes <- c("6. Knowledge and behavior", "5. Human well-being","7. Governance")
-
-out.eco.v.soc <- data_all %>%
+soc.outcomes <- c("6. Knowledge and behavior", "5. Human well-being", "7. Governance")
+        
+data_all <- data_all %>%
   # select(aid, Outcome_cat) %>%
   mutate(eco.out=ifelse(Outcome_cat%in%eco.outcomes,1,0),
          soc.out=ifelse(Outcome_cat%in%soc.outcomes,1,0),
          es.out=ifelse(Outcome_cat=="4. Ecosystem services",1,0)) %>% 
   group_by(aid) %>% 
-  mutate(eco.out=max(eco.out),
-            soc.out=max(soc.out),
-            es.out=max(es.out),
-            sum.out=ifelse(eco.out+soc.out>1,1,0),
-            sum.es.out=ifelse(sum.out+es.out>=1,1,0)) # %>% 
- # mutate(both=ifelse(sum.out>1,"both","other"))
+  mutate(eco.aid=max(eco.out),
+            soc.aid=max(soc.out),
+            es.aid=max(es.out),
+            eco.soc.aid=ifelse(eco.aid+soc.aid>1,1,0),
+            es.eco.soc.aid=ifelse(eco.aid+es.aid>1 | soc.aid+es.aid>1,1,0),
+            interdisc.aid=ifelse(eco.soc.aid==1 | es.eco.soc.aid==1,1,0)) 
+
+View(select(data_all,Outcome_cat,eco.aid:interdisc.aid)) # spot check
 
 # Which studies have both Ecological and Social outcomes? (No ecosystem services)
+<<<<<<< HEAD
 out.eco.v.soc %>% 
   filter(sum.out == 1) %>% 
   summarise(EcoSoc="Eco and Soc, no ES",num=n_distinct(aid))
+=======
+n_distinct(data_all$aid[data_all$eco.soc.aid == 1])
+>>>>>>> 1f507f9b1e1165b0b105430e8795379db323daec
 
 # Which studies have both Ecological and Social outcomes? (includes ecosystem services)
-out.eco.v.soc %>% 
-  filter(sum.es.out == 1) %>% 
-  summarise(EcoSoc="Eco and Soc, with ES",num=n_distinct(aid))
+n_distinct(data_all$aid[data_all$interdisc.aid == 1])
 
 # Eco_Soc_ES_Out and export csv
-Eco_Soc_ES_Out <- out.eco.v.soc %>%
-  filter(sum.es.out == 1)
+Eco_Soc_ES_Out <- data_all %>%
+  filter(interdisc.aid == 1)
+View(select(Eco_Soc_ES_Out,Outcome_cat,eco.aid:interdisc.aid)) # spot check
+
 write.csv(Eco_Soc_ES_Out,paste0(workdir,"tables/20210331_Eco_and_Soc_and_ES_Outcomes.csv"))
 
-# Which outcomes most common in multi-outcome studies?
-out.eco.v.soc %>%
-  filter(sum.es.out==1) %>% 
-  group_by(Outcome_cat) %>% 
-  summarise(num=n_distinct(aid), pct=num/num.studies*100)
+```
+
+## Interdisciplinary outcome comparison heat maps
+```{r eval=T}
+Eco_Soc_ES_Out <- data_all %>%
+  filter(interdisc.aid == 1)
+
+# All ecosystems all  vs interdisc. studies
+my_heat_map(Eco_Soc_ES_Out,"Int_cat","Outcome_cat")
+(heat.map.all.itd <- heat.map +
+    labs(x="Conservation Intervention", y="Outcome", title ="All ecosystems"))
+plot_grid(heat.map.all + labs(title= "all studies"),
+          heat.map.all.itd + labs(title= "interdisciplinary studies"))
+ggsave(paste0(plotdir,today.date,'_interdisc_int_out_map.png'),width = 16,height = 8)
+
+# Coral
+my_heat_map(filter(data_all,coral==1),"Int_cat","Outcome_cat", high.col = "coral3")
+io_counts.coral <- io_counts
+(heat.map.coral <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="Coral"))
+
+# Mangrove
+my_heat_map(filter(data_all,mangrove==1),"Int_cat","Outcome_cat", high.col = "orange2")
+io_counts.mangrove <- io_counts
+(heat.map.mangrove <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="Mangrove")) 
+
+# Seagrass
+my_heat_map(filter(data_all,seagrass==1),"Int_cat","Outcome_cat", high.col = "green4")
+io_counts.seagrass <- io_counts
+(heat.map.seagrass <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="Seagrass")) 
+
+# Ecosystem maps on same scale
+max.val <- max(io_counts.mangrove$n,io_counts.coral$n,io_counts.seagrass$n)
+p.ecosystem.all <- plot_grid(heat.map.coral + scale_fill_gradient2(low="#f7fbff",high= "coral3",name="# Cases",na.value="black", limits=c(0,max.val)),
+          heat.map.seagrass + scale_fill_gradient2(low="#f7fbff",high= "green4",name="# Cases",na.value="black", limits=c(0,max.val)),
+          heat.map.mangrove + scale_fill_gradient2(low="#f7fbff",high= "orange2",name="# Cases",na.value="black", limits=c(0,max.val)),
+          labels=letters[1:3], ncol = 3, nrow = 1, hjust=-1, align = "hv")
+
+# Coral
+my_heat_map(filter(Eco_Soc_ES_Out,coral==1),"Int_cat","Outcome_cat", high.col = "coral3")
+io_counts.coral.itdc <- io_counts
+(heat.map.coral.itdc <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="Coral"))
+
+# Mangrove
+my_heat_map(filter(Eco_Soc_ES_Out,mangrove==1),"Int_cat","Outcome_cat", high.col = "orange2")
+io_counts.mangrove.itdc <- io_counts
+(heat.map.mangrove.itdc <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="Mangrove")) 
+
+# Seagrass
+my_heat_map(filter(Eco_Soc_ES_Out,seagrass==1),"Int_cat","Outcome_cat", high.col = "green4")
+io_counts.seagrass.itdc <- io_counts
+(heat.map.seagrass.itdc <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="Seagrass")) 
+
+# Ecosystem maps on same scale
+max.val <- max(io_counts.mangrove.itdc$n,io_counts.coral.itdc$n,io_counts.seagrass.itdc$n)
+p.ecosystem.all.itdc <- plot_grid(heat.map.coral.itdc + scale_fill_gradient2(low="#f7fbff",high= "coral3",name="# Cases",na.value="black", limits=c(0,max.val)),
+          heat.map.seagrass.itdc + scale_fill_gradient2(low="#f7fbff",high= "green4",name="# Cases",na.value="black", limits=c(0,max.val)),
+          heat.map.mangrove.itdc + scale_fill_gradient2(low="#f7fbff",high= "orange2",name="# Cases",na.value="black", limits=c(0,max.val)),
+          labels=letters[1:3], ncol = 3, nrow = 1, hjust=-1, align = "hv")
+
+plot_grid(p.ecosystem.all,p.ecosystem.all.itdc,nrow=2)
+ggsave(paste0(plotdir,today.date,'_interdisc_habitat_int_out_map.png'),width = 17,height = 16)
+```
+
+## Multi-intervention & Interdisciplinary outcome sub heat maps
+```{r eval=T}
+
+#  INterventions
+int.x.count <- data_all %>% 
+  select(aid, Int_cat) %>% 
+  filter(Int_cat!="" & !is.na(Int_cat)) %>%  # just in case
+  arrange(aid,Int_cat) %>% 
+  distinct() %>%
+  group_by(aid) %>%
+  filter(n() > 1) %>%
+  split(.$aid) %>%
+  map(., 2) %>%
+  map(~combn(.x, m = 2)) %>%
+  map(~t(.x)) %>%
+  map_dfr(as_tibble) %>% 
+  group_by(V1,V2) %>% 
+  count() %>% 
+  rename(Int1=V1,Int2=V2)
+  
+  int.x.list <- expand.grid(int_list$int_val,int_list$int_val)  %>% 
+    rename(Int1=Var1,Int2=Var2)
+
+  int.x.count.full <- int.x.count %>% 
+    full_join(int.x.list) %>%   # inserts missing combinations
+  #  mutate(n=replace_na(n,0)) %>%
+    ungroup() %>% 
+    mutate( Int1=factor( Int1,levels=mixedsort(int_list$int_val))  # set int list in right order
+ )
+
+ggplot(data=int.x.count.full, aes(x=Int2,y=reorder(Int1, desc(Int1)))) +
+    theme_bw() +
+    geom_tile(aes(fill = n), color='white',size=0.1) +
+    scale_fill_gradient(low = '#f7fbff', high = '#2171b5', space = 'Lab',na.value="white",limits=c(0,max(int.x.count.full$n))) +
+    geom_text(aes(label=n),show.legend = T) +
+    theme(axis.text.x=element_text(angle=90),
+          axis.ticks=element_blank(),
+          axis.line=element_blank(),
+          panel.border=element_blank(),
+          panel.grid.major=element_line(color='#eeeeee'))+
+    theme(axis.text.x = element_text(angle=45,hjust=0,vjust=1,size=9)) +
+    scale_x_discrete(position = "top") +
+    scale_y_discrete(position = "right") +
+    labs(x="Intervention 1", y="Intervention 2")
+  ggsave(paste0(plotdir,today.date,'_multiple_int_map.png'),width = 8,height = 8)
+  
+  
+# Sub-interventions
+sub.int.x.count <- data_all %>% 
+    select(aid, Intervention.subcategory) %>% 
+    filter(Intervention.subcategory!="" & !is.na(Intervention.subcategory)) %>%  # just in case
+    arrange(aid,Intervention.subcategory) %>% 
+    distinct() %>%
+    group_by(aid) %>%
+    filter(n() > 1) %>%
+    split(.$aid) %>%
+    map(., 2) %>%
+    map(~combn(.x, m = 2)) %>%
+    map(~t(.x)) %>%
+    map_dfr(as_tibble) %>% 
+    group_by(V1,V2) %>% 
+    count() %>% 
+    rename(Int1=V1,Int2=V2)
+  
+sub.int.x.list <- expand.grid(int_sub_list$int_val,int_sub_list$int_val)  %>% 
+    rename(Int1=Var1,Int2=Var2)
+  
+sub.int.x.count.full <- sub.int.x.count %>% 
+    full_join(sub.int.x.list) %>%   # inserts missing combinations
+   # mutate(n=replace_na(n,0)) %>%
+    ungroup() %>% 
+    mutate( Int1=factor( Int1,levels=mixedsort(int_sub_list$int_val))  # set int list in right order
+    )
+  
+ggplot(data=sub.int.x.count.full, aes(x=Int2,y=reorder(Int1, desc(Int1)),fill=n)) +
+  theme_bw() +
+  geom_tile(aes(fill = n), color='white',size=0.1) +
+  scale_fill_gradient(low = '#f7fbff', high = '#2171b5', space = 'Lab',na.value="white",limits=c(0,max(sub.int.x.count.full$n))) +
+  geom_text(aes(label=n),show.legend = T) +
+  theme(axis.text.x=element_text(angle=90),
+        axis.ticks=element_blank(),
+        axis.line=element_blank(),
+        panel.border=element_blank(),
+        panel.grid.major=element_line(color='#eeeeee'))+
+  theme(axis.text.x = element_text(angle=45,hjust=0,vjust=1,size=9)) +
+  scale_x_discrete(position = "top") +
+  scale_y_discrete(position = "right") +
+  labs(x="Sub-Intervention 1", y="Sub-Intervention 2")
+ggsave(paste0(plotdir,today.date,'_multiple_sub_int_map.png'),width = 12,height = 12)
+  
+  
+# Outcomes
+out.x.count <- data_all %>% 
+    select(aid, Outcome_cat) %>% 
+    filter(Outcome_cat!="" & !is.na(Outcome_cat)) %>%  # just in case
+    arrange(aid,Outcome_cat) %>% 
+    distinct() %>%
+    group_by(aid) %>%
+    filter(n() > 1) %>%
+    split(.$aid) %>%
+    map(., 2) %>%
+    map(~combn(.x, m = 2)) %>%
+    map(~t(.x)) %>%
+    map_dfr(as_tibble) %>% 
+    group_by(V1,V2) %>% 
+    count() %>% 
+    rename(Out1=V1,Out2=V2)
+  
+  out.x.list <- expand.grid(out_list$out_val,out_list$out_val)  %>% 
+    rename(Out1=Var1,Out2=Var2)
+  
+  out.x.count.full <- out.x.count %>% 
+    full_join(out.x.list) %>%   # inserts missing combinations
+  #  mutate(n=replace_na(n,0)) %>%
+    ungroup() %>% 
+    mutate(Out1=factor(Out1,levels=mixedsort(out_list$out_val))  # set Out list in right order
+    )
+  ggplot(data=out.x.count.full, aes(x=Out2,y=reorder(Out1, desc(Out1)),fill=n)) +
+    theme_bw() +
+    geom_tile(aes(fill = n), color='white',size=0.1) +
+    scale_fill_gradient(low = '#f7fbff', high = '#2171b5', space = 'Lab',na.value="white",limits=c(0,max(sub.int.x.count.full$n))) +
+    geom_text(aes(label=n),show.legend = T) +
+    theme(axis.text.x=element_text(angle=90),
+          axis.ticks=element_blank(),
+          axis.line=element_blank(),
+          panel.border=element_blank(),
+          panel.grid.major=element_line(color='#eeeeee'))+
+    theme(axis.text.x = element_text(angle=45,hjust=0,vjust=1,size=9)) +
+    scale_x_discrete(position = "top") +
+    scale_y_discrete(position = "right") +
+    labs(x="Outcome 1", y="Outcome 2")
+  
+ggsave(paste0(plotdir,today.date,'_multiple_out_map.png'),width = 8,height = 8)
+  
+  
+  # sub-outcomes
+sub.out.x.count <- data_all %>% 
+    select(aid, Outcome.subcategory) %>% 
+    filter(Outcome.subcategory!="" & !is.na(Outcome.subcategory)) %>%  # just in case
+    arrange(aid,Outcome.subcategory) %>% 
+    distinct() %>%
+    group_by(aid) %>%
+    filter(n() > 1) %>%
+    split(.$aid) %>%
+    map(., 2) %>%
+    map(~combn(.x, m = 2)) %>%
+    map(~t(.x)) %>%
+    map_dfr(as_tibble) %>% 
+    group_by(V1,V2) %>% 
+    count() %>% 
+    rename(Out1=V1,Out2=V2)
+  
+sub.out.x.list <- expand.grid(out_sub_list$out_val,out_sub_list$out_val)  %>% 
+    rename(Out1=Var1,Out2=Var2)
+  
+sub.out.x.count.full <- sub.out.x.count %>% 
+    full_join(sub.out.x.list) %>%   # inserts missing combinations
+  #  mutate(n=replace_na(n,0)) %>%
+    ungroup() %>% 
+    mutate(Out1=factor(Out1,levels=mixedsort(out_sub_list$out_val))  # set Out list in right order
+    )
+
+ggplot(data=sub.out.x.count.full, aes(x=Out2,y=reorder(Out1, desc(Out1)),fill=n)) +
+    theme_bw() +
+    geom_tile(aes(fill = n), color='white',size=0.1) +
+    scale_fill_gradient(low = '#f7fbff', high = '#2171b5', space = 'Lab',na.value="white",limits=c(0,max(sub.int.x.count.full$n))) +
+    geom_text(aes(label=n),show.legend = T) +
+    theme(axis.text.x=element_text(angle=90),
+          axis.ticks=element_blank(),
+          axis.line=element_blank(),
+          panel.border=element_blank(),
+          panel.grid.major=element_line(color='#eeeeee'))+
+    theme(axis.text.x = element_text(angle=45,hjust=0,vjust=1,size=9)) +
+    scale_x_discrete(position = "top") +
+    scale_y_discrete(position = "right") +
+    labs(x="Outcome 1", y="Outcome 2") 
+  
+ggsave(paste0(plotdir,today.date,'_multiple_out_map.png'),width = 18,height = 18)
+  
+# Interdisciplinary sub outcomes
+sub.out.x.count.intdisc <- sub.out.x.count.full %>% 
+  filter(str_detect(Out1, "^[1234]") & str_detect(Out2, "^[4567]") )
+unique(sub.out.x.count.intdisc$Out1)
+unique(sub.out.x.count.intdisc$Out2)
+
+ggplot(data=sub.out.x.count.intdisc, aes(x=Out1,y=reorder(Out2, desc(Out2)),fill=n)) +
+    theme_bw() +
+    geom_tile(aes(fill = n), color='white',size=0.1) +
+    scale_fill_gradient(low = '#f7fbff', high = '#2171b5', space = 'Lab',na.value="white",limits=c(0,max(sub.int.x.count.full$n))) +
+    geom_text(aes(label=n),show.legend = T) +
+    theme(axis.text.x=element_text(angle=90),
+          axis.ticks=element_blank(),
+          axis.line=element_blank(),
+          panel.border=element_blank(),
+          panel.grid.major=element_line(color='#eeeeee'))+
+    theme(axis.text.x = element_text(angle=45,hjust=0,vjust=1,size=9)) +
+    scale_x_discrete(position = "top") +
+    scale_y_discrete(position = "right") +
+    labs(x="Ecological + Ecosystem services", y= "Social + Ecosystem services")
+  
+ggsave(paste0(plotdir,today.date,'interdisc_multiple_out_map.png'),width = 11,height = 8)
+  
+
+# Multi-intervention interdiscpl-outcomes
+# id multi-intervention studies
+mi.aid <- data_all %>%
+  group_by(aid,Int_cat) %>% 
+  summarise %>% 
+  group_by(aid) %>% 
+  filter(n()>1) %>% 
+  distinct(aid) %>% 
+  pull(aid)
+
+mi.sub.out.x.count <- data_all %>% 
+  filter(aid%in%mi.aid) %>% 
+    select(aid, Outcome.subcategory) %>% 
+    filter(Outcome.subcategory!="" & !is.na(Outcome.subcategory)) %>%  # just in case
+    arrange(aid,Outcome.subcategory) %>% 
+    distinct() %>%
+    group_by(aid) %>%
+    filter(n() > 1) %>%
+    split(.$aid) %>%
+    map(., 2) %>%
+    map(~combn(.x, m = 2)) %>%
+    map(~t(.x)) %>%
+    map_dfr(as_tibble) %>% 
+    group_by(V1,V2) %>% 
+    count() %>% 
+    rename(Out1=V1,Out2=V2)
+  
+mi.sub.out.x.list <- expand.grid(out_sub_list$out_val,out_sub_list$out_val)  %>% 
+    rename(Out1=Var1,Out2=Var2)
+  
+mi.sub.out.x.count.interdisc <- sub.out.x.count %>% 
+    full_join(sub.out.x.list) %>%   # inserts missing combinations
+  #  mutate(n=replace_na(n,0)) %>%
+    ungroup() %>% 
+    mutate(Out1=factor(Out1,levels=mixedsort(out_sub_list$out_val))  # set Out list in right order
+    ) %>% 
+    filter(str_detect(Out1, "^[1234]") & str_detect(Out2, "^[4567]") ) # interdisciplinary only
+
+
+ggplot(data=mi.sub.out.x.count.interdisc, aes(x=Out2,y=reorder(Out1, desc(Out1)),fill=n)) +
+    theme_bw() +
+    geom_tile(aes(fill = n), color='white',size=0.1) +
+    scale_fill_gradient(low = '#f7fbff', high = '#2171b5', space = 'Lab',na.value="white",limits=c(0,max(sub.int.x.count.full$n))) +
+    geom_text(aes(label=n),show.legend = T) +
+    theme(axis.text.x=element_text(angle=90),
+          axis.ticks=element_blank(),
+          axis.line=element_blank(),
+          panel.border=element_blank(),
+          panel.grid.major=element_line(color='#eeeeee'))+
+    theme(axis.text.x = element_text(angle=45,hjust=0,vjust=1,size=9)) +
+    scale_x_discrete(position = "top") +
+    scale_y_discrete(position = "right") +
+    labs(x="Outcome 1", y="Outcome 2") 
+  
+ggsave(paste0(plotdir,today.date,'_multi-intervention_multiple_out_map.png'),width = 18,height = 18)
+
+
+
+# Chord diagram
+chordDiagram(mat)
+chord.dat <- data_all %>% 
+  filter(interdisc.aid==1) %>% 
+  group_by(Int_cat,Outcome_cat) %>% 
+  summarise(value=n_distinct(aid))
+
+pacman::p_load(circlize)
+chordDiagram(chord.dat)
+circos.clear()
+
+
+chordDiagram(chord.dat)
+circos.clear()
+
+
+# rotate labels (prob easier to reduce them)
+png(paste0(plotdir,today.date,'_multi-intervention_multiple_out_map.png'), width = 1280, height = 960, units = "px") 
+chordDiagram(chord.dat, annotationTrack = "grid", 
+    preAllocateTracks = list(track.height = max(strwidth(unlist(dimnames(chord.dat))))))
+# we go back to the first track and customize sector labels
+circos.track(track.index = 1, panel.fun = function(x, y) {
+    circos.text(CELL_META$xcenter, CELL_META$ylim[1], CELL_META$sector.index, 
+        facing = "clockwise", niceFacing = TRUE, adj = c(0, 0.5))
+}, bg.border = NA) 
+dev.off()
+
 
 ```
 
