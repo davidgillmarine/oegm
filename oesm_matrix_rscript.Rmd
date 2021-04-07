@@ -198,9 +198,11 @@ if(outc=="Outcome.subcategory"){out_list_full=out_sub_list}
     full_join(int_list_full,by =c("intc"="int_val")) %>% 
     full_join(out_list_full,by =c("outc"="out_val")) %>% 
     group_by(intc) %>% 
-    mutate(int_val=paste0(intc," (",n_distinct(aid,na.rm = T),")")) %>% 
+    mutate(int_val=paste0(intc)) %>% 
+      # mutate(int_val=paste0(intc," (",n_distinct(aid,na.rm = T),")")) %>%  #adds article counts to int names
     group_by(outc) %>% 
-    mutate(out_val=paste0(outc," (",n_distinct(aid,na.rm = T),")")) %>% 
+    mutate(out_val=paste0(outc)) %>% 
+      # mutate(out_val=paste0(outc," (",n_distinct(aid,na.rm = T),")")) %>% #adds article counts to out names
     ungroup() %>% 
     select(-c(intc,outc)) 
   
