@@ -1281,7 +1281,6 @@ ggsave(paste0(plotdir,today.date,'_multi-intervention_multiple_out_map.png'),wid
 
 
 # Chord diagram
-chordDiagram(mat)
 chord.dat <- data_all %>% 
   filter(interdisc.aid==1) %>% 
   group_by(Int_cat,Outcome_cat) %>% 
@@ -1297,7 +1296,7 @@ circos.clear()
 
 
 # rotate labels (prob easier to reduce them)
-png(paste0(plotdir,today.date,'_multi-intervention_multiple_out_map.png'), width = 1280, height = 960, units = "px") 
+png(paste0(plotdir,today.date,'_multi-intervention_multiple_out_chord.png'), width = 10, height = 8, units = "in", res=600) 
 chordDiagram(chord.dat, annotationTrack = "grid", 
     preAllocateTracks = list(track.height = max(strwidth(unlist(dimnames(chord.dat))))))
 # we go back to the first track and customize sector labels
