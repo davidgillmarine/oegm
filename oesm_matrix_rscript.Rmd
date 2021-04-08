@@ -1288,20 +1288,16 @@ ggsave(paste0(plotdir,today.date,'_multi-intervention_multiple_out_map.png'),wid
 
 
 
-# Chord diagram
+#--- Chord diagram
 chord.dat <- data_all %>% 
   filter(interdisc.aid==1) %>% 
   group_by(Int_cat,Outcome_cat) %>% 
   summarise(value=n_distinct(aid))
 
+# original
 pacman::p_load(circlize)
 chordDiagram(chord.dat)
 circos.clear()
-
-
-chordDiagram(chord.dat)
-circos.clear()
-
 
 # rotate labels (prob easier to reduce them)
 png(paste0(plotdir,today.date,'_multi-intervention_multiple_out_chord.png'), width = 10, height = 8, units = "in", res=600) 
