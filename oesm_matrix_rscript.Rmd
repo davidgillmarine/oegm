@@ -946,13 +946,7 @@ data_all <- data_all %>%
 View(select(data_all,Outcome_cat,eco.aid:interdisc.aid)) # spot check
 
 # Which studies have both Ecological and Social outcomes? (No ecosystem services)
-<<<<<<< HEAD
-out.eco.v.soc %>% 
-  filter(sum.out == 1) %>% 
-  summarise(EcoSoc="Eco and Soc, no ES",num=n_distinct(aid))
-=======
 n_distinct(data_all$aid[data_all$eco.soc.aid == 1])
->>>>>>> 1f507f9b1e1165b0b105430e8795379db323daec
 
 # Which studies have both Ecological and Social outcomes? (includes ecosystem services)
 n_distinct(data_all$aid[data_all$interdisc.aid == 1])
@@ -968,6 +962,46 @@ write.csv(Eco_Soc_ES_Out,paste0(workdir,"tables/20210331_Eco_and_Soc_and_ES_Outc
 
 ## Interdisciplinary outcome comparison heat maps
 ```{r eval=T}
+
+interd.dat <- data_all %>% 
+  mutate(typ=case_when(
+  soc.aid == 1 & interdisc.aid == 0 ~ "social only",
+  eco.aid == 1 & interdisc.aid == 0 ~ "eco only",
+  interdisc.aid == 1 ~ "interdisciplinary"),
+  typ=as.factor(typ))
+
+
+interd.out <- interd.dat %>% 
+  group_by(Outcome_cat,typ) %>% 
+  count() %>% 
+  group_by(Outcome_cat) %>% 
+  mutate(prop=n/sum(n)) %>% 
+  filter(!is.na(typ))
+
+
+interd.int <- interd.dat %>% 
+  group_by(Int_cat,typ) %>% 
+  count() %>% 
+  group_by(Int_cat) %>% 
+  mutate(prop=n/sum(n))%>% 
+  filter(!is.na(typ))
+
+plot_grid(
+# ggplot(interd.out, aes(fill=typ, y=prop, x=Outcome_cat)) + 
+#     geom_bar(position="stack", stat="identity") +
+#     coord_flip(), 
+# ggplot(interd.out, aes(fill=typ, y=n, x=Outcome_cat)) + 
+#     geom_bar(position="stack", stat="identity") +
+#     coord_flip(),
+ggplot(interd.int, aes(fill=typ, y=prop, x=Int_cat)) + 
+    geom_bar(position="stack", stat="identity") +
+    coord_flip(),
+ggplot(interd.int, aes(fill=typ, y=n, x=Int_cat)) + 
+    geom_bar(position="stack", stat="identity") +
+    coord_flip(),
+ nrow=2)
+
+
 Eco_Soc_ES_Out <- data_all %>%
   filter(interdisc.aid == 1)
 
@@ -1302,6 +1336,18 @@ circos.clear()
 # rotate labels (prob easier to reduce them)
 png(paste0(plotdir,today.date,'_multi-intervention_multiple_out_chord.png'), width = 10, height = 8, units = "in", res=600) 
 chordDiagram(chord.dat, annotationTrack = "grid", 
+    preAllocateTracks = list(track.height = max(strwidth(unlist(dimnames(chord.dat))))))
+# we go back to the first track and customize sector labels
+circos.track(track.index = 1, panel.fun = function(x, y) {
+    circos.text(CELL_META$xcenter, CELL_META$ylim[1], CELL_META$sector.index, 
+        facing = "clockwise", niceFacing = TRUE, adj = c(0, 0.5))
+}, bg.border = NA) 
+dev.off()
+
+
+# rotate labels (prob easier to reduce them)
+png(paste0(plotdir,today.date,'_multi-intervention_multiple_out_chord_reverse.png'), width = 10, height = 8, units = "in", res=600) 
+chordDiagram(select(chord.dat,Outcome_cat,Int_cat,value), annotationTrack = "grid", 
     preAllocateTracks = list(track.height = max(strwidth(unlist(dimnames(chord.dat))))))
 # we go back to the first track and customize sector labels
 circos.track(track.index = 1, panel.fun = function(x, y) {
