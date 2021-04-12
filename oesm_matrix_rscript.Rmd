@@ -13,6 +13,7 @@ workdir <- "R:/Gill/research/oegm/"
 inputdir <- paste0(workdir,"tables/raw/")
 mapdir <-  paste0(workdir,"spatial/raw/")
 plotdir <- paste0(workdir,"output/plots/")
+tabledir <- paste0(workdir,"output/tables/")
 
 pacman::p_load(rio,rgeos,treemap,gtools,cowplot,rnaturalearth,rnaturalearthdata,tidyverse)
 
@@ -943,7 +944,7 @@ data_all <- data_all %>%
             es.eco.soc.aid=ifelse(eco.aid+es.aid>1 | soc.aid+es.aid>1,1,0),
             interdisc.aid=ifelse(eco.soc.aid==1 | es.eco.soc.aid==1,1,0)) 
 
-View(select(data_all,Outcome_cat,eco.aid:interdisc.aid)) # spot check
+# View(select(data_all,Outcome_cat,eco.aid:interdisc.aid)) # spot check
 
 # Which studies have both Ecological and Social outcomes? (No ecosystem services)
 n_distinct(data_all$aid[data_all$eco.soc.aid == 1])
@@ -954,9 +955,8 @@ n_distinct(data_all$aid[data_all$interdisc.aid == 1])
 # Eco_Soc_ES_Out and export csv
 Eco_Soc_ES_Out <- data_all %>%
   filter(interdisc.aid == 1)
-View(select(Eco_Soc_ES_Out,Outcome_cat,eco.aid:interdisc.aid)) # spot check
-
-write.csv(Eco_Soc_ES_Out,paste0(workdir,"tables/20210331_Eco_and_Soc_and_ES_Outcomes.csv"))
+# View(select(Eco_Soc_ES_Out,Outcome_cat,eco.aid:interdisc.aid)) # spot check
+write.csv(Eco_Soc_ES_Out,paste0(tabledir,today.date,"_Eco_and_Soc_and_ES_Outcomes.csv"))
 
 ```
 
