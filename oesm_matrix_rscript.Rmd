@@ -765,7 +765,7 @@ data_all %>%
 data_all %>%  
   filter(Int_cat== "2. Species management"| 
            Int_cat== "6. Conservation designation & planning") %>%  
-  summarise(intervention="Highest", num=n_distinct(aid), pct=num/num.studies*100)
+  summarise(intervention="Highest 2", num=n_distinct(aid), pct=num/num.studies*100)
 
   # Lowest: % in Enforcement and Protection, awareness raising, and 
     # Education and Training
@@ -773,7 +773,7 @@ data_all %>%
   filter(Int_cat== "4. Enforcement & protection"| 
            Int_cat== "3. Awareness raising"| 
            Int_cat== "9. Education & training") %>%  
-  summarise(intervention="Lowest", num=n_distinct(aid), pct=num/num.studies*100)
+  summarise(intervention="Lowest 3", num=n_distinct(aid), pct=num/num.studies*100)
 
   # Subcategories (want % of each):
 data_all %>%
@@ -851,9 +851,12 @@ unique(quick.stats$aid)
     #  arrange (desc(num))  # this arranges them in descending order 
 
 ```
+
 # Multiple Intervention Studies
 
-#from May 28, need to go back and figure out the rest here/what exactly is going on
+In the paper, I look at rate of integrated (multiple) intervention studies over time... I just did this by hand based on the multi_int_time_gps table created in this script
+
+
 ```{r eval=T}
 (multi.int.studies <- data_all %>% 
     #   filter(Int_cat!="8. Research & monitoring") %>% 
@@ -864,8 +867,8 @@ multi.int.aid <- multi.int.studies$aid[multi.int.studies$n.int>1]
 
 
 # spot checks
-table(test$n.int)
-filter(test,n.int==3)
+  # table(test$n.int) # unsure what this does
+  # filter(test,n.int==3) # unsure what this does
 unique(data_all$Int_cat[data_all$aid==187])
 data_all %>% 
   select(aid,Int_cat) %>% 
@@ -883,6 +886,11 @@ Multi_int_time_gps <- data_all %>%
   select(Year.of.publication,gp,pub.per.yr,val) %>% 
   filter(!is.na(Year.of.publication))
 View(Multi_int_time_gps)
+
+# Studies with multiple conservation interventions
+97/208*100
+# David: how do I ask mulit.int.studies to count the number of distinct aids 
+# and then give me the percent out of total num.studies? tried, cant!
 
 
 
@@ -915,6 +923,7 @@ data_all %>%
   filter(Outcome_cat== "3. Ecosystem function"| 
           Outcome_cat==  "4. Ecosystem services") %>%  
   summarise(num=n_distinct(aid), pct=num/num.studies*100)
+
   
   # Subcategories (want % of each):
 data_all %>% 
