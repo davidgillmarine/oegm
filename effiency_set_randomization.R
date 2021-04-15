@@ -22,7 +22,7 @@ dat <-  screened.set %>%
 head(dat)
 
 dat.out <- dat
-for (i in 2:10){
+for (i in 2:100){
 dat.rand <- dat %>%
   mutate(samp=i,
          tot.screened=dat$tot.screened,
@@ -30,13 +30,18 @@ dat.rand <- dat %>%
 dat.out <- rbind(dat.out,dat.rand)
   }
 
-dat.out.gp <-  dat.out %>% 
+dat.out <-  dat.out %>% 
   group_by(samp) %>% 
-  mutate(tot.incl=cumsum(incl)) %>% 
-  group_by(samp,tot.screened) %>% 
-  summarise(avg.incl=mean(tot.incl),sd.incl=sd(tot.incl))
+  mutate(tot.incl=cumsum(incl))
+head(dat.out)
 
-ggplot(dat, aes(x=tot.screened,y=tot.incl)) +
-  geom_point(stat="identity") +
+dat.out %>% 
+  ungroup() %>% 
+  group_by(samp,tot.screened) %>% 
+  summarise(avg=mean(tot.incl))
+
+ggplot(dat.out, aes(x=tot.screened,y=tot.incl)) +
+  geom_point(stat="identity", alpha=0.05) +
+  geom_smooth(method = loess, se=T) +
   theme_classic()
 
