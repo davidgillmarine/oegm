@@ -12,11 +12,22 @@ names(screened.set) <- gsub("citation_","",names(screened.set))
 
 table(screened.set$screening_status)
 
+
+
+
 exclude.set <- filter(screened.set,screening_status=="excluded")
 exclude.set <- filter(screened.set,screening_status%in%c("excluded","conflict"))
 include.set <- filter(screened.set,screening_status=="included")
 
-write_bibliography(exclude.set,str_c(outputdir,"OEGM Set 4c_screened_excl.ris")) # export to try to find missing abstracts
+# conflicts
+conflict.set <- filter(screened.set,screening_status%in%c("conflict"))
+conflict.set$title
+exclude.set <- rbind(exclude.set,conflict.set[1,])
+include.set <- rbind(include.set,conflict.set[2,])
 
-write_bibliography(include.set,str_c(outputdir,"OEGM Set 4c_screened_incl.ris")) # export to try to find missing abstracts
+
+# Export
+sum(nrow(rbind(include.set,exclude.set)))==500
+write_bibliography(exclude.set,str_c(outputdir,"OEGM Set 3c_screened_excl.ris")) # export to try to find missing abstracts
+write_bibliography(include.set,str_c(outputdir,"OEGM Set 3c_screened_incl.ris")) # export to try to find missing abstracts
 
