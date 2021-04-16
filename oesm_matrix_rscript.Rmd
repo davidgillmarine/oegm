@@ -861,9 +861,11 @@ In the paper, I look at rate of integrated (multiple) intervention studies over 
 (multi.int.studies <- data_all %>% 
     #   filter(Int_cat!="8. Research & monitoring") %>% 
     group_by(Year.of.publication,aid) %>% 
-    summarise(n.int=n_distinct(Int_cat))
+    summarise(n.int=n_distinct(Int_cat)) %>% 
+   filter(n.int>1)
 )
-multi.int.aid <- multi.int.studies$aid[multi.int.studies$n.int>1]
+n_distinct(multi.int.studies$aid)/n_distinct(data_all$aid)*100
+#multi.int.aid <- multi.int.studies$aid[multi.int.studies$n.int>1]
 
 
 # spot checks
