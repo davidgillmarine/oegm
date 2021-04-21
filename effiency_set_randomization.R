@@ -9,7 +9,7 @@ today.date <- gsub("-","",Sys.Date())
 
 
 # --- Download datasets and check for errors ----
-set1a <- colandr_get(2700,"david.gill@duke.edu") # error on 2 of them
+set1a <- colandr_get(2700,"david.gill@duke.edu") # 
 table(set1a$data_source_id)
 test <- set1a %>% 
   filter(data_source_id%in%c(1240,1241)) %>% 
@@ -27,7 +27,6 @@ table(test$tags,test$citation_status)
 filter(test,screen.error==1)
 
 set1c <- colandr_get(2702,"david.gill@duke.edu")
-table(set1c$data_source_id)
 
 set2a <- colandr_get(2703,"david.gill@duke.edu")
 table(set2a$data_source_id)
@@ -39,7 +38,7 @@ table(test$tags,test$citation_status)
 filter(test,screen.error==1)
 
 
-set2b <- colandr_get(2704,"david.gill@duke.edu") # not screened
+set2b <- colandr_get(2704,"david.gill@duke.edu") 
 table(set2b$data_source_id)
 test <- set2b %>% 
   select(tags,citation_status,`date_screened_t&a`) %>% 
@@ -49,7 +48,7 @@ filter(test,screen.error==1)
 
 set2c <- colandr_get(2705,"david.gill@duke.edu")
 
-set3a <- colandr_get(2706,"david.gill@duke.edu") # not finished
+set3a <- colandr_get(2706,"david.gill@duke.edu") # not finished (Colandr ate 19 citations)
 table(set3a$data_source_id)
 test <- set3a %>% 
   filter(data_source_id%in%c(1245,1247)) %>% 
@@ -58,15 +57,15 @@ test <- set3a %>%
 table(test$tags,test$citation_status)
 filter(test,screen.error==1)
 
-set3b <- colandr_get(2707,"david.gill@duke.edu")
+set3b <- colandr_get(2707,"david.gill@duke.edu") # error in one!
 table(set3b$data_source_id)
-test <- set1b %>% 
+test <- set3b %>% 
   select(tags,citation_status,`date_screened_t&a`) %>% 
   mutate(screen.error = ifelse(tags=="{INCLUDED}" & citation_status=="excluded"|tags=="{}" & citation_status=="included",1,0))
 table(test$tags,test$citation_status)
 filter(test,screen.error==1)
 
-set4c <- colandr_get(2708,"david.gill@duke.edu")
+set3c <- colandr_get(2708,"david.gill@duke.edu")
 
 set4a <- colandr_get(2709,"david.gill@duke.edu")
 table(set4a$data_source_id)
@@ -86,7 +85,7 @@ filter(test,screen.error==1)
 
 set4c <- colandr_get(2711,"david.gill@duke.edu")
 
-# set5a <- colandr_get(2709,"david.gill@duke.edu")
+# set5a <- colandr_get(2712,"david.gill@duke.edu")
 # table(set5a$data_source_id)
 # test <- set5a %>% 
 #   filter(data_source_id%in%c(1253,1244)) %>% 
@@ -95,20 +94,21 @@ set4c <- colandr_get(2711,"david.gill@duke.edu")
 # table(test$tags,test$citation_status)
 # filter(test,screen.error==1)
 # 
-# set5b <- colandr_get(2710,"david.gill@duke.edu")
+# set5b <- colandr_get(2713,"david.gill@duke.edu")
 # test <- set5b %>% 
 #   select(tags,citation_status,`date_screened_t&a`) %>% 
 #   mutate(screen.error = ifelse(tags=="{INCLUDED}" & citation_status=="excluded"|tags=="{}" & citation_status=="included",1,0))
 # table(test$tags,test$citation_status)
 # filter(test,screen.error==1)
 # 
-# set5c <- colandr_get(2711,"david.gill@duke.edu")
-
+# set5c <- colandr_get(2714,"david.gill@duke.edu")
+export(set4b,paste0(outputdir,"colandr_sample.csv"))
 
 
 # --- Compile sets ----
 dat4a <-  set4a %>% 
   filter(data_source_id%in%c(1243,1244)) %>%  # select correct datasets
+  arrange(`date_screened_t&a`) %>% 
   select(citation_status) %>% 
   mutate(samp="active learning_10pct",
          tot.screened=seq(1,nrow(.),1),
@@ -118,6 +118,7 @@ dat4a <-  set4a %>%
 head(dat4a)
 
 dat4b <-  set4b %>% 
+  arrange(`date_screened_t&a`) %>% 
   select(citation_status) %>% 
   mutate(samp="active learning",
          tot.screened=seq(1,nrow(.),1),
@@ -127,6 +128,7 @@ dat4b <-  set4b %>%
 head(dat4b)
 
 dat4c <-  set4c %>%  
+  arrange(`date_screened_t&a`) %>% 
   group_by(id,citation_status) %>%            # group by id
   summarise() %>% 
   ungroup() %>% 
@@ -162,7 +164,7 @@ plot_grid(
 
 
 
-# ---- randomization
+# ---- randomization ----
 # create dataframe with total screened and included dummy variable
 dat <-  set4c %>% 
   group_by(id,citation_status) %>%
@@ -198,3 +200,25 @@ ggplot(test, aes(x=tot.screened,y=avg.incl,col=samp)) +
   geom_smooth(aes(ymin = ci.lower, ymax = ci.upper),stat = "identity") + 
   theme_classic() +
   geom_line(data=dat4, aes(x=tot.screened,y=tot.incl,col=samp)) 
+
+
+# ---- Compare backward citation to others -----
+bwd.cit <- colandr_get(2120,"david.gill@duke.edu") # 
+table(bwd.cit$citation_status)
+bwd.cit <- filter(bwd.cit,citation_status!="conflict")
+
+comb.incl <- bwd.cit %>% select(citation_status) %>% mutate(samp="backward citation") %>% 
+  bind_rows(set1c %>% select(citation_status) %>% mutate(samp="set 1")) %>% 
+    bind_rows(set2c %>% select(citation_status) %>% mutate(samp="set 2")) %>% 
+    bind_rows(set3c %>% select(citation_status) %>% mutate(samp="set 3")) %>% 
+    bind_rows(set4c %>% select(citation_status) %>% mutate(samp="set 4")) %>% 
+  group_by(samp,citation_status) %>%
+  summarise(num=n()) %>% 
+  group_by(samp) %>% 
+  mutate(samp.num=sum(num),pct=num/samp.num, pct.val=paste0(round(pct*100,1),"%"))
+  
+
+ggplot(comb.incl,aes(x=samp, y=pct, fill=citation_status, label=pct.val)) +
+  geom_bar(position="stack",stat = "identity") +
+  geom_label( )
+  theme_classic()
