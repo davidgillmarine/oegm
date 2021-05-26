@@ -13,7 +13,7 @@ today.date <- gsub("-","",Sys.Date())
 # --- Download datasets and check for errors ----
 set1a <- colandr_get(2700,"david.gill@duke.edu")  
 table(set1a$data_source_id)
-source.1 <- c(1240,1241)
+source.1a <- c(1240,1241)
 test <- set1a %>% 
   filter(data_source_id%in%source.1) %>% 
   select(tags,citation_status,`date_screened_t&a`) %>% 
@@ -31,9 +31,19 @@ filter(test,screen.error==1)
 
 set1c <- colandr_get(2702,"david.gill@duke.edu")
 
+set1d <- colandr_get(3023,"david.gill@duke.edu")
+table(set1d$data_source_id)
+source.1d <- c(1270,1272)
+test <- set1d %>% 
+  filter(data_source_id%in%source.1d) %>% 
+  select(tags,citation_status,`date_screened_t&a`) %>% 
+  mutate(screen.error = ifelse(tags=="{INCLUDED}" & citation_status=="excluded"|tags=="{}" & citation_status=="included",1,0))
+table(test$tags,test$citation_status)
+filter(test,screen.error==1)
+
 set2a <- colandr_get(2703,"david.gill@duke.edu")
 table(set2a$data_source_id)
-source.2 <- c(1226,1227)
+source.2a <- c(1226,1227)
 test <- set2a %>% 
   filter(data_source_id%in%source.2) %>% 
   select(tags,citation_status,`date_screened_t&a`) %>% 
@@ -52,9 +62,19 @@ filter(test,screen.error==1)
 
 set2c <- colandr_get(2705,"david.gill@duke.edu")
 
+set2d <- colandr_get(3024,"david.gill@duke.edu")
+table(set2d$data_source_id)
+source.2d <- c(1273,1274)
+test <- set2d %>% 
+  filter(data_source_id%in%source.2d) %>% 
+  select(tags,citation_status,`date_screened_t&a`) %>% 
+  mutate(screen.error = ifelse(tags=="{INCLUDED}" & citation_status=="excluded"|tags=="{}" & citation_status=="included",1,0))
+table(test$tags,test$citation_status)
+filter(test,screen.error==1)
+
 set3a <- colandr_get(2706,"david.gill@duke.edu") # not finished (Colandr ate 19 citations)
 table(set3a$data_source_id)
-source.3 <- c(1245,1247)
+source.3a <- c(1245,1247)
 test <- set3a %>% 
   filter(data_source_id%in%source.3) %>% 
   select(tags,citation_status,`date_screened_t&a`) %>% 
@@ -75,9 +95,19 @@ filter(test,screen.error==1)
 
 set3c <- colandr_get(2708,"david.gill@duke.edu")
 
+set3d <- colandr_get(3025,"david.gill@duke.edu")
+table(set3d$data_source_id)
+source.3d <- c(1275,1276)
+test <- set3d %>% 
+  filter(data_source_id%in%source.3d) %>% 
+  select(tags,citation_status,`date_screened_t&a`) %>% 
+  mutate(screen.error = ifelse(tags=="{INCLUDED}" & citation_status=="excluded"|tags=="{}" & citation_status=="included",1,0))
+table(test$tags,test$citation_status)
+filter(test,screen.error==1)
+
 set4a <- colandr_get(2709,"david.gill@duke.edu")
 table(set4a$data_source_id)
-source.4 <- c(1243,1244)
+source.4a <- c(1243,1244)
 test <- set4a %>% 
   filter(data_source_id%in%source.4) %>% 
   select(tags,citation_status,`date_screened_t&a`) %>% 
@@ -94,9 +124,19 @@ filter(test,screen.error==1)
 
 set4c <- colandr_get(2711,"david.gill@duke.edu")
 
+set4d <- colandr_get(3026,"david.gill@duke.edu")
+table(set4d$data_source_id)
+source.4d <- c(1277,1278)
+test <- set4d %>% 
+  filter(data_source_id%in%source.4d) %>% 
+  select(tags,citation_status,`date_screened_t&a`) %>% 
+  mutate(screen.error = ifelse(tags=="{INCLUDED}" & citation_status=="excluded"|tags=="{}" & citation_status=="included",1,0))
+table(test$tags,test$citation_status)
+filter(test,screen.error==1)
+
 set5a <- colandr_get(2712,"david.gill@duke.edu")
 table(set5a$data_source_id)
-source.5 <- c(1282,1283)
+source.5a <- c(1282,1283)
 test <- set5a %>%
   filter(data_source_id%in%source.5) %>%
   select(tags,citation_status,`date_screened_t&a`) %>%
@@ -112,13 +152,52 @@ table(test$tags,test$citation_status)
 filter(test,screen.error==1)
 
 set5c <- colandr_get(2714,"david.gill@duke.edu")
+
+set5d <- colandr_get(3027,"david.gill@duke.edu")
+table(set5d$data_source_id)
+source.5d <- c(1310,1311)
+test <- set5d %>% 
+  filter(data_source_id%in%source.5d) %>% 
+  select(tags,citation_status,`date_screened_t&a`) %>% 
+  mutate(screen.error = ifelse(tags=="{INCLUDED}" & citation_status=="excluded"|tags=="{}" & citation_status=="included",1,0))
+table(test$tags,test$citation_status)
+filter(test,screen.error==1)
+
+set6a <- colandr_get(3028,"david.gill@duke.edu")
+table(set6a$data_source_id)
+source.6a <- c(1284,1285)
+test <- set6a %>%
+  filter(data_source_id%in%source.6a) %>%
+  select(tags,citation_status,`date_screened_t&a`) %>%
+  mutate(screen.error = ifelse(tags=="{INCLUDED}" & citation_status=="excluded"|tags=="{}" & citation_status=="included",1,0))
+table(test$tags,test$citation_status)
+filter(test,screen.error==1)
+
+set6b <- colandr_get(3029,"david.gill@duke.edu")
+test <- set6b %>%
+  select(tags,citation_status,`date_screened_t&a`) %>%
+  mutate(screen.error = ifelse(tags=="{INCLUDED}" & citation_status=="excluded"|tags=="{}" & citation_status=="included",1,0))
+table(test$tags,test$citation_status)
+filter(test,screen.error==1)
+
+set6d <- colandr_get(3032,"david.gill@duke.edu")
+table(set6d$data_source_id)
+source.6d <- c(1312,1313)
+test <- set6d %>% 
+  filter(data_source_id%in%source.6d) %>% 
+  select(tags,citation_status,`date_screened_t&a`) %>% 
+  mutate(screen.error = ifelse(tags=="{INCLUDED}" & citation_status=="excluded"|tags=="{}" & citation_status=="included",1,0))
+table(test$tags,test$citation_status)
+filter(test,screen.error==1)
+
+
 #export(set4b,paste0(outputdir,"colandr_sample.csv"))
 
 
 # ---- function to organize data
-func_org.dat <- function(set.a,set.b,set.c,dat.source) {
+func_org.dat <- function(set.a,set.b,set.c,set.d,dat.source.a,dat.source.d) {
   dat.a <<-  set.a %>% 
-    filter(data_source_id%in%dat.source) %>% 
+    filter(data_source_id%in%dat.source.a) %>% 
     arrange(`date_screened_t&a`) %>% 
     select(citation_status) %>% 
     mutate(samp="active learning_10pct",
@@ -147,7 +226,21 @@ func_org.dat <- function(set.a,set.b,set.c,dat.source) {
            incl=as.integer(citation_status=="included"),
            tot.incl=cumsum(incl)) %>% 
     select(-citation_status)  
-  dat.out <<- rbind(dat.a,dat.b,dat.c)
+
+  dat.d <<-  set.d %>%  
+    filter(data_source_id%in%dat.source.d) %>% 
+    group_by(id,citation_status) %>%            # group by id (double screened)
+    summarise(`date_screened_t&a`=last(`date_screened_t&a`)) %>% 
+    arrange(`date_screened_t&a`) %>% 
+    ungroup() %>% 
+    select(citation_status) %>% 
+    mutate(samp='active learning_10pct_incl_only',
+           tot.screened=seq(1,nrow(.),1),
+           incl=as.integer(citation_status=="included"),
+           tot.incl=cumsum(incl)) %>% 
+    select(-citation_status)  
+  
+  dat.out <<- rbind(dat.a,dat.b,dat.c,dat.d)
   
   
   # ---- randomization ----
@@ -175,10 +268,11 @@ func_org.dat <- function(set.a,set.b,set.c,dat.source) {
 
 # --- Compile sets ----
 # Set 1
-func_org.dat(set1a,set1b,set1c,source.1)
+func_org.dat(set1a,set1b,set1c,set1d,source.1a,source.1d)
 dat1a <-dat.a
 dat1b <-dat.b
 dat1c <-dat.c
+dat1d <-dat.d
 dat1 <-dat.out
 dat1.rand <-dat.rand.avg
 table(dat1$samp)
@@ -204,10 +298,11 @@ plot_grid(p.set1,p.set1.bar, nrow = 2)
 
 
 # Set 2
-func_org.dat(set2a,set2b,set2c,source.2)
+func_org.dat(set2a,set2b,set2c,set2d,source.2a,source.2d)
 dat2a <-dat.a
 dat2b <-dat.b
 dat2c <-dat.c
+dat2d <-dat.d
 dat2 <-dat.out
 dat2.rand <-dat.rand.avg
 table(dat2$samp)
@@ -235,10 +330,11 @@ set3b.1 <- set3b %>%
   group_by(id,tags,citation_status) %>%            # group by id (double screened)
   summarise(`date_screened_t&a`=last(`date_screened_t&a`),.groups = "drop") 
 
-func_org.dat(set3a,set3b.1,set3c,source.3)
+func_org.dat(set3a,set3b.1,set3c,set3d,source.3a,source.3d)
 dat3a <-dat.a
 dat3b <-dat.b
 dat3c <-dat.c
+dat3d <-dat.d
 dat3 <-dat.out
 dat3.rand <-dat.rand.avg
 table(dat3$samp)
@@ -263,10 +359,11 @@ plot_grid(p.set3,p.set3.bar, nrow = 2)
 
 
 # Set 4
-func_org.dat(set4a,set4b,set4c,source.4)
+func_org.dat(set4a,set4b,set4c,set4d,source.4a,source.4d)
 dat4a <-dat.a
 dat4b <-dat.b
 dat4c <-dat.c
+dat4d <-dat.d
 dat4 <-dat.out
 dat4.rand <-dat.rand.avg
 table(dat2$samp)
@@ -291,10 +388,11 @@ plot_grid(p.set4,p.set4.bar, nrow = 2)
 
 
 # Set 5
-func_org.dat(set5a,set5b,set5c,source.5)
+func_org.dat(set5a,set5b,set5c,set5d,source.5a,source.5d)
 dat5a <-dat.a
 dat5b <-dat.b
 dat5c <-dat.c
+dat5d <-dat.d
 dat5 <-dat.out
 dat5.rand <-dat.rand.avg
 table(dat2$samp)
@@ -323,6 +421,16 @@ plot_grid(p.set1.bar + theme(legend.position = "none"),p.set2.bar + theme(legend
           p.set3.bar  + theme(legend.position = "none") ,p.set4.bar+ theme(legend.position = "none"),
           nrow = 2)
 ggsave(paste0(plotdir,'_inclusion_rate_bar.png'),width = 7,height = 5)
+
+# Set 5
+func_org.dat(set5a,set5b,set5c,set5d,source.5a,source.5d)
+dat5a <-dat.a
+dat5b <-dat.b
+dat5c <-dat.c
+dat5d <-dat.d
+dat5 <-dat.out
+dat5.rand <-dat.rand.avg
+table(dat2$samp)
 
 
 
