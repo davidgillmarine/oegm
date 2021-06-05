@@ -1,0 +1,146 @@
+---
+title: "Topic Modeling Code"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The topic modeling was applied to the 10% batch de-duplicated dataset. The goal is to allow topic modeling to divide the records into separate topics. Ideally, the topic modeling could help to identify the similarities of the articles in include batch or the similarities of the articles in exclude batch, and group similar articles into the same topic. The process can potentially be used as an automatic process of identifying include or exclude batch for articles. 
+
+The topic modeling package used in this analysis is the stm package.
+
+References of the code:
+https://juliasilge.com/blog/sherlock-holmes-stm/
+https://juliasilge.com/blog/evaluating-stm/
+
+According to the references above, gamma matrix demonstrates the probabilities that each document is generated from each topic.
+
+Load the libraries.
+```{r}
+pacman::p_load(quanteda,stm,revtools,rio,tidytext,tidyverse,data.table,stringr,dplyr,janitor,ggthemes,knitr,gridExtra)
+```
+Read the data file and assign to data.
+```{r}
+data<-readRDS("De-duplication_oegm_all.rds")
+```
+Select the data from the 10% batch and assign to batch10.
+```{r}
+batch10<-data[data$batch=="unique_10_include"|data$batch=="unique_10_exclude",]
+```
+Save words from title and abstract into tidy data structure using unnest_tokens().
+```{r}
+tidy.data_unnest <- batch10 %>% 
+  mutate(rec.id=row_number(),
+         dataid=dataid,
+         across(c(title,abstract),~replace_na(.,"")),
+         comb.var=str_c(title,abstract), .keep = "used") %>%
+  select(-c(title,abstract)) %>% 
+  unnest_tokens(word, comb.var)
+```
+Remove stop words from the created tidy.data_unnest dataset.
+```{r}
+tidy.data <- tidy.data_unnest %>% 
+  anti_join(stop_words, by = "word")
+```
+View popular words and remove "too popular" words.
+```{r}
+tidy.data %>%
+  count(word, sort = TRUE) %>% 
+  filter(n>1000)
+top.pop.words <- tidy.data %>%
+  count(word, sort = TRUE) %>% 
+  filter(n>1500) %>% 
+  pull(word)
+tidy.data <- tidy.data %>% 
+  filter(!word%in%top.pop.words)
+```
+Create dfm and sparse matrix.
+```{r}
+oegm_dfm <- tidy.data %>%
+  count(dataid, word, sort = TRUE) %>%
+  cast_dfm(dataid, word, n)
+oegm_sparse <- tidy.data %>%
+  count(dataid, word, sort = TRUE) %>%
+  cast_sparse(dataid, word, n)
+```
+Topic modeling function.
+```{r}
+my_topic_function <- function(.data,n.topic){
+# Run topic model.
+topic_model <- stm(.data, K = n.topic, 
+                   verbose = FALSE, init.type = "Spectral")
+# Tidy the results and save as td_beta.
+td_beta <- tidy(topic_model)
+# Tidy the results using gamma and save as td_gamma.
+td_gamma<-tidy(topic_model, matrix = "gamma",document_names = rownames(.data))
+# Select the max gamma for each article.
+td_max_gamma<-td_gamma %>% group_by(document) %>% slice(which.max(gamma)) 
+# Change the variable name "document" into "dataid".
+names(td_max_gamma)[names(td_max_gamma) == "document"] <- "dataid"
+# Change dataid into numeric value.
+td_max_gamma$dataid<-as.numeric(td_max_gamma$dataid)
+# Join td_max_gamma with the original dataset to get batch and other information.
+newdata<-merge(x= batch10, y = td_max_gamma, by = "dataid", all.x = TRUE) 
+# Group by batch and topic and calculate mean gamma for each combination of batch and topic. Also count the total number of articles.
+# Calculate the proportion of articles in each topic within each batch.
+newdata1<-newdata%>%
+  group_by(batch,topic)%>%summarise(gamma=mean(gamma),n=n())%>%group_by(batch)%>%mutate(prop=n/sum(n))
+# Create bar graph using newdata1 dataset.
+topicplot.n<-ggplot(newdata1, aes(fill=batch, y=prop, x=topic)) + 
+    geom_bar(position="stack", stat="identity")
+# Find top terms.
+top_terms <- td_beta %>%
+    arrange(beta) %>%
+    group_by(topic) %>%
+    top_n(7, beta) %>%
+    arrange(-beta) %>%
+    select(topic, term) %>%
+    summarise(terms = list(term)) %>%
+    mutate(terms = map(terms, paste, collapse = ", ")) %>%
+    unnest(cols = c(terms))
+# Arrange topics by gamma.
+  gamma_terms <- td_gamma %>%
+    group_by(topic) %>%
+    summarise(gamma = mean(gamma)) %>%
+    arrange(desc(gamma)) %>%
+    left_join(top_terms, by = "topic") %>%
+    mutate(topic = paste0("Topic ", topic),
+           topic = reorder(topic, gamma))
+# Generate the table which includes topic, expected topic proportion, and top 7 terms.
+  top_7_terms<-gamma_terms %>%
+  select(topic, gamma, terms) %>%
+  kable(digits = 3, 
+        col.names = c("Topic", "Expected topic proportion", "Top 7 terms"))
+# Save the topicplot.n and top_7_terms into a list.
+  result_list<-list(topicplot.n,top_7_terms)
+# Return the result_list.
+return(result_list)
+}
+```
+Example with 3 topics. The number needs to be changed to the topics needed for each run. Run the topic model using the created function and assign to results. Display the results.
+```{r}
+results<-my_topic_function(oegm_dfm,3)
+results
+```
+Save the first element in the results (the graph) into corresponding topic plot.
+```{r}
+topicplot3<-results[[1]]
+topicplot3
+```
+Display the second element in the results (the top terms).
+```{r}
+results[[2]]
+```
+Display the topic plots.
+```{r}
+grid.arrange(topicplot3,topicplot4,topicplot5,topicplot6,topicplot7,topicplot8,nrow=3,ncol=2)
+```
+
+
+
+
+
+
+
