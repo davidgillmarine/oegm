@@ -4,6 +4,9 @@ author: "David A. Gill & Dana I. Grieco"
 date: "3/17/2021"
 output: html_document
 ---
+# Note for Others:
+If you use this script, please acknowledge David A. Gill, Samantha H. Cheng, and Dana I. Grieco in your paper. Thank you!
+
 
 # Setup
 Loads libraries, reads in data, cleans datasets
