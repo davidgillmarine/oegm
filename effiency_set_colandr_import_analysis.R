@@ -15,7 +15,7 @@ set1a <- colandr_get(2700,"david.gill@duke.edu")
 table(set1a$data_source_id)
 source.1a <- c(1240,1241)
 test <- set1a %>% 
-  filter(data_source_id%in%source.1) %>% 
+  filter(data_source_id%in%source.1a) %>% 
   select(tags,citation_status,`date_screened_t&a`) %>% 
   mutate(screen.error = ifelse(tags=="{INCLUDED}" & citation_status=="excluded"|tags=="{}" & citation_status=="included",1,0))
 table(test$tags,test$citation_status)
@@ -45,7 +45,7 @@ set2a <- colandr_get(2703,"david.gill@duke.edu")
 table(set2a$data_source_id)
 source.2a <- c(1226,1227)
 test <- set2a %>% 
-  filter(data_source_id%in%source.2) %>% 
+  filter(data_source_id%in%source.2a) %>% 
   select(tags,citation_status,`date_screened_t&a`) %>% 
   mutate(screen.error = ifelse(tags=="{INCLUDED}" & citation_status=="excluded"|tags=="{}" & citation_status=="included",1,0))
 table(test$tags,test$citation_status)
@@ -76,7 +76,7 @@ set3a <- colandr_get(2706,"david.gill@duke.edu") # not finished (Colandr ate 19 
 table(set3a$data_source_id)
 source.3a <- c(1245,1247)
 test <- set3a %>% 
-  filter(data_source_id%in%source.3) %>% 
+  filter(data_source_id%in%source.3a) %>% 
   select(tags,citation_status,`date_screened_t&a`) %>% 
   mutate(screen.error = ifelse(tags=="{INCLUDED}" & citation_status=="excluded"|tags=="{}" & citation_status=="included",1,0))
 table(test$tags,test$citation_status)
@@ -109,13 +109,14 @@ set4a <- colandr_get(2709,"david.gill@duke.edu")
 table(set4a$data_source_id)
 source.4a <- c(1243,1244)
 test <- set4a %>% 
-  filter(data_source_id%in%source.4) %>% 
+  filter(data_source_id%in%source.4a) %>% 
   select(tags,citation_status,`date_screened_t&a`) %>% 
   mutate(screen.error = ifelse(tags=="{INCLUDED}" & citation_status=="excluded"|tags=="{}" & citation_status=="included",1,0))
 table(test$tags,test$citation_status)
 filter(test,screen.error==1)
 
 set4b <- colandr_get(2710,"david.gill@duke.edu")
+table(set4b$data_source_id)
 test <- set4b %>% 
   select(tags,citation_status,`date_screened_t&a`) %>% 
   mutate(screen.error = ifelse(tags=="{INCLUDED}" & citation_status=="excluded"|tags=="{}" & citation_status=="included",1,0))
@@ -138,7 +139,7 @@ set5a <- colandr_get(2712,"david.gill@duke.edu")
 table(set5a$data_source_id)
 source.5a <- c(1282,1283)
 test <- set5a %>%
-  filter(data_source_id%in%source.5) %>%
+  filter(data_source_id%in%source.5a) %>%
   select(tags,citation_status,`date_screened_t&a`) %>%
   mutate(screen.error = ifelse(tags=="{INCLUDED}" & citation_status=="excluded"|tags=="{}" & citation_status=="included",1,0))
 table(test$tags,test$citation_status)
