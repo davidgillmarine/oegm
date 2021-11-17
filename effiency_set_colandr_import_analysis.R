@@ -367,7 +367,7 @@ dat4c <-dat.c
 dat4d <-dat.d
 dat4 <-dat.out
 dat4.rand <-dat.rand.avg
-table(dat2$samp)
+table(dat4$samp)
 
 # --- Plot results ----
 
@@ -396,7 +396,7 @@ dat5c <-dat.c
 dat5d <-dat.d
 dat5 <-dat.out
 dat5.rand <-dat.rand.avg
-table(dat2$samp)
+table(dat5$samp)
 
 # --- Plot results ----
 
@@ -411,27 +411,111 @@ p.set5 <- ggplot(dat5.rand, aes(x=avg.incl,y=tot.incl,col=samp)) +
 
 p.set5.bar <- ggplot(filter(dat5,incl==1),aes(x=tot.incl,y=tot.screened,fill=samp)) +
   geom_bar(stat="identity",position = 'dodge') +
+  labs(x="total included", y="total screened", title="Set 5")+
   theme_classic()
 plot_grid(p.set5,p.set5.bar, nrow = 2)
 
-plot_grid(p.set1,p.set2,p.set3,p.set4,
+plot_grid(p.set1,p.set2,p.set3,p.set4,p.set5,
           nrow = 2)
-ggsave(paste0(plotdir,'_inclusion_rate.png'),width = 15,height = 10)
+ggsave(paste0(plotdir,'_inclusion_rate.png'),width = 15,height = 6)
 
 plot_grid(p.set1.bar + theme(legend.position = "none"),p.set2.bar + theme(legend.position = "none"),
           p.set3.bar  + theme(legend.position = "none") ,p.set4.bar+ theme(legend.position = "none"),
+          p.set5.bar+ theme(legend.position = "none"),
           nrow = 2)
-ggsave(paste0(plotdir,'_inclusion_rate_bar.png'),width = 7,height = 5)
+ggsave(paste0(plotdir,'_inclusion_rate_bar.png'),width = 10,height = 5)
 
-# Set 5
-func_org.dat(set5a,set5b,set5c,set5d,source.5a,source.5d)
-dat5a <-dat.a
-dat5b <-dat.b
-dat5c <-dat.c
-dat5d <-dat.d
-dat5 <-dat.out
-dat5.rand <-dat.rand.avg
-table(dat2$samp)
+
+# Set 6
+set6a <-  set6a %>% 
+  filter(data_source_id%in%source.6a) %>% 
+  arrange(`date_screened_t&a`) %>% 
+  select(citation_status) %>% 
+  mutate(samp="active learning_10pct",
+         tot.screened=seq(1,nrow(.),1),
+         incl=as.integer(citation_status=="included"),
+         tot.incl=cumsum(incl)) %>% 
+  select(-citation_status)
+
+set6b <-  set6b %>% 
+  arrange(`date_screened_t&a`) %>% 
+  select(citation_status) %>% 
+  mutate(samp="active learning",
+         tot.screened=seq(1,nrow(.),1),
+         incl=as.integer(citation_status=="included"),
+         tot.incl=cumsum(incl)) %>% 
+  select(-citation_status)
+
+set6c <-rbind(dat1c,dat2c,dat3c,dat4c,dat5c) %>% 
+  mutate(tot.screened=seq(1,nrow(.),1),
+         tot.incl=cumsum(incl))
+summary(set6c)
+
+set6d <-  set6d %>% 
+  filter(data_source_id%in%source.6d) %>% 
+  group_by(id,citation_status) %>%            # group by id (double screened)
+  summarise(`date_screened_t&a`=last(`date_screened_t&a`)) %>% 
+  arrange(`date_screened_t&a`) %>% 
+  ungroup() %>% 
+  select(citation_status) %>% 
+  mutate(samp='active learning_10pct_incl_only',
+         tot.screened=seq(1,nrow(.),1),
+         incl=as.integer(citation_status=="included"),
+         tot.incl=cumsum(incl)) %>% 
+  select(-citation_status) 
+
+dat6 <- rbind(set6a,set6b,set6c,set6d)
+
+
+# ---- randomization ----
+# for loop to randomize inclusion
+dat.rand.org <- set6c %>%  
+  mutate(samp=1)
+dat6.rand <- data.frame()
+for (i in 1:10){
+  dat.rand1 <- dat.rand.org %>%
+    mutate(samp=i,
+           incl=sample(incl),
+           tot.incl=cumsum(incl))
+  dat6.rand <- rbind(dat6.rand,dat.rand1)
+}
+
+dat.rand.avg <- dat6.rand %>% 
+  filter(incl==1) %>% 
+  group_by(tot.incl) %>% 
+  summarise(avg.incl=mean(tot.screened),se.incl=sd(tot.screened)/sqrt(n()), ci.lower=avg.incl-(1.96*se.incl),ci.upper=avg.incl+se.incl) %>% 
+  mutate(samp="random")
+View(dat.rand.avg)
+
+dat6.rand <-dat.rand.avg
+
+
+# --- Plot results ----
+
+p.set6 <- ggplot(dat6.rand, aes(x=avg.incl,y=tot.incl,col=samp)) +
+  geom_line() +
+  geom_line(aes(x=ci.lower,y=tot.incl,col=samp), linetype = 2) +
+  geom_line(aes(x=ci.upper,y=tot.incl,col=samp), linetype = 2) +
+  # geom_smooth(aes(xmin = ci.lower, xmax = ci.upper),stat = "identity") + 
+  theme_classic() +
+  geom_line(data=dat6, aes(x=tot.screened,y=tot.incl,col=samp)) +
+  labs(x="total screened", y="total included", title="Set 6")
+
+p.set6.bar <- ggplot(filter(dat6,incl==1),aes(x=tot.incl,y=tot.screened,fill=samp)) +
+  geom_bar(stat="identity",position = 'dodge') +
+  labs(x="total included", y="total screened", title="Set 6")+
+  theme_classic()
+plot_grid(p.set6,p.set6.bar, nrow = 2)
+
+plot_grid(p.set1,p.set2,p.set3,p.set4,p.set5,p.set6,
+          nrow = 2)
+ggsave(paste0(plotdir,'_inclusion_rate.png'),width = 15,height = 6)
+
+plot_grid(p.set1.bar + theme(legend.position = "none"),p.set2.bar + theme(legend.position = "none"),
+          p.set3.bar  + theme(legend.position = "none") ,p.set4.bar+ theme(legend.position = "none"),
+          p.set5.bar+ theme(legend.position = "none"),p.set6.bar,
+          nrow = 2)
+ggsave(paste0(plotdir,'_inclusion_rate_bar.png'),width = 10,height = 5)
 
 
 
