@@ -1,0 +1,142 @@
+---
+title: "OEGM script"
+author: "David Gill & Dana Grieco"
+date: "7/21/2020"
+output: html_document
+---
+
+# Setup
+Loads libraries, reads in data, cleans dataset
+```{r eval=T}
+
+workdir <- "R:/Gill/research/oegm/"
+inputdir <- paste0(workdir,"tables/raw/")
+mapdir <-  paste0(workdir,"spatial/raw/")
+plotdir <- paste0(workdir,"output/plots/restoration")
+tabledir <- paste0(workdir,"output/tables/restoration")
+
+pacman::p_load(rio,rgeos,treemap,gtools,cowplot,rnaturalearth,rnaturalearthdata,tidyverse)
+today.date <- gsub("-","",Sys.Date())
+
+
+#--- Organize data ----
+#read in data, skip first 2 rows
+# all.data<-import(paste0(inputdir,"restoration_data.xlsx"), skip =2, .name_repair = "universal") %>% 
+#   mutate(Date=as.character(Date))
+
+#Country data
+all.ctry <- import(paste0(inputdir,"allcountries.csv"))
+study.ctry <- import(paste0(inputdir,"restoration/our_countries.csv"),check.names=T) %>%  
+  rename(aid=Article.ID, study.ctry=Study.Country, author.ctry=All.Author.Countries)
+
+#WoS results
+comb.search <- import(paste0(inputdir,"/restoration/wos_results/combined_search.csv")) %>% 
+  mutate(Pubs=as.integer(gsub(",","",Pubs)),
+         typ="combined")
+es.search <- import(paste0(inputdir,"/restoration/wos_results/ecoservice_search.csv"))%>% 
+  mutate(Pubs=as.integer(gsub(",","",Pubs)),
+         typ="ecosystem services")
+rest.search <- import(paste0(inputdir,"/restoration/wos_results/restoration_search.csv"))%>% 
+  mutate(Pubs=as.integer(gsub(",","",Pubs)),
+         typ="restoration")
+
+
+```
+
+#---- World map for study countries ----
+
+```{r eval=T}
+
+#---- World map for study countries ----
+unique(study.ctry$study.ctry)
+
+# fix data in country column
+ctry <- study.ctry %>% 
+  mutate(study.ctry=gsub("Virgin Islands","U.S. Virgin Islands",study.ctry)) %>% 
+  select(aid,study.ctry)
+
+unique(ctry$study.ctry)
+
+# get no. articles per country (and percentage) to create vector of column names for each country by counting the number of ";" 
+max.ctry <- paste0("ctry",rep(1:max(str_count(ctry$study.ctry, ";")+1))) 
+num.studies <- length(unique(ctry$aid))
+
+ctry_sum <-ctry %>% 
+  separate(study.ctry,max.ctry, sep="; ",fill="right") %>% # fill=right fills blanks with NAs
+  gather("X","Country", max.ctry) %>% 
+  filter(!is.na(Country)) %>% 
+  select(-X) %>% 
+  group_by(Country) %>% 
+  count() %>% 
+  mutate(pct=n/num.studies)
+
+arrange(ctry_sum,desc(n))
+
+# Countries that need to be fixed
+ctry_sum$Country[!ctry_sum$Country%in%all.ctry$Country]
+
+# join to full country list
+ctry_sum1 <- all.ctry %>% 
+  left_join(ctry_sum,by="Country") %>%
+  mutate(n=na.replace(n,0),
+         n=as.integer(n)) 
+
+ctry_sum$Country[!ctry_sum$Country%in%ctry_sum1$Country] # any missing?
+
+# read in map
+map <- rgdal::readOGR(paste0(mapdir,"TM_WORLD_BORDERS-0.3/TM_WORLD_BORDERS-0.3.shp"))
+  # map <- sf::st_read(paste0(mapdir,"TM_WORLD_BORDERS-0.3/TM_WORLD_BORDERS-0.3.shp")) 
+map <-broom::tidy(map,region="ISO3")
+  # map <- fortify(map, region="ISO3")
+
+#plot study map
+(study_ctry_map <- ggplot() +
+    geom_map(data=ctry_sum1, aes(map_id=code, fill=n),map=map) +
+    expand_limits(x=map$long,y=map$lat) +
+    theme(panel.background = element_rect(fill = "#CCCCCC", colour = "#CCCCCC"), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    scale_fill_gradient2(low="white",mid="#2171b5",high="#08519c",
+                         midpoint=max(ctry_sum1$n)/2,limits=c(0,max(ctry_sum1$n)))+
+    labs(title="Study countries"))
+ggsave(paste0(plotdir,today.date,'_study_country_map.png'),width = 10,height = 5)
+
+```
+
+
+# WoS search results over time
+```{r eval=T}
+all.search <- comb.search %>% 
+  bind_rows(es.search,rest.search) %>% 
+  group_by(typ) %>% 
+  arrange(typ,Yr) %>% 
+  mutate(cum.pubs=cumsum(Pubs))
+
+
+all.search %>% 
+  select(-cum.pubs) %>% 
+  spread(typ,Pubs) %>% 
+  view()
+summary(all.search)
+
+(p.wos.search.cum <- ggplot(filter(all.search,Yr>=1990 & Yr<2021))  + 
+    geom_line(aes(x = Yr, y = cum.pubs, group = typ, colour = typ), size = 1.3)  +
+    ylab("Cumulative frequency") +
+   ggtitle('WoS search results over time')+
+  theme_classic())
+
+
+(p.wos.search <- ggplot(filter(all.search,Yr>=1990 & Yr<2021))  + 
+    geom_bar(stat = "identity", aes(x = Yr, y = Pubs, fill = typ), size = 1.3, position=position_dodge())  +
+    ylab("Number of studies") +
+    ggtitle('WoS search results over time')+
+  theme_classic()) 
+plot_grid(p.wos.search.cum,p.wos.search)
+ggsave(paste0(plotdir,today.date,'_studies_over_time.png'),width = 12,height = 5)
+
+
+```
+
+# Histograms
+```{r eval=T}
+
+
+```
