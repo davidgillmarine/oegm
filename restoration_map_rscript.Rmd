@@ -9,13 +9,15 @@ output: html_document
 You're now connected to Git through your Mac!
 If things aren't working properly - make sure that you're connected to and can access the R drive. Then, make sure that you're in the "oegm" project (top right). 
 
-As you work on this "restoration_map_rscript.Rmd" - save like you normally do, with the save symbol (top left). Then, make sure you're in the "Git" window (upper right). Check the Staged box to the left of this "restoration_map_rscript.Rmd" file name. Then, select "Commit." In the pop-up, type a message in "Commit message" (whatever note would be helpful to describe what you just changed in the script), then, click "commit." This will save your changes locally
+As you work on this "restoration_map_rscript.Rmd" - save like you normally do, with the save symbol (top left).
+
+Then, make sure you're in the "Git" window (upper right). Check the Staged box to the left of this "restoration_map_rscript.Rmd" file name. Then, select "Commit." In the pop-up, type a message in "Commit message" (whatever note would be helpful to describe what you just changed in the script), then, click "commit." This will save your changes locally
 
 Every now and then, make sure to click the green "push" button to send your locally saved changes to the Git cloud. Any time that you're "done" with the code (e.g. after working on it for 30 min), remember to Push the code.
 
 Each time you open the code, click the blue "pull" arrow, to make sure that you update other edits from the cloud, and that you are working with the latest version of the code (e.g. if David or I changed it in the interim).
 
-
+Note to self-- oegm saves locally on MER computer to Users/morganrudd
 
 
 # Setup
