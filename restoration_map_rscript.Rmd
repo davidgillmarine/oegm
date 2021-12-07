@@ -1,6 +1,6 @@
 ---
 title: "OEGM script, adapted for the Restoration project"
-author: "David Gill & Dana Grieco"
+author: "Morgan Rudd. Based off version by David Gill & Dana Grieco"
 date: "12/7/2021"
 output: html_document
 ---
@@ -15,7 +15,7 @@ mapdir <-  paste0(workdir,"spatial/raw/")
 plotdir <- paste0(workdir,"output/restoration/")
 tabledir <- paste0(workdir,"output/restoration/")
 
-pacman::p_load(rio,rgeos,treemap,gtools,cowplot,rnaturalearth,rnaturalearthdata,tidyverse)
+pacman::p_load(rio,rgeos,treemap,gtools,cowplot,rnaturalearth,rnaturalearthdata,tidyverse, ggplot2)
 today.date <- gsub("-","",Sys.Date())
 
 
@@ -39,6 +39,22 @@ es.search <- import(paste0(inputdir,"/restoration/wos_results/ecoservice_search.
 rest.search <- import(paste0(inputdir,"/restoration/wos_results/restoration_search.csv"))%>% 
   mutate(Pubs=as.integer(gsub(",","",Pubs)),
          typ="restoration")
+```
+
+#--- Morgan: Import the Extracted Data ----
+```{r eval=T}
+
+workdir <- "/Users/morganrudd/Dropbox/Rudd et al 2020"
+data <- read_csv("Data/extracted_data.csv")
+```
+
+## Morgan: Organize the Extracted Data
+```{r}
+#This code selects the columns we want from data, then renames those columns we want to keep, then removes the last row of data because it's empty
+new1 <- data%>%
+  select("Article ID", "Publication Type", "Year", "Title", "Habitat", "Study Design", "Description of restoration", "ES Description", "ES Service", "Collection Method", "Economic Value?", "Value Description", "ES Data Measurement Type", "Age(yrs)", "Area(ha)")%>%
+  rename(AID = "Article ID", Pub = "Publication Type", Yr = "Year", Ti = "Title", Hab = "Habitat", Design = "Study Design", Rest = "Description of restoration", ES_Desc = "ES Description", Service = "ES Service", Collect = "Collection Method", EcVal = "Economic Value?", EcVal_Desc = "Value Description", MeasTyp = "ES Data Measurement Type", Age = "Age(yrs)", Area = "Area(ha)")
+
 
 
 ```
