@@ -12,8 +12,8 @@ Loads libraries, reads in data, cleans dataset
 workdir <- "R:/Gill/research/oegm/"
 inputdir <- paste0(workdir,"tables/raw/")
 mapdir <-  paste0(workdir,"spatial/raw/")
-plotdir <- paste0(workdir,"output/plots/restoration/")
-tabledir <- paste0(workdir,"output/tables/restoration/")
+plotdir <- paste0(workdir,"output/restoration/")
+tabledir <- paste0(workdir,"output/restoration/")
 
 pacman::p_load(rio,rgeos,treemap,gtools,cowplot,rnaturalearth,rnaturalearthdata,tidyverse)
 today.date <- gsub("-","",Sys.Date())
