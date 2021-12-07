@@ -9,8 +9,10 @@ output: html_document
 You're now connected to Git through your Mac!
 If things aren't working properly - make sure that you're connected to and can access the R drive. Then, make sure that you're in the "oegm" project (top right). 
 
-As you work on this "restoration_map_rscript.Rmd" - save like you normally do, with the save symbol (top left). Then, make sure you're in the "Git" window (upper right). Check the Stage box to the left of this "restoration_map_rscript.Rmd" file name. Then, select "Commit." In the pop-up, type a message in "Commit message" (whatever note would be helpful to describe what you just changed in the script), then, click "commit." This will save your changes locally
+As you work on this "restoration_map_rscript.Rmd" - save like you normally do, with the save symbol (top left). Then, make sure you're in the "Git" window (upper right). Check the Staged box to the left of this "restoration_map_rscript.Rmd" file name. Then, select "Commit." In the pop-up, type a message in "Commit message" (whatever note would be helpful to describe what you just changed in the script), then, click "commit." This will save your changes locally
+
 Every now and then, make sure to click the green "push" button to send your locally saved changes to the Git cloud. Any time that you're "done" with the code (e.g. after working on it for 30 min), remember to Push the code.
+
 Each time you open the code, click the blue "pull" arrow, to make sure that you update other edits from the cloud, and that you are working with the latest version of the code (e.g. if David or I changed it in the interim).
 
 
@@ -20,13 +22,15 @@ Each time you open the code, click the blue "pull" arrow, to make sure that you 
 Loads libraries, reads in data, cleans dataset
 ```{r eval=T}
 
-workdir <- "R:/Gill/research/oegm/"
+workdir <- "/Volumes/Research/Gill/research/oegm/" #MER
+# workdir <- "R:/Gill/research/oegm/" #DIG and DAG
+
 inputdir <- paste0(workdir,"tables/raw/")
 mapdir <-  paste0(workdir,"spatial/raw/")
 plotdir <- paste0(workdir,"output/restoration/")
 tabledir <- paste0(workdir,"output/restoration/")
 
-pacman::p_load(rio,rgeos,treemap,gtools,cowplot,rnaturalearth,rnaturalearthdata,tidyverse, ggplot2)
+pacman::p_load(rio,rgeos,treemap,gtools,cowplot,rnaturalearth,rnaturalearthdata,tidyverse, ggplot2, maptools)
 today.date <- gsub("-","",Sys.Date())
 
 
@@ -50,19 +54,22 @@ es.search <- import(paste0(inputdir,"/restoration/wos_results/ecoservice_search.
 rest.search <- import(paste0(inputdir,"/restoration/wos_results/restoration_search.csv"))%>% 
   mutate(Pubs=as.integer(gsub(",","",Pubs)),
          typ="restoration")
+
+#Extracted Data
+e.data <- import(paste0(inputdir,"/restoration/extracted_data.csv"))
 ```
 
 #--- Morgan: Import the Extracted Data ----
 ```{r eval=T}
 
-workdir <- "/Users/morganrudd/Dropbox/Rudd et al 2020"
-data <- read_csv("Data/extracted_data.csv")
+# workdir <- "/Users/morganrudd/Dropbox/Rudd et al 2020"
+# data <- read_csv("Data/extracted_data.csv")
 ```
 
 ## Morgan: Organize the Extracted Data
 ```{r}
 #This code selects the columns we want from data, then renames those columns we want to keep, then removes the last row of data because it's empty
-new1 <- data%>%
+new1 <- e.data%>%
   select("Article ID", "Publication Type", "Year", "Title", "Habitat", "Study Design", "Description of restoration", "ES Description", "ES Service", "Collection Method", "Economic Value?", "Value Description", "ES Data Measurement Type", "Age(yrs)", "Area(ha)")%>%
   rename(AID = "Article ID", Pub = "Publication Type", Yr = "Year", Ti = "Title", Hab = "Habitat", Design = "Study Design", Rest = "Description of restoration", ES_Desc = "ES Description", Service = "ES Service", Collect = "Collection Method", EcVal = "Economic Value?", EcVal_Desc = "Value Description", MeasTyp = "ES Data Measurement Type", Age = "Age(yrs)", Area = "Area(ha)")
 
@@ -162,11 +169,10 @@ ggsave(paste0(plotdir,today.date,'_studies_over_time.png'),width = 12,height = 5
 
 ```
 
-# Histograms
-```{r eval=T}
 
 
-```
+
+
 ## Morgan's text the rest of the way down!!!
 
 ## Publications Over Time (Histogram)
@@ -181,6 +187,7 @@ pub_yr%>%
   count(Hab)
 
 #Create Histogram to show # of publications over time
+# ONLY ERROR HERE: 
 ggplot(pub_yr, aes(x=Yr, fill = Hab)) + geom_histogram(binwidth = 1, col = "white") + labs(x = "Year", y = "No. Publications") + theme_classic() + theme(axis.text.x = element_text(angle = 45)) + scale_x_discrete(limits=c(2004:2020)) + scale_y_discrete(expand = c(0,0), limits=c(0:10), breaks=seq(0, 10, by = 2)) + guides(fill = guide_legend(title = "Habitat"))
 
 #Save the Histogram
