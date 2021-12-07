@@ -156,3 +156,136 @@ ggsave(paste0(plotdir,today.date,'_studies_over_time.png'),width = 12,height = 5
 
 
 ```
+## Morgan's text the rest of the way down!!!
+
+## Publications Over Time (Histogram)
+##-- should this perhaps be a barplot instead?
+```{r}
+#This code selects for the article ID and publication year, then identifies distinct rows (i.e. only allowing the AID to show up once)
+pub_yr <- new1%>%
+  select(AID, Yr, Hab)%>%
+  distinct()
+
+pub_yr%>%
+  count(Hab)
+
+#Create Histogram to show # of publications over time
+ggplot(pub_yr, aes(x=Yr, fill = Hab)) + geom_histogram(binwidth = 1, col = "white") + labs(x = "Year", y = "No. Publications") + theme_classic() + theme(axis.text.x = element_text(angle = 45)) + scale_x_discrete(limits=c(2004:2020)) + scale_y_discrete(expand = c(0,0), limits=c(0:10), breaks=seq(0, 10, by = 2)) + guides(fill = guide_legend(title = "Habitat"))
+
+#Save the Histogram
+#Q-- How can I code to save my histogram to my outputs folder?
+#Q-- How can I change the x axis to show data from 2000-2020 (even though my data only starts at 2004)?
+```
+
+## Look @ Journal Type
+```{r}
+#This code selects for the article ID and publication type, then identifies distinct rows (i.e. only allowing the AID to show up once)
+pub_type <- new1%>%
+  select(AID, Pub)%>%
+  distinct()
+
+#Identify number of pubs that are Pay Journals, Open Access, or NA
+pub_type%>%
+  count(Pub)
+
+  #There are 12 articles in Open Access Journals, 45 articles in Pay Journals, and 1 NA
+```
+
+## Look @ Habitat Type
+```{r}
+#This code selects for the article ID and habitat type, then identifies distinct rows (i.e. only allowing the AID to show up once)
+hab_type <- new1%>%
+  select(AID, Hab)%>%
+  distinct()
+
+#Identify number of each habitat
+hab_type%>%
+  count(Hab)
+
+  #There is 1 coral study, 56 mangrove studies, and 1 seagrass study
+```
+
+## Look at Economic Valuation
+```{r}
+#This code selects for the article ID, ecosystem service, and economic valuation
+  #Distinct rows aren't needed for this dataframe because each economic valuation is tied to a unique outcome
+ec_val <- new1%>%
+  select(AID, Service, EcVal)
+
+#Identify number of each habitat
+ec_val%>%
+  count(EcVal)
+
+  #Of the 134 distinct ecosystem services reported, only 18 had associated economic values
+
+#Identify which ecosystem services had economic values reported
+ec_val2 <- filter(ec_val, EcVal == "Y")
+```
+
+# Look @ Ecosystem Services (SubCategories)
+```{r}
+#This code selects for the article ID and ecosystem service
+ #Distinct rows aren't needed for this dataframe because each ecosystem service is unique
+es <- new1%>%
+  select(AID, Service)
+
+es%>%
+  count(Service)
+
+#Create barplot to show Ecosystem Services
+ggplot(es, aes(x = fct_rev(fct_infreq(Service)))) + geom_bar() + labs(x = "Ecosystem Service", y = "Count") + theme_classic() + theme(axis.line = element_line(color='black')) + scale_y_discrete(expand = c(0,0), limits=c(0:35), breaks=seq(0, 35, by = 2)) + coord_flip()
+
+##Need to depict which are provisioning, regulating, and cultural services by color
+```
+
+#Age of Restoration Projects (Histogram)
+```{r}
+#This code selects for the article ID and Age of restoration, then identifies distinct rows (i.e. only allowing the AID to show up once)
+age <- new1%>%
+  select(AID, Age)%>%
+  distinct()
+
+age%>%
+  count(Age)
+
+#Create Histogram to show Ages of all restoration projects
+ggplot(age, aes(x=Age)) + geom_histogram(binwidth = 5) + labs(x = "Age of Restoration (Yrs)", y = "Count") + theme_classic()
+
+#Q-- Should I be "binning" my ages first (e.g. 0-5 yrs, 6-10 yrs, 11-15 yrs...)?
+      #Q-- If that's what "binwidth" is doing, how to I make that clear in my x-axis?
+#Q-- How can I separate the bars?
+
+#Save the Histogram
+
+```
+
+#Size of Restoration Projects (Histogram)
+```{r}
+#This code selects for the article ID and Size of restoration project, then identifies distinct rows (i.e. only allowing the AID to show up once)
+size <- new1%>%
+  select(AID, Area)%>%
+  distinct()
+
+size%>%
+  count(Area)
+
+#Create Histogram to show Areas of all restoration projects
+ggplot(size, aes(x=Area)) + geom_histogram() + labs(x = "Area Restored (ha)", y = "Count") + theme_classic()
+
+#There has got to be a better way to show this... 
+```
+
+# Look @ Measurement Type
+```{r}
+meastyp <- new1%>%
+  select(AID, MeasTyp)%>%
+  distinct()
+
+meastyp%>%
+  count(MeasTyp)
+```
+
+
+#Q-- How can I separate out study design when there are multiple in a cell separated by ;
+#Q-- What is the best way to approach the Age column? (Carter suggested editing the Excel file)
+#Q-- What is the best way to approach the Spatial extent column?
