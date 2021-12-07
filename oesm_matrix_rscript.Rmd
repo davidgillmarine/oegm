@@ -972,7 +972,49 @@ Eco_Soc_ES_Out <- data_all %>%
 # View(select(Eco_Soc_ES_Out,Outcome_cat,eco.aid:interdisc.aid)) # spot check
 write.csv(Eco_Soc_ES_Out,paste0(tabledir,today.date,"_Eco_and_Soc_and_ES_Outcomes.csv"))
 
+
+
 ```
+## Bass Screening Round 2: For Ease
+1. Filter OUT Interdisc outcome papers
+2. Remove obvious fisheries papers
+3. Remove (by me, by highlights in the file) any fisheries papers
+
+```{r eval=T}
+
+
+# 1. Filter OUT Interdisc outcome papers
+  # Non_Interdisc Outcomes and export csv
+Non_Interdisc_Out <- data_all %>%
+  filter(interdisc.aid == 0)
+# View(select(Non_Interdisc_Out,Outcome_cat,eco.aid:interdisc.aid)) # spot check
+write.csv(Non_Interdisc_Out,paste0(tabledir,today.date,"_Non_Interdisc_Outcomes.csv"))
+
+# 2. Remove obvious fisheries papers
+
+unique(data_all$Intervention.subcategory)
+fish.interventions <- c("2b. Fisheries management")
+
+data_all <- data_all %>%
+  # select(aid, Outcome_cat) %>%
+  mutate(fish.int=ifelse(Intervention.subcategory%in%fish.interventions,1,0)) %>% 
+  group_by(aid) %>% 
+  mutate(fish.aid=max(fish.int),
+         fish.interdisc.aid=ifelse(fish.aid==1 | interdisc.aid==1,1,0)) 
+
+# Which studies have both Fisheries Management interventions?
+n_distinct(data_all$aid[data_all$fish.interdisc.aid == 1])
+
+  # no 2b. Fisheries management interventions and Non_Interdisc Outcomes with and export csv
+No_Fish_Int_Non_Interdisc_Out <- data_all %>%
+  filter(fish.interdisc.aid == 0)
+# View(select(Non_Interdisc_Out,Outcome_cat,eco.aid:interdisc.aid)) # spot check
+write.csv(No_Fish_Int_Non_Interdisc_Out,paste0(tabledir,today.date,"_Non_Fish_Int_Non_Interdisc_Outcomes.csv"))
+
+
+
+```
+
 
 ## Interdisciplinary outcome comparison heat maps
 ```{r eval=T}
