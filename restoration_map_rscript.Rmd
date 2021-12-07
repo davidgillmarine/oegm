@@ -42,7 +42,7 @@ today.date <- gsub("-","",Sys.Date())
 #   mutate(Date=as.character(Date))
 
 #Country data
-all.ctry <- import(paste0(inputdir,"allcountries.csv"))
+all.ctry <- import(paste0(inputdir,"restoration/all_countries.csv"))
 study.ctry <- import(paste0(inputdir,"restoration/our_countries.csv"),check.names=T) %>%  
   rename(aid=Article.ID, study.ctry=Study.Country, author.ctry=All.Author.Countries)
 
@@ -62,6 +62,7 @@ e.data <- import(paste0(inputdir,"/restoration/extracted_data.csv"))
 ```
 
 #--- Morgan: Import the Extracted Data ----
+#No longer need this part of code...
 ```{r eval=T}
 
 # workdir <- "/Users/morganrudd/Dropbox/Rudd et al 2020"
