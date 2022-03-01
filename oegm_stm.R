@@ -1,4 +1,4 @@
-pacman::p_load(quanteda,stm,revtools,rio,tidytext,tidyverse)
+pacman::p_load(quanteda,stm,revtools,rio,tidytext,ggthemes,knitr,tidyverse)
 workdir <- "R:/Gill/research/oegm/"
 #workdir <- gsub("git","data",getwd())
 inputdir <- paste0(workdir,"tables/raw/overlap/")
@@ -67,7 +67,7 @@ my_topic_function <- function(.data,n.topic){
 # run topic model
 topic_model <- stm(.data, K = n.topic, 
                    verbose = FALSE, init.type = "Spectral")
-td_beta <- tidy(topic_model)
+td_beta <<- tidy(topic_model)
 td_gamma<<-tidy(topic_model, matrix = "gamma",document_names = rownames(.data))
 td_max_gamma<<-td_gamma %>% group_by(document) %>% slice(which.max(gamma)) # select paper with max gamma
 names(td_max_gamma)[names(td_max_gamma) == "document"] <- "dataid"
@@ -75,16 +75,59 @@ td_max_gamma$dataid<-as.numeric(td_max_gamma$dataid)
 newdata<<-merge(x= test, y = td_max_gamma, by = "dataid", all.x = TRUE) # join with original data
 }
 
-# example
+# Function to get top words
+my_stm_topwords_function <- function(td_beta,td_gamma,n.terms){
+  
+  top_terms <- td_beta %>%
+    arrange(beta) %>%
+    group_by(topic) %>%
+    top_n(n.terms, beta) %>%
+    arrange(-beta) %>%
+    select(topic, term) %>%
+    summarise(terms = list(term)) %>%
+    mutate(terms = map(terms, paste, collapse = ", ")) %>%
+    unnest(cols = c(terms))
+  
+  gamma_terms <- td_gamma %>%
+    group_by(topic) %>%
+    summarise(gamma = mean(gamma)) %>%
+    arrange(desc(gamma)) %>%
+    left_join(top_terms, by = "topic") %>%
+    mutate(topic = paste0("Topic ", topic),
+           topic = reorder(topic, gamma))
+  return(gamma_terms)
+}
+
+#--- example with 3 topics
+# run topic model
 my_topic_function(oegm_dfm,3)
+# create objects from function outputs
+td_beta.3 <- td_beta
 td_gamma.3 <- td_gamma
 td_max_gamma.3 <- td_max_gamma
 newdata.3 <- newdata
+# Run script to get top words
+top.terms.3 <- my_stm_topwords_function(td_beta.3,td_gamma.3,10)
+top.terms.3 %>%
+  select(topic, gamma, terms) %>%
+  kable(digits = 3,
+        col.names = c("Topic", "Expected topic proportion", "Top 7 terms"))
+# insert script that assesses include vs. exclude
 
+
+
+#--- example with 4 topics
 my_topic_function(oegm_dfm,4)
+td_beta.4 <- td_beta
 td_gamma.4 <- td_gamma
 td_max_gamma.4 <- td_max_gamma
 newdata.4 <- newdata
+top.terms.3 <- my_stm_topwords_function(td_beta.3,td_gamma.3,10)
+top.terms.3 %>%
+  select(topic, gamma, terms) %>%
+  kable(digits = 3,
+        col.names = c("Topic", "Expected topic proportion", "Top 7 terms"))
+
 
 
 # Get top unique words in each Topic
