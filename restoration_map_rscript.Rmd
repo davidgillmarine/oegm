@@ -1,45 +1,22 @@
 ---
-title: "OEGM script, adapted for the Restoration project"
-author: "Morgan Rudd. Based off version by David Gill & Dana Grieco"
-date: "12/7/2021"
+title: "rudd_restoration_rscript_local"
+author: "Morgan Rudd"
+date: "5/5/2022"
 output: html_document
 ---
 
-# Notes from Dana to Morgan:
-You're now connected to Git through your Mac!
-If things aren't working properly - make sure that you're connected to and can access the R drive. Then, make sure that you're in the "oegm" project (top right). 
-
-As you work on this "restoration_map_rscript.Rmd" - save like you normally do, with the save symbol (top left).
-
-Then, make sure you're in the "Git" window (upper right). Check the Staged box to the left of this "restoration_map_rscript.Rmd" file name. Then, select "Commit." In the pop-up, type a message in "Commit message" (whatever note would be helpful to describe what you just changed in the script), then, click "commit." This will save your changes locally
-
-Every now and then, make sure to click the green "push" button to send your locally saved changes to the Git cloud. Any time that you're "done" with the code (e.g. after working on it for 30 min), remember to Push the code.
-
-Each time you open the code, click the blue "pull" arrow, to make sure that you update other edits from the cloud, and that you are working with the latest version of the code (e.g. if David or I changed it in the interim).
-
-Note to self-- oegm saves locally on MER computer to Users/morganrudd
-
-
-# Setup
+# SETUP
 Loads libraries, reads in data, cleans dataset
 ```{r eval=T}
+pacman::p_load(rio,rgeos,treemap,gtools,cowplot,rnaturalearth,rnaturalearthdata,tidyverse, ggplot2, maptools)
+today.date <- gsub("-","",Sys.Date())
 
-workdir <- "/Volumes/Research/Gill/research/oegm/" #MER
-# workdir <- "R:/Gill/research/oegm/" #DIG and DAG
-
+#-------- Shared drive
+workdir <- "R:/Gill/research/oegm/"
 inputdir <- paste0(workdir,"tables/raw/")
 mapdir <-  paste0(workdir,"spatial/raw/")
 plotdir <- paste0(workdir,"output/restoration/")
 tabledir <- paste0(workdir,"output/restoration/")
-
-pacman::p_load(rio,rgeos,treemap,gtools,cowplot,rnaturalearth,rnaturalearthdata,tidyverse, ggplot2, maptools)
-today.date <- gsub("-","",Sys.Date())
-
-
-#--- Organize data ----
-#read in data, skip first 2 rows
-# all.data<-import(paste0(inputdir,"restoration_data.xlsx"), skip =2, .name_repair = "universal") %>% 
-#   mutate(Date=as.character(Date))
 
 #Country data
 all.ctry <- import(paste0(inputdir,"restoration/all_countries.csv"))
@@ -47,43 +24,103 @@ study.ctry <- import(paste0(inputdir,"restoration/our_countries.csv"),check.name
   rename(aid=Article.ID, study.ctry=Study.Country, author.ctry=All.Author.Countries)
 
 #WoS results
-comb.search <- import(paste0(inputdir,"/restoration/wos_results/combined_search.csv")) %>% 
+gen.comb.search <- import(paste0(inputdir,"/restoration/wos_results/combined_search.csv")) %>% 
   mutate(Pubs=as.integer(gsub(",","",Pubs)),
+         diff.pubs = c(0,diff(Pubs)),
          typ="combined")
-es.search <- import(paste0(inputdir,"/restoration/wos_results/ecoservice_search.csv"))%>% 
+gen.es.search <- import(paste0(inputdir,"/restoration/wos_results/ecoservice_search.csv"))%>% 
   mutate(Pubs=as.integer(gsub(",","",Pubs)),
+         diff.pubs =c(0,diff(Pubs)),
          typ="ecosystem services")
-rest.search <- import(paste0(inputdir,"/restoration/wos_results/restoration_search.csv"))%>% 
+gen.rest.search <- import(paste0(inputdir,"/restoration/wos_results/restoration_search.csv"))%>% 
   mutate(Pubs=as.integer(gsub(",","",Pubs)),
+         diff.pubs =c(0,diff(Pubs)),
+         typ="restoration")
+#Marine WoS Term Search Results
+mar.comb.search <- import(paste0(inputdir,"/restoration/wos_results/mar_combined_search.csv")) %>% 
+  mutate(Pubs=as.integer(gsub(",","",Pubs)),
+         diff.pubs =c(0,diff(Pubs)),
+         typ="combined")
+mar.es.search <- import(paste0(inputdir,"/restoration/wos_results/mar_ecoservice_search.csv"))%>% 
+  mutate(Pubs=as.integer(gsub(",","",Pubs)),
+         diff.pubs =c(0,diff(Pubs)),
+         typ="ecosystem services")
+mar.rest.search <- import(paste0(inputdir,"/restoration/wos_results/mar_restoration_search.csv"))%>% 
+  mutate(Pubs=as.integer(gsub(",","",Pubs)),
+         diff.pubs =c(0,diff(Pubs)),
          typ="restoration")
 
 #Extracted Data
 e.data <- import(paste0(inputdir,"/restoration/extracted_data.csv"))
+es.cat <- import(paste0(inputdir, "/restoration/es_category.csv"))
+
+#-------- Morgan
+workdir <- "/Users/morganrudd/Desktop/Restoration/" #MER
+inputdir <- paste0(workdir,"tables/")
+mapdir <-  paste0(workdir,"spatial/")
+plotdir <- paste0(workdir,"output/")
+tabledir <- paste0(workdir,"output/")
+
+#--- Organize data ----
+#read in data, skip first 2 rows
+# all.data<-import(paste0(inputdir,"restoration_data.xlsx"), skip =2, .name_repair = "universal") %>% 
+#   mutate(Date=as.character(Date))
+
+#Country data
+all.ctry <- import(paste0(inputdir, "all_countries.csv"))
+study.ctry <- import(paste0(inputdir,"our_countries.csv"),check.names=T) %>%  
+  rename(aid=Article.ID, study.ctry=Study.Country, author.ctry=All.Author.Countries)
+
+#General WoS Term Search Results
+gen.comb.search <- import(paste0(inputdir,"/wos_results/combined_search.csv")) %>% 
+  mutate(Pubs=as.integer(gsub(",","",Pubs)),
+         diff.pubs =c(0,diff(Pubs)),
+         typ="combined")
+gen.es.search <- import(paste0(inputdir,"/wos_results/ecoservice_search.csv"))%>% 
+  mutate(Pubs=as.integer(gsub(",","",Pubs)),
+         diff.pubs =c(0,diff(Pubs)),
+         typ="ecosystem services")
+gen.rest.search <- import(paste0(inputdir,"/wos_results/restoration_search.csv"))%>% 
+  mutate(Pubs=as.integer(gsub(",","",Pubs)),
+         diff.pubs =c(0,diff(Pubs)),
+         typ="restoration")
+
+#Marine WoS Term Search Results
+mar.comb.search <- import(paste0(inputdir,"/wos_results/mar_combined_search.csv")) %>% 
+  mutate(Pubs=as.integer(gsub(",","",Pubs)),
+         diff.pubs =c(0,diff(Pubs)),
+         typ="combined")
+mar.es.search <- import(paste0(inputdir,"/wos_results/mar_ecoservice_search.csv"))%>% 
+  mutate(Pubs=as.integer(gsub(",","",Pubs)),
+         diff.pubs =c(0,diff(Pubs)),
+         typ="ecosystem services")
+mar.rest.search <- import(paste0(inputdir,"/wos_results/mar_restoration_search.csv"))%>% 
+  mutate(Pubs=as.integer(gsub(",","",Pubs)),
+         diff.pubs =c(0,diff(Pubs)),
+         typ="restoration")
+
+#Extracted Data
+e.data <- import(paste0(inputdir,"/extracted_data.csv"))
+es.cat <- import(paste0(inputdir, "/es_category.csv"))
 ```
 
-#--- Morgan: Import the Extracted Data ----
-#No longer need this part of code...
-```{r eval=T}
-
-# workdir <- "/Users/morganrudd/Dropbox/Rudd et al 2020"
-# data <- read_csv("Data/extracted_data.csv")
-```
-
-## Morgan: Organize the Extracted Data
+## ORGANIZE THE EXTRACTED DATA
 ```{r}
 #This code selects the columns we want from data, then renames those columns we want to keep, then removes the last row of data because it's empty
 new1 <- e.data%>%
   select("Article ID", "Publication Type", "Year", "Title", "Habitat", "Study Design", "Description of restoration", "ES Description", "ES Service", "Collection Method", "Economic Value?", "Value Description", "ES Data Measurement Type", "Age(yrs)", "Area(ha)")%>%
-  rename(AID = "Article ID", Pub = "Publication Type", Yr = "Year", Ti = "Title", Hab = "Habitat", Design = "Study Design", Rest = "Description of restoration", ES_Desc = "ES Description", Service = "ES Service", Collect = "Collection Method", EcVal = "Economic Value?", EcVal_Desc = "Value Description", MeasTyp = "ES Data Measurement Type", Age = "Age(yrs)", Area = "Area(ha)")
-
-
-
+  rename(AID = "Article ID", Pub = "Publication Type", Yr = "Year", Ti = "Title", Hab = "Habitat", Design = "Study Design", Rest = "Description of restoration", ES_Desc = "ES Description", Service = "ES Service", Collect = "Collection Method", EcVal = "Economic Value?", EcVal_Desc = "Value Description", MeasTyp = "ES Data Measurement Type", Age = "Age(yrs)", Area = "Area(ha)")%>%
+  left_join(es.cat, by = "Service")
 ```
 
-#---- World map for study countries ----
-
+##-----COUNTRY DATA FIGURES-----##
 ```{r eval=T}
+# read in map
+map <- rgdal::readOGR(paste0(mapdir,"TM_WORLD_BORDERS-0.3/TM_WORLD_BORDERS-0.3.shp"))
+  # map <- sf::st_read(paste0(mapdir,"TM_WORLD_BORDERS-0.3/TM_WORLD_BORDERS-0.3.shp")) 
+map <-broom::tidy(map,region="ISO3")
 
+  # map <- fortify(map, region="ISO3")
 #---- World map for study countries ----
 unique(study.ctry$study.ctry)
 
@@ -91,196 +128,311 @@ unique(study.ctry$study.ctry)
 ctry <- study.ctry %>% 
   mutate(study.ctry=gsub("Virgin Islands","U.S. Virgin Islands",study.ctry)) %>% 
   select(aid,study.ctry)
-
 unique(ctry$study.ctry)
 
 # get no. articles per country (and percentage) to create vector of column names for each country by counting the number of ";" 
 max.ctry <- paste0("ctry",rep(1:max(str_count(ctry$study.ctry, ";")+1))) 
 num.studies <- length(unique(ctry$aid))
-
 ctry_sum <-ctry %>% 
   separate(study.ctry,max.ctry, sep="; ",fill="right") %>% # fill=right fills blanks with NAs
   gather("X","Country", max.ctry) %>% 
   filter(!is.na(Country)) %>% 
-  select(-X) %>% 
-  group_by(Country) %>% 
-  count() %>% 
-  mutate(pct=n/num.studies)
+  select(-X)
 
-arrange(ctry_sum,desc(n))
+reg.aid <- new1$AID[new1$Cat=="Regulating"] 
+prov.aid <- new1$AID[new1$Cat=="Provisioning"] 
+cult.aid <- new1$AID[new1$Cat=="Cultural"] 
+
+ctry_sum_all <-ctry_sum %>% 
+  group_by(Country) %>% 
+  summarise(n.all=n(),pct.all=n.all/num.studies)
+arrange(ctry_sum_all,desc(n.all))
+
+ctry_sum_reg <-ctry_sum %>% 
+  filter(aid%in%reg.aid) %>% 
+  group_by(Country) %>% 
+  summarise(n.reg=n(),pct.reg=n.reg/num.studies)
+
+ctry_sum_prov <-ctry_sum %>% 
+  filter(aid%in%prov.aid) %>% 
+  group_by(Country) %>% 
+  summarise(n.prov=n(),pct.prov=n.prov/num.studies)
+
+ctry_sum_cul <-ctry_sum %>% 
+  filter(aid%in%cult.aid) %>% 
+  group_by(Country) %>% 
+  summarise(n.cul=n(),pct.cul=n.cul/num.studies)
+
+ctry_sum_comb <- ctry_sum_all %>% 
+  left_join(ctry_sum_reg, by="Country") %>% 
+  left_join(ctry_sum_prov, by="Country") %>% 
+  left_join(ctry_sum_cul, by="Country")
+
+arrange(ctry_sum_comb,desc(n))
 
 # Countries that need to be fixed
-ctry_sum$Country[!ctry_sum$Country%in%all.ctry$Country]
+ctry_sum_comb$Country[!ctry_sum_comb$Country%in%all.ctry$Country]
 
 # join to full country list
-ctry_sum1 <- all.ctry %>% 
-  left_join(ctry_sum,by="Country") %>%
-  mutate(n=na.replace(n,0),
-         n=as.integer(n)) 
+ctry_sum_comb1 <- all.ctry %>% 
+  left_join(ctry_sum_comb,by="Country") %>%
+  mutate(across(n.all:pct.cul,~as.integer(na.replace(.,0))))
+    
+ctry_sum_comb$Country[!ctry_sum_comb$Country%in%ctry_sum_comb1$Country] # any missing?
 
-ctry_sum$Country[!ctry_sum$Country%in%ctry_sum1$Country] # any missing?
-
-# read in map
-map <- rgdal::readOGR(paste0(mapdir,"TM_WORLD_BORDERS-0.3/TM_WORLD_BORDERS-0.3.shp"))
-  # map <- sf::st_read(paste0(mapdir,"TM_WORLD_BORDERS-0.3/TM_WORLD_BORDERS-0.3.shp")) 
-map <-broom::tidy(map,region="ISO3")
-  # map <- fortify(map, region="ISO3")
-
-#plot study map
-(study_ctry_map <- ggplot() +
-    geom_map(data=ctry_sum1, aes(map_id=code, fill=n),map=map) +
+#PLOT ALL STUDIES MAP
+(study_ctry_map_all <- ggplot() +
+    geom_map(data=ctry_sum_comb1, aes(map_id=code, fill=n.all),map=map) +
     expand_limits(x=map$long,y=map$lat) +
     theme(panel.background = element_rect(fill = "#CCCCCC", colour = "#CCCCCC"), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
     scale_fill_gradient2(low="white",mid="#2171b5",high="#08519c",
-                         midpoint=max(ctry_sum1$n)/2,limits=c(0,max(ctry_sum1$n)))+
-    labs(title="Study countries"))
-ggsave(paste0(plotdir,today.date,'_study_country_map.png'),width = 10,height = 5)
+                         midpoint=max(ctry_sum_comb1$n.all)/2,limits=c(0,max(ctry_sum_comb1$n.all)))+
+    labs(title="Study countries - All services"))
+
+#PLOT MAP BY ECOSYSTEM SERVICE TYPE (i.e. Regulating, Provisioning, Cultural)
+(study_ctry_map_reg <- ggplot() +
+    geom_map(data=ctry_sum_comb1, aes(map_id=code, fill=n.reg),map=map) +
+    expand_limits(x=map$long,y=map$lat) +
+    theme(panel.background = element_rect(fill = "#CCCCCC", colour = "#CCCCCC"), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    scale_fill_gradient2(low="white",mid="#2171b5",high="#08519c",
+                         midpoint=max(ctry_sum_comb1$n.reg)/2,limits=c(0,max(ctry_sum_comb1$n.reg)))+
+    labs(title="Study countries - reg services"))
+
+(study_ctry_map_prov <- ggplot() +
+    geom_map(data=ctry_sum_comb1, aes(map_id=code, fill=n.prov),map=map) +
+    expand_limits(x=map$long,y=map$lat) +
+    theme(panel.background = element_rect(fill = "#CCCCCC", colour = "#CCCCCC"), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    scale_fill_gradient2(low="white",mid="#2171b5",high="#08519c",
+                         midpoint=max(ctry_sum_comb1$n.prov)/2,limits=c(0,max(ctry_sum_comb1$n.prov)))+
+    labs(title="Study countries - prov services"))
+
+(study_ctry_map_cul <- ggplot() +
+    geom_map(data=ctry_sum_comb1, aes(map_id=code, fill=n.cul),map=map) +
+    expand_limits(x=map$long,y=map$lat) +
+    theme(panel.background = element_rect(fill = "#CCCCCC", colour = "#CCCCCC"), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    scale_fill_gradient2(low="white",mid="#2171b5",high="#08519c",
+                         midpoint=max(ctry_sum_comb1$n.cul)/2,limits=c(0,max(ctry_sum_comb1$n.cul)))+
+    labs(title="Study countries - cul services"))
+
+plot_grid(study_ctry_map_all,study_ctry_map_reg,study_ctry_map_prov,study_ctry_map_cul,
+          nrow=2)
+
+ggsave(paste0(plotdir,today.date,'_study_country_map.png'),width = 20,height = 10)
+
+# spotcheck
+spotcheck.dat <- new1 %>% 
+  select(AID,Cat) %>% # add whatever columns to check
+  left_join(study.ctry,by=c("AID"="aid")) %>% 
+  view()
 
 ```
 
-
-# WoS search results over time
+##-----WOS DATA FIGURES-----##
+# General WoS Term Search Results Over Time
 ```{r eval=T}
-all.search <- comb.search %>% 
-  bind_rows(es.search,rest.search) %>% 
+all.search <- gen.comb.search %>% 
+  bind_rows(gen.es.search,gen.rest.search) %>% 
   group_by(typ) %>% 
   arrange(typ,Yr) %>% 
   mutate(cum.pubs=cumsum(Pubs))
 
-
 all.search %>% 
   select(-cum.pubs) %>% 
   spread(typ,Pubs) %>% 
-  view()
+  head()
+
 summary(all.search)
 
-(p.wos.search.cum <- ggplot(filter(all.search,Yr>=1990 & Yr<2021))  + 
+#PUBS OVER TIME (GENERAL)
+(wos.gen.pubs <- ggplot(filter(all.search,Yr>=1990 & Yr<2021))  + 
+    geom_bar(stat = "identity", aes(x = Yr, y = Pubs, fill = typ), size = 1.3, position=position_dodge())  +
+    ylab("No. of Publications") +
+    ggtitle('General WoS Search Results')+
+  theme_classic()) 
+
+#CUMULATIVE PUBS OVER TIME (GENERAL)
+(wos.gen.cum <- ggplot(filter(all.search,Yr>=1990 & Yr<2021))  + 
     geom_line(aes(x = Yr, y = cum.pubs, group = typ, colour = typ), size = 1.3)  +
-    ylab("Cumulative frequency") +
-   ggtitle('WoS search results over time')+
+    ylab("Cumulative Frequency") +
+   ggtitle('General WoS Search Results')+
   theme_classic())
 
+#NEW PUBS OVER TIME (GENERAL) - experimental
+(wos.gen.newpubs <- ggplot(filter(all.search,Yr>=1990 & Yr<2021))  + 
+    geom_line(aes(x = Yr, y = diff.pubs, group = typ, colour = typ), size = 1.3)  +
+    ylab("Differences in new publications per year") +
+   ggtitle('General WoS Search Results')+
+  theme_classic())
 
-(p.wos.search <- ggplot(filter(all.search,Yr>=1990 & Yr<2021))  + 
+plot_grid(wos.gen.pubs,wos.gen.cum, nrow=1)
+
+ggsave(paste0(plotdir,today.date,'_gen_over_time.png'),width = 15,height = 5)
+
+
+???#RATE OF CHANGE IN PUBS (GENERAL)
+  #rate.pubs<- diff(all.mar.search$Pubs)
+#(p.wos.gen.rate <- ggplot(filter(all.search,Yr>=1990 & Yr<2021))  + 
+    #geom_line(aes(x = Yr, y = cum.pubs, group = typ, colour = typ), size = 1.3)  +
+   # ylab("Rate of Change") +
+  # ggtitle('General WoS Search Results Over Time')+
+ # theme_classic())
+
+#ggsave(paste0(plotdir,today.date,'_rate_change_studies_over_time.png'),width = 12,height = 5)
+```
+
+# Marine WoS search results over time
+```{r eval=T}
+all.mar.search <- mar.comb.search %>% 
+  bind_rows(mar.es.search,mar.rest.search) %>% 
+  group_by(typ) %>% 
+  arrange(typ,Yr) %>% 
+  mutate(cum.pubs=cumsum(Pubs))
+
+all.mar.search %>% 
+  select(-cum.pubs) %>% 
+  spread(typ,Pubs) %>% 
+  view()
+
+summary(all.mar.search)
+
+#PUBS OVER TIME (MARINE)
+(wos.mar.pubs <- ggplot(filter(all.mar.search,Yr>=1990 & Yr<2021))  + 
     geom_bar(stat = "identity", aes(x = Yr, y = Pubs, fill = typ), size = 1.3, position=position_dodge())  +
-    ylab("Number of studies") +
-    ggtitle('WoS search results over time')+
+    ylab("No. of Publications") +
+    ggtitle('Marine WoS Search Results')+
   theme_classic()) 
-plot_grid(p.wos.search.cum,p.wos.search)
-ggsave(paste0(plotdir,today.date,'_studies_over_time.png'),width = 12,height = 5)
 
+#CUMULATIVE PUBS OVER TIME (MARINE)
+(wos.mar.cum <- ggplot(filter(all.mar.search,Yr>=1990 & Yr<2021))  + 
+    geom_line(aes(x = Yr, y = cum.pubs, group = typ, colour = typ), size = 1.3)  +
+    ylab("Cumulative Frequency") +
+   ggtitle('Marine WoS Search Results')+
+  theme_classic())
+
+#NEW PUBS OVER TIME (GENERAL) - experimental
+(wos.mar.newpubs <- ggplot(filter(all.mar.search,Yr>=1990 & Yr<2021))  + 
+    geom_line(aes(x = Yr, y = Pubs, group = typ, colour = typ), size = 1.3)  +
+    ylab("Differences in new publications per year") +
+   ggtitle('Marine WoS Search Results')+
+  theme_classic())
+
+plot_grid(wos.mar.pubs,wos.mar.cum, nrow=1)
+
+ggsave(paste0(plotdir,today.date,'_mar_over_time.png'),width = 15,height = 5)
+
+???#RATE OF CHANGE IN PUBS (MARINE)
 
 ```
 
-
-
-
-
-## Morgan's text the rest of the way down!!!
-
-## Publications Over Time (Histogram)
-##-- should this perhaps be a barplot instead?
+##-----EXTRACTED DATA FIGURES-----##
+## Publications Over Time (Barplot)
 ```{r}
 #This code selects for the article ID and publication year, then identifies distinct rows (i.e. only allowing the AID to show up once)
 pub_yr <- new1%>%
   select(AID, Yr, Hab)%>%
-  distinct()
+  distinct()%%
 
 pub_yr%>%
   count(Hab)
 
-#Create Histogram to show # of publications over time
-# ONLY ERROR HERE: 
-ggplot(pub_yr, aes(x=Yr, fill = Hab)) + geom_histogram(binwidth = 1, col = "white") + labs(x = "Year", y = "No. Publications") + theme_classic() + theme(axis.text.x = element_text(angle = 45)) + scale_x_discrete(limits=c(2004:2020)) + scale_y_discrete(expand = c(0,0), limits=c(0:10), breaks=seq(0, 10, by = 2)) + guides(fill = guide_legend(title = "Habitat"))
+# Coral n=1
+#Mangrove n=56
+#Seagrass n=1
 
-#Save the Histogram
-#Q-- How can I code to save my histogram to my outputs folder?
-#Q-- How can I change the x axis to show data from 2000-2020 (even though my data only starts at 2004)?
+table(pub_yr$Yr)
+
+# 2018 has most publications (n=10)
+
+#Create Barplot to show # of publications over time
+ggplot(pub_yr, aes(x=Yr, fill=Hab))+geom_bar()+labs(x = "Year", y = "No. Publications")+theme_classic()+theme(axis.text.x = element_text(angle = 45))+ guides(fill = guide_legend(title = "Habitat"))
+  #+ scale_x_discrete(limits=c(2004:2020))
+  #+ scale_y_discrete(expand = c(0,0), limits=c(0:30), breaks=seq(0, 30, by = 2))
+
+ggsave(paste0(plotdir,today.date,'_pubs_over_time.png'),width = 10,height = 5)
 ```
 
-## Look @ Journal Type
+## Ecosystem Services (Barplot)
 ```{r}
-#This code selects for the article ID and publication type, then identifies distinct rows (i.e. only allowing the AID to show up once)
-pub_type <- new1%>%
-  select(AID, Pub)%>%
+#This counts # of each type of service in the entire dataset; No need for "distinct" because each eco service is unique
+new1%>%
+  count(Service)
+
+# Climate Regulation n = 31
+# Food n = 15
+# Erosion Regulation n = 13
+# Natural Hazard Regulation n = 10
+# Fiber, Recreation/Ecotourism, and Water Purification/Waste Treatment n = 8
+
+new1%>%
+  count(Cat)
+
+# Cultural n= 25
+# Provisioning n = 42
+# Regulating n = 67
+
+#Create Barplot to show Ecosystem Services
+ggplot(new1, aes(x = fct_rev(fct_infreq(Service)), fill=Cat)) + geom_bar() + labs(x = "Ecosystem Service", y = "Count") + theme_classic() + theme(axis.line = element_line(color='black')) + scale_y_discrete(expand = c(0,0)) + coord_flip()
+
+ggsave(paste0(plotdir,today.date,'_eco_service_barplot.png'),width = 10,height = 12)
+```
+
+## Measurement Type (Barplot)
+```{r}
+#Distinct rows aren't needed for this dataframe because each measurement type is tied to a unique ecosystem service outcome
+
+new1%>%
+  select(AID, Service, MeasTyp)%>%
+  count(MeasTyp)
+  #Environmental measurements n= 46
+  #Social measurements n= 88
+
+typ <- new1%>%
+  select(AID, MeasTyp)%>%
   distinct()
 
-#Identify number of pubs that are Pay Journals, Open Access, or NA
-pub_type%>%
+table(typ$MeasTyp)
+  # 41 studies used environmental data
+  # 17 studies used social data
+
+table(new1$Cat,new1$MeasTyp)
+  #Cultural-- 100% Social
+  #Provisioning-- ~93% Social
+  #Regulating-- ~64% Environmental measures
+
+#Create barplot to show measurement type
+ggplot(new1, aes(x = (MeasTyp), fill=Cat)) + geom_bar() + labs(x = "Measurement Type", y = "Count") + theme_classic() + theme(axis.line = element_line(color='black'))
+
+ggsave(paste0(plotdir,today.date,'_meastyp_barplot.png'),width = 10,height = 12)
+
+#Create barplot to show measurement type
+ggplot(new1, aes(x = (Cat), fill=MeasTyp)) + geom_bar() + labs(x = "Ecosystem Service Type", y = "Count") + theme_classic() + theme(axis.line = element_line(color='black'))
+
+ggsave(paste0(plotdir,today.date,'_meastyp_barplot2.png'),width = 10,height = 12)
+
+```
+
+
+##-----DESCRIPTIVE STATISTICS-----#
+## Look @ Journal Type
+```{r}
+new1%>%
+  select(AID, Pub)%>%
+  distinct()%>%
   count(Pub)
 
-  #There are 12 articles in Open Access Journals, 45 articles in Pay Journals, and 1 NA
+#There are 12 articles in Open Access Journals, 45 articles in Pay Journals, and 1 NA
 ```
 
 ## Look @ Habitat Type
 ```{r}
-#This code selects for the article ID and habitat type, then identifies distinct rows (i.e. only allowing the AID to show up once)
-hab_type <- new1%>%
+new1%>%
   select(AID, Hab)%>%
-  distinct()
-
-#Identify number of each habitat
-hab_type%>%
+  distinct()%>%
   count(Hab)
-
-  #There is 1 coral study, 56 mangrove studies, and 1 seagrass study
+#There is 1 coral study, 56 mangrove studies, and 1 seagrass study
 ```
 
-## Look at Economic Valuation
-```{r}
-#This code selects for the article ID, ecosystem service, and economic valuation
-  #Distinct rows aren't needed for this dataframe because each economic valuation is tied to a unique outcome
-ec_val <- new1%>%
-  select(AID, Service, EcVal)
-
-#Identify number of each habitat
-ec_val%>%
-  count(EcVal)
-
-  #Of the 134 distinct ecosystem services reported, only 18 had associated economic values
-
-#Identify which ecosystem services had economic values reported
-ec_val2 <- filter(ec_val, EcVal == "Y")
-```
-
-# Look @ Ecosystem Services (SubCategories)
-```{r}
-#This code selects for the article ID and ecosystem service
- #Distinct rows aren't needed for this dataframe because each ecosystem service is unique
-es <- new1%>%
-  select(AID, Service)
-
-es%>%
-  count(Service)
-
-#Create barplot to show Ecosystem Services
-ggplot(es, aes(x = fct_rev(fct_infreq(Service)))) + geom_bar() + labs(x = "Ecosystem Service", y = "Count") + theme_classic() + theme(axis.line = element_line(color='black')) + scale_y_discrete(expand = c(0,0), limits=c(0:35), breaks=seq(0, 35, by = 2)) + coord_flip()
-
-##Need to depict which are provisioning, regulating, and cultural services by color
-```
-
-#Age of Restoration Projects (Histogram)
-```{r}
-#This code selects for the article ID and Age of restoration, then identifies distinct rows (i.e. only allowing the AID to show up once)
-age <- new1%>%
-  select(AID, Age)%>%
-  distinct()
-
-age%>%
-  count(Age)
-
-#Create Histogram to show Ages of all restoration projects
-ggplot(age, aes(x=Age)) + geom_histogram(binwidth = 5) + labs(x = "Age of Restoration (Yrs)", y = "Count") + theme_classic()
-
-#Q-- Should I be "binning" my ages first (e.g. 0-5 yrs, 6-10 yrs, 11-15 yrs...)?
-      #Q-- If that's what "binwidth" is doing, how to I make that clear in my x-axis?
-#Q-- How can I separate the bars?
-
-#Save the Histogram
-
-```
-
-#Size of Restoration Projects (Histogram)
+#Size of Restoration Projects
 ```{r}
 #This code selects for the article ID and Size of restoration project, then identifies distinct rows (i.e. only allowing the AID to show up once)
 size <- new1%>%
@@ -289,24 +441,41 @@ size <- new1%>%
 
 size%>%
   count(Area)
-
-#Create Histogram to show Areas of all restoration projects
-ggplot(size, aes(x=Area)) + geom_histogram() + labs(x = "Area Restored (ha)", y = "Count") + theme_classic()
-
-#There has got to be a better way to show this... 
+#Min area= 0.015552 ha
+#Max area= 81700 ha
+#30 studies included information on area restored
 ```
 
-# Look @ Measurement Type
+#Age of Restoration Projects
 ```{r}
-meastyp <- new1%>%
-  select(AID, MeasTyp)%>%
+#This selects for the article ID and Age of restoration, then identifies distinct rows (i.e. only allowing the AID to show up once), then counts the Ages
+age <- new1%>%
+  select(AID, Age)%>%
   distinct()
 
-meastyp%>%
-  count(MeasTyp)
+age%>%
+  count(Age)
+
+#Min age= 2.4 yrs
+#Max age= 70 yrs
+#51 studies included information for age of restored site
+#24 study sites evaluated ages 10 yrs or younger
 ```
 
+## Look at Economic Valuation
+```{r}
+#This code selects for the article ID, ecosystem service, and economic valuation
+#Distinct rows aren't needed for this dataframe because each economic valuation is tied to a unique outcome
 
-#Q-- How can I separate out study design when there are multiple in a cell separated by ;
-#Q-- What is the best way to approach the Age column? (Carter suggested editing the Excel file)
-#Q-- What is the best way to approach the Spatial extent column?
+new1%>%
+  select(AID, Service, EcVal)%>%
+  count(EcVal)
+
+#Of the 134 distinct ecosystem services reported, only 18 had associated economic values
+
+#Identify which ecosystem services had economic values reported
+ec.val <- filter(new1, EcVal == "Y")%%
+  table(ec.val$Cat)
+  
+  #Overwhelmingly provisioning services n = 12
+```
