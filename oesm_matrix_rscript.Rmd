@@ -1,7 +1,7 @@
 ---
 title: "OEGM script"
 author: "David A. Gill & Dana I. Grieco"
-date: "3/17/2021"
+date: "11/16/2023"
 output: html_document
 ---
 # Note for Others:
@@ -24,28 +24,32 @@ today.date <- gsub("-","",Sys.Date())
 
 #--- Organize data ----
 #read in data, skip first 2 rows
-# non.mangrove<-import(paste0(inputdir,"Non-mangrove_FINAL.xlsx"), which="Data Extraction Sheet", skip =2, .name_repair = "universal") %>% 
-#   mutate(Date=as.character(Date))
-# mangrove<-import(paste0(inputdir,"Mangrove_FINAL.xlsx"), which="Data Extraction Sheet", skip =2,  .name_repair = "universal") %>% 
-#   mutate(Date=as.character(Date))
 
-all.data<-import(paste0(inputdir,"20210329_All Data.xlsx"), skip =2, .name_repair = "universal") %>% 
+all.data<-import(paste0(inputdir,"20231115_All_Papers.xlsx"), which="FULL Data Extraction Sheet",skip =2, .name_repair = "universal") %>% 
   mutate(Date=as.character(Date))
+
 country <- import(paste0(inputdir,"allcountries.csv"))
 
 # Count total papers in Full Text Screening
-length(unique(all.data$Article.ID))
+length(unique(all.data$Article.ID)) #should be 
+
+# For IN PROCESS papers only - Select accepted papers, rename variables==
+Incomplete_data <- all.data %>%  
+  filter(Full.text.screening.=="Incomplete") %>% 
+  rename(Int_cat=Intervention.category,Outcome_cat=Outcome.category, aid=Article.ID, study.ctry=Country.ies..of.study)
+length(unique(Incomplete_data$aid)) #= how many incomplete papers left to finish!
 
 # Select accepted papers, rename variables==
 data_all <- all.data %>%  
-  filter(Full.text.screening.=="Accept" & !is.na(Intervention.category) & !is.na(Outcome.category)) %>% # is this ok to do? would be there cases where NA is ok?
+  filter(Full.text.screening.=="Accept" & !is.na(Intervention.category) & !is.na(Outcome.category)) %>% 
   rename(Int_cat=Intervention.category,Outcome_cat=Outcome.category, aid=Article.ID, study.ctry=Country.ies..of.study)
-length(unique(data_all$aid))
+length(unique(data_all$aid)) # = how many completely screened papers
 
 # read in full intervention lists
 int_list<-import(paste0(inputdir,"intervention abbreviations.csv"))
-out_list<-import(paste0(inputdir,"outcome abbreviations.csv"))
-drop.down.lists<-import(paste0(inputdir,"20191022_All Data.xlsx"), which="Dropdowns", skip =1, .name_repair = "universal")
+out_list<-import(paste0(inputdir,"outcome abbreviations 2.csv")) #adjusted for '23 name changes
+
+drop.down.lists<-import(paste0(inputdir,"20231115_All_Papers.xlsx"), which="Dropdowns", skip =1, .name_repair = "universal")
 
 int_sub_list <-  drop.down.lists %>% 
   select(Intervention.subcategory) %>% 
@@ -93,7 +97,7 @@ for (i in 1:nrow(out_sub_list)){
 }
 
 #quick checks
-unique(data_all$Int_cat)  # 10 interventions
+unique(data_all$Int_cat)  # 9 Interventions (we took #8 out)
 unique(data_all$Outcome_cat) # 7 outcomes
 sort(unique(data_all$Intervention.subcategory)) # 36 sub-interventions?
 sort(unique(data_all$Outcome.subcategory)) # 41 sub-outcomes?
