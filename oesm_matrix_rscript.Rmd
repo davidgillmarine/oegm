@@ -61,12 +61,17 @@ out_sub_list <-  drop.down.lists %>%
   rename(out_sub=Outcome.subcategory) 
 num.studies <- length(unique(data_all$aid))
 
+```
+
+
+```{r eval=T}
 
 #--- Clean up data ----
+
 # Something went wrong? shift over rows that were missing a column so the data shifted (aid=772), inspect in original data
-data_all[data_all$aid%in%772,32:42] # wrong
-data_all[data_all$aid%in%772,32:42]  <- data_all[data_all$aid%in%772,31:41] 
-data_all[data_all$aid%in%772,32:42]  # right
+# data_all[data_all$aid%in%772,32:42] # wrong
+# data_all[data_all$aid%in%772,32:42]  <- data_all[data_all$aid%in%772,31:41] 
+# data_all[data_all$aid%in%772,32:42]  # right
 
 # Recodes intervention and outcomes fields to the correct version 
 # interventions
@@ -95,6 +100,11 @@ for (i in 1:nrow(out_sub_list)){
     mutate(Outcome.subcategory=ifelse(grepl(num.val,Outcome.subcategory),
                                            grep(num.val,out_sub_list$out_sub,value = T),Outcome.subcategory))
 }
+
+```
+
+
+```{r eval=T}
 
 #quick checks
 unique(data_all$Int_cat)  # 9 Interventions (we took #8 out)
@@ -135,14 +145,14 @@ unique(habitat.test$Habitat.type) # should just be "other"
 data_all <-data_all %>% 
   filter(Int_cat!="8. Research & monitoring")%>% 
   mutate_at(vars(Int_cat,Intervention.subcategory), ~gsub("^9","8",.)) %>% 
-  mutate_at(vars(Int_cat,Intervention.subcategory), ~gsub("^10","9",.)) %>% 
-  mutate_at(vars(Outcome_cat,Outcome.subcategory), ~gsub("^1","9",.)) %>% 
-  mutate_at(vars(Outcome_cat,Outcome.subcategory), ~gsub("^2","1",.)) %>% 
-  mutate_at(vars(Outcome_cat,Outcome.subcategory), ~gsub("^3","2",.)) %>% 
-  mutate_at(vars(Outcome_cat,Outcome.subcategory), ~gsub("^4","3",.)) %>% 
-  mutate_at(vars(Outcome_cat,Outcome.subcategory), ~gsub("^5","4",.)) %>% 
-  mutate_at(vars(Outcome_cat,Outcome.subcategory), ~gsub("^6","5",.)) %>% 
-  mutate_at(vars(Outcome_cat,Outcome.subcategory), ~gsub("^9","6",.)) 
+  mutate_at(vars(Int_cat,Intervention.subcategory), ~gsub("^10","9",.))  # %>% 
+  # mutate_at(vars(Outcome_cat,Outcome.subcategory), ~gsub("^1","9",.)) %>% 
+  # mutate_at(vars(Outcome_cat,Outcome.subcategory), ~gsub("^2","1",.)) %>% 
+  # mutate_at(vars(Outcome_cat,Outcome.subcategory), ~gsub("^3","2",.)) %>% 
+  # mutate_at(vars(Outcome_cat,Outcome.subcategory), ~gsub("^4","3",.)) %>% 
+  # mutate_at(vars(Outcome_cat,Outcome.subcategory), ~gsub("^5","4",.)) %>% 
+  # mutate_at(vars(Outcome_cat,Outcome.subcategory), ~gsub("^6","5",.)) %>% 
+  # mutate_at(vars(Outcome_cat,Outcome.subcategory), ~gsub("^9","6",.)) 
 
 #new quick checks
 unique(data_all$Int_cat)  # 9 interventions
