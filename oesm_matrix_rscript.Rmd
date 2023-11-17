@@ -118,7 +118,7 @@ int_sub_list$int_sub[!int_sub_list$int_sub%in%data_all$Intervention.subcategory]
 out_list$Outcome_cat_orig[!out_list$Outcome_cat_orig%in%data_all$Outcome_cat] 
 out_sub_list$out_sub[!out_sub_list$out_sub%in%data_all$Outcome.subcategory] 
 
-# incorrect values entered (all should be zero)  !Morgan: Intervention.subcategory with an NA
+# incorrect values entered (all should be zero)
 data_all$Int_cat[!data_all$Int_cat%in%int_list$Int_cat_orig] 
 data_all$Intervention.subcategory[!data_all$Intervention.subcategory%in%int_sub_list$int_sub] 
 data_all$Outcome_cat[!data_all$Outcome_cat%in%out_list$Outcome_cat_orig] 
