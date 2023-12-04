@@ -1,7 +1,7 @@
 ---
 title: "OEGM script"
 author: "David A. Gill & Dana I. Grieco"
-date: "11/16/2023"
+date: "12/04/2023"
 output: html_document
 ---
 # Note for Others:
@@ -22,34 +22,38 @@ pacman::p_load(rio,rgeos,treemap,gtools,cowplot,rnaturalearth,rnaturalearthdata,
 
 today.date <- gsub("-","",Sys.Date())
 
-#--- Organize data ----
-#read in data, skip first 2 rows
+```
 
-all.data<-import(paste0(inputdir,"20231115_All_Papers.xlsx"), which="FULL Data Extraction Sheet",skip =2, .name_repair = "universal") %>% 
+# Organize data
+
+```{r eval=T}
+
+#read in data, skip first 2 rows
+all.data<-import(paste0(inputdir,"20231204_All_Papers.xlsx"), which="FULL Data Extraction Sheet",skip =2, .name_repair = "universal") %>% 
   mutate(Date=as.character(Date))
 
 country <- import(paste0(inputdir,"allcountries.csv"))
 
 # Count total papers in Full Text Screening
-length(unique(all.data$Article.ID)) #should be 
+length(unique(all.data$Article.ID)) # should be 779
 
-# For IN PROCESS papers only - Select accepted papers, rename variables==
-Incomplete_data <- all.data %>%  
-  filter(Full.text.screening.=="Incomplete") %>% 
+# Count Rejected Papers
+Reject_data <- all.data %>%  
+  filter(Full.text.screening.=="Reject") %>% 
   rename(Int_cat=Intervention.category,Outcome_cat=Outcome.category, aid=Article.ID, study.ctry=Country.ies..of.study)
-length(unique(Incomplete_data$aid)) #= how many incomplete papers left to finish!
+length(unique(Reject_data$aid)) #= how many rejected papers # should be 607
 
 # Select accepted papers, rename variables==
 data_all <- all.data %>%  
   filter(Full.text.screening.=="Accept" & !is.na(Intervention.category) & !is.na(Outcome.category)) %>% 
   rename(Int_cat=Intervention.category,Outcome_cat=Outcome.category, aid=Article.ID, study.ctry=Country.ies..of.study)
-length(unique(data_all$aid)) # = how many completely screened papers
+length(unique(data_all$aid)) # = how many accepted & completely screened papers # should be 172
 
 # read in full intervention lists
 int_list<-import(paste0(inputdir,"intervention abbreviations.csv"))
 out_list<-import(paste0(inputdir,"outcome abbreviations 2.csv")) #adjusted for '23 name changes
 
-drop.down.lists<-import(paste0(inputdir,"20231115_All_Papers.xlsx"), which="Dropdowns", skip =1, .name_repair = "universal")
+drop.down.lists<-import(paste0(inputdir,"20231204_All_Papers.xlsx"), which="Dropdowns", skip =1, .name_repair = "universal")
 
 int_sub_list <-  drop.down.lists %>% 
   select(Intervention.subcategory) %>% 
@@ -73,7 +77,7 @@ num.studies <- length(unique(data_all$aid))
 # data_all[data_all$aid%in%772,32:42]  <- data_all[data_all$aid%in%772,31:41] 
 # data_all[data_all$aid%in%772,32:42]  # right
 
-# Recodes intervention and outcomes fields to the correct version 
+# Re-codes intervention and outcomes fields to the correct version 
 # interventions
 for (i in 1:nrow(int_list)){
   num.val=paste0("^",i,"\\. *") # starts with this number
@@ -103,62 +107,76 @@ for (i in 1:nrow(out_sub_list)){
 
 ```
 
+# Quick Checks to make sure data is sorting correctly
 
 ```{r eval=T}
 
 #quick checks
 unique(data_all$Int_cat)  # 9 Interventions (we took #8 out)
 unique(data_all$Outcome_cat) # 7 outcomes
-sort(unique(data_all$Intervention.subcategory)) # 36 sub-interventions?
-sort(unique(data_all$Outcome.subcategory)) # 41 sub-outcomes?
+sort(unique(data_all$Intervention.subcategory)) # 32 sub-interventions (#8s were not included)
+  # Seems like only 26 sub-interventions were coded for
+sort(unique(data_all$Outcome.subcategory)) # 42 sub-outcomes (bc we added in 1c. Catch/Yield)
+  # Seems like only 40 sub-interventions were coded for
 
 # those that were not observed
-int_list$Int_cat_orig[!int_list$Int_cat_orig%in%data_all$Int_cat] 
-int_sub_list$int_sub[!int_sub_list$int_sub%in%data_all$Intervention.subcategory] 
-out_list$Outcome_cat_orig[!out_list$Outcome_cat_orig%in%data_all$Outcome_cat] 
-out_sub_list$out_sub[!out_sub_list$out_sub%in%data_all$Outcome.subcategory] 
+int_list$Int_cat_orig[!int_list$Int_cat_orig%in%data_all$Int_cat] # 8. Research and monitoring
+int_sub_list$int_sub[!int_sub_list$int_sub%in%data_all$Intervention.subcategory] # 6 sub-interventions. Correct: 32-26=6
+out_list$Outcome_cat_orig[!out_list$Outcome_cat_orig%in%data_all$Outcome_cat] #correct, 0 bc all were coded for
+out_sub_list$out_sub[!out_sub_list$out_sub%in%data_all$Outcome.subcategory] # 2 sub-outcomes. Correct: 42-40=2
 
 # incorrect values entered (all should be zero)
 data_all$Int_cat[!data_all$Int_cat%in%int_list$Int_cat_orig] 
 data_all$Intervention.subcategory[!data_all$Intervention.subcategory%in%int_sub_list$int_sub] 
 data_all$Outcome_cat[!data_all$Outcome_cat%in%out_list$Outcome_cat_orig] 
 data_all$Outcome.subcategory[!data_all$Outcome.subcategory%in%out_sub_list$out_sub] 
+  # Correct - all are 0!
 
 # Add habitat fields
 unique(data_all$Habitat.type) 
 data_all <- data_all %>% 
 mutate(coral=ifelse(grepl("Coral",Habitat.type,ignore.case = T),1,0),
-       seagrass=ifelse(grepl("Seagrass",Habitat.type,ignore.case = T),1,0),
-       mangrove=ifelse(grepl("mangrove",Habitat.type,ignore.case = T),1,0),)
+       seagrass=ifelse(grepl("Seagrass",Habitat.type,ignore.case = T),1,0), # note: ignores case, so the lowercase "seagrass" is fine!
+       mangrove=ifelse(grepl("Mangrove",Habitat.type,ignore.case = T),1,0),)
 
-  # check habitat coding
+# check habitat coding
 unique(data_all$Habitat.type[data_all$coral==1])
 unique(data_all$Habitat.type[data_all$seagrass==1])
 unique(data_all$Habitat.type[data_all$mangrove==1])
+  # Correct - all sorted
 
 habitat.test <- data_all %>% 
   filter(coral==0 & mangrove==0 & seagrass==0) %>% 
   select(Habitat.type)
-unique(habitat.test$Habitat.type) # should just be "other"
+unique(habitat.test$Habitat.type) # should just be 0 - no other categories (we took out the "Other" category)
 
-# remove research and monitoring, and adjust numbers
+# remove 8. Research and Monitoring as an intervention entirely, and adjust numbers
 data_all <-data_all %>% 
   filter(Int_cat!="8. Research & monitoring")%>% 
   mutate_at(vars(Int_cat,Intervention.subcategory), ~gsub("^9","8",.)) %>% 
-  mutate_at(vars(Int_cat,Intervention.subcategory), ~gsub("^10","9",.))  # %>% 
-  # mutate_at(vars(Outcome_cat,Outcome.subcategory), ~gsub("^1","9",.)) %>% 
-  # mutate_at(vars(Outcome_cat,Outcome.subcategory), ~gsub("^2","1",.)) %>% 
-  # mutate_at(vars(Outcome_cat,Outcome.subcategory), ~gsub("^3","2",.)) %>% 
-  # mutate_at(vars(Outcome_cat,Outcome.subcategory), ~gsub("^4","3",.)) %>% 
-  # mutate_at(vars(Outcome_cat,Outcome.subcategory), ~gsub("^5","4",.)) %>% 
-  # mutate_at(vars(Outcome_cat,Outcome.subcategory), ~gsub("^6","5",.)) %>% 
-  # mutate_at(vars(Outcome_cat,Outcome.subcategory), ~gsub("^9","6",.)) 
+  mutate_at(vars(Int_cat,Intervention.subcategory), ~gsub("^10","9",.))  
+
+# ADJUSTING 1c. Yield/CPUE to be in category 4... 
+  # not sure exactly what we want to do with it, but it will at least work better for Austin for the time-being
+# Adjust 1c. Yield/CPUE as an intervention entirely, and adjust numbers
+data_all <-data_all %>% 
+  mutate_at(vars(Outcome.subcategory), ~gsub("^1c","4e",.)) %>% # Moving "1c. Yield/CPUE"to be "4e. Yield/CPUE" and then adjusting all other 1 #s
+  mutate_at(vars(Outcome.subcategory), ~gsub("^1d","1c",.)) %>% 
+  mutate_at(vars(Outcome.subcategory), ~gsub("^1e","1d",.)) %>%
+  mutate_at(vars(Outcome.subcategory), ~gsub("^1f","1e",.)) %>% 
+  mutate_at(vars(Outcome.subcategory), ~gsub("^1g","1f",.)) %>% 
+  mutate_at(vars(Outcome.subcategory), ~gsub("^1h","1g",.)) %>% 
+  mutate_at(vars(Outcome.subcategory), ~gsub("^1i","1h",.)) %>% 
+  mutate_at(vars(Outcome.subcategory), ~gsub("^1j","1i",.)) %>% 
+  mutate_at(vars(Outcome.subcategory), ~gsub("^1k","1j",.)) %>% 
+  mutate_at(vars(Outcome.subcategory), ~gsub("^1l","1k",.)) 
+
 
 #new quick checks
-unique(data_all$Int_cat)  # 9 interventions
-unique(data_all$Outcome_cat) # 7 outcomes
-sort(unique(data_all$Intervention.subcategory)) # 34 sub-interventions?
-sort(unique(data_all$Outcome.subcategory)) # 41 sub-outcomes?
+unique(data_all$Int_cat)  # 9 interventions, #1-9
+unique(data_all$Outcome_cat) # 7 outcomes, #1-7
+sort(unique(data_all$Intervention.subcategory)) # 26 sub-interventions coded - no.1-9
+sort(unique(data_all$Outcome.subcategory)) # 40 sub-outcomes coded, no.1-7. with "4e. Yield/CPUE"
 
 # # Get full intervention list
   int_list <- data_all %>%
@@ -387,8 +405,10 @@ ctry_sum1 <- country %>%
 
 ctry_sum$Country[!ctry_sum$Country%in%ctry_sum1$Country] # any missing?
 
+
+  ### I believe I used SF in my class this summer! Come back to this!!!
 # read in map
-map <- rgdal::readOGR(paste0(mapdir,"TM_WORLD_BORDERS-0.3/TM_WORLD_BORDERS-0.3.shp"))
+map <- rgdal::readOGR(paste0(mapdir,"TM_WORLD_BORDERS-0.3/TM_WORLD_BORDERS-0.3.shp")) #rgdal was taken from R! Need to use SF or Terra!!! 
 map <-broom::tidy(map,region="ISO3")
 #map@data[map@data$NAME=="Turks and Caicos Islands",]
 
@@ -709,13 +729,8 @@ data_all %>%
   group_by(Scale.of.study) %>% 
   summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
   arrange (desc(num))  # this arranges them in descending order 
+### NOTE: These are messy, need to make some edits here!
 
-# Geographic Scale of Intervention
-data_all %>%
-  group_by(Geographic.scale.of.intervention) %>% 
-  summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
-  arrange (desc(num))  # this arranges them in descending order 
-##### Need to pinpoint NAs, L vs L for local
 
 ```
 
@@ -759,12 +774,6 @@ data_all %>%
 data_all %>% 
   filter(coral + seagrass + mangrove == 3) %>% 
   summarise(habitat="All 3 Habitats!", num=n_distinct(aid), pct=num/num.studies*100)
-
-# What are the "other" studies that don't define a habitat?
-  unique(data_all$aid[data_all$Habitat.type=="Other"])
-  # ONLY for the habitat types that are ONLY other, aka doesn't include 
-    # studies that have a "real" habitat and an "Other"
-
   
 ```
 
@@ -778,19 +787,20 @@ data_all %>%
   summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
   arrange (desc(num))  # arranges them in descending order 
 
-  # Highest: % in cons design and planning, species management
+  # Highest: % - top 3 (tie for second highest)
 data_all %>%  
-  filter(Int_cat== "2. Species management"| 
-           Int_cat== "6. Conservation designation & planning") %>%  
-  summarise(intervention="Highest 2", num=n_distinct(aid), pct=num/num.studies*100)
+  filter(Int_cat== "1. Land/water management"| 
+           Int_cat== "2. Species management"| 
+           Int_cat== "7. Legal & policy frameworks") %>%  
+  summarise(intervention="Highest 3", num=n_distinct(aid), pct=num/num.studies*100)
 
-  # Lowest: % in Enforcement and Protection, awareness raising, and 
-    # Education and Training
+  # Lowest: % - bottom 4 (tie for lowest and second lowest)
 data_all %>%  
-  filter(Int_cat== "4. Enforcement & protection"| 
-           Int_cat== "3. Awareness raising"| 
-           Int_cat== "9. Education & training") %>%  
-  summarise(intervention="Lowest 3", num=n_distinct(aid), pct=num/num.studies*100)
+  filter(Int_cat== "3. Awareness raising "| 
+           Int_cat== "5. Livelihood, economic, and other incentives"|
+           Int_cat== "4. Enforcement & protection"| 
+           Int_cat== "8. Education & training") %>%  
+  summarise(intervention="Lowest 4", num=n_distinct(aid), pct=num/num.studies*100)
 
   # Subcategories (want % of each):
 data_all %>%
@@ -817,27 +827,25 @@ data_all %>%
   summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
   arrange (desc(num))  # this arranges them in descending order 
 
-  # Study Design
-data_all %>%
-  group_by(Study.design) %>% 
-  summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
-  arrange (desc(num))  # this arranges them in descending order 
-##### Need to do the "search for term within a row" method here
-
   # Type of Data
 data_all %>%
   group_by(What.type.of.data.does.this.study.consider.) %>% 
   summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
   arrange (desc(num))  # this arranges them in descending order 
-##### Need to do the "search for term within a row" method here
 
   # Comparator Type
-data_all %>%
+comparator.types <- data_all  %>%
   group_by(Comparator.type) %>% 
   summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
-  arrange (desc(num))  # this arranges them in descending order 
+  arrange (desc(num)) # this arranges them in descending order 
   # arrange (num) # for ascending order, swap
-##### Need to do the "search for term within a row" method here
+view(comparator.types)
+##### Need to do the "search for term within a row" method here, like how we sorted the coral
+
+#Find and look at the 5 "None" comparator studies
+unique(data_all %>% 
+  filter(Comparator.type== "None") %>% 
+  select(aid))
 
   # Does the Study population considers human groups?
 data_all %>%
@@ -845,26 +853,12 @@ data_all %>%
   summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
   arrange (desc(num))  # this arranges them in descending order 
 
-#Find and look at the ONE NA Study here... what are the notes on this?
-quick.stats <- data_all %>% 
-         filter(is.na(Does.the.study.explicitly.examine.impacts.on.different.human.groups.))
-unique(quick.stats$aid)
-    # way to filter it without looking at data/one line, no quick.stats:
-    # unique(data_all %>% 
-      # filter(is.na(Does.the.study.explicitly.examine.impacts.on.different.human.groups.)) %>% 
-      # select(aid))
-    # non-piping way to do it:
-      # unique(data_all$aid[is.na(data_all$Does.the.study.explicitly.examine.impacts.on.different.human.groups)])
 
-  # Note: This 1 NA is tech number 205, so there must be a duplicate that got in
-  # One section has both an N and a Y...
-###########How do I ID which one has an overlap?
-
-  # If so, what types?
-  # NOT worth analysis, most of these are NAs:
-    # data_all %>%
-    #  group_by(If.so..what.types.of.different.groups.) %>% 
-    #  summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
+# If so, what types?
+data_all %>%
+  filter(!is.na(If.so..what.types.of.different.groups.)) %>% 
+  group_by(If.so..what.types.of.different.groups.) %>% 
+  summarise(num=n_distinct(aid), pct=num/num.studies*100)
     #  arrange (desc(num))  # this arranges them in descending order 
 
 ```
@@ -912,8 +906,6 @@ View(Multi_int_time_gps)
 # and then give me the percent out of total num.studies? tried, cant!
 
 
-
-
 ```
 
 6. O: Outcomes:
@@ -922,25 +914,26 @@ View(Multi_int_time_gps)
 
 data_all %>%
   group_by(Outcome_cat) %>% 
-  summarise(num=n_distinct(aid), pct=num/num.studies*100)
+  summarise(num=n_distinct(aid), pct=num/num.studies*100)%>% 
+  arrange (desc(num))  # this arranges them in descending order 
 
   # % Pop/Species and Ecological Community combined (no overlaps):
 data_all %>%  
-  filter(Outcome_cat== "1. Population/species"| 
-         Outcome_cat==  "2. Ecological community") %>%  
+  filter(Outcome_cat== "1. Population/Species"| 
+         Outcome_cat==  "2. Ecological Community") %>%  
   summarise(num=n_distinct(aid), pct=num/num.studies*100)
 
-  # % in human well-being, knowledge and behavior, and governance
+  # % in social: human well-being, knowledge and behavior, and governance
 data_all %>%  
-  filter(Outcome_cat== "5. Human well-being"| 
-          Outcome_cat== "6. Knowledge and behavior"| 
+  filter(Outcome_cat== "5. Human Wellbeing"| 
+          Outcome_cat== "6. Knowledge and Behavior"| 
           Outcome_cat== "7. Governance") %>%  
   summarise(num=n_distinct(aid), pct=num/num.studies*100)
 
   # % in ecosystem function and ecosystem service
 data_all %>%  
-  filter(Outcome_cat== "3. Ecosystem function"| 
-          Outcome_cat==  "4. Ecosystem services") %>%  
+  filter(Outcome_cat== "3. Ecosystem Function"| 
+          Outcome_cat==  "4. Ecosystem Services") %>%  
   summarise(num=n_distinct(aid), pct=num/num.studies*100)
 
   
@@ -956,14 +949,14 @@ data_all %>%
 # Add eco vs soc outcome counts
 ```{r eval=T}
 unique(data_all$Outcome_cat)
-eco.outcomes <- c("2. Ecological community", "1. Population/species", "3. Ecosystem function")
-soc.outcomes <- c("6. Knowledge and behavior", "5. Human well-being", "7. Governance")
+eco.outcomes <- c("2. Ecological Community", "1. Population/Species", "3. Ecosystem Function")
+soc.outcomes <- c("6. Knowledge and Behavior", "5. Human Wellbeing", "7. Governance")
         
 data_all <- data_all %>%
   # select(aid, Outcome_cat) %>%
   mutate(eco.out=ifelse(Outcome_cat%in%eco.outcomes,1,0),
          soc.out=ifelse(Outcome_cat%in%soc.outcomes,1,0),
-         es.out=ifelse(Outcome_cat=="4. Ecosystem services",1,0)) %>% 
+         es.out=ifelse(Outcome_cat=="4. Ecosystem Services",1,0)) %>% 
   group_by(aid) %>% 
   mutate(eco.aid=max(eco.out),
             soc.aid=max(soc.out),
