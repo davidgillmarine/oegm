@@ -120,6 +120,41 @@ write.csv(CPUE_outcomes,paste0(tabledir,today.date,"_CPUE_outcomes.csv"))
 ```
 
 
+# TROUBLE-SHOOTING - 1/24/24!!!
+
+```{r eval=T}
+
+# View all Outcome Subcategories!
+unique(data_all$Outcome.subcategory)
+
+## OUTCOME 1e.BEHAVIOR!
+Behavior_out <- data_all %>% 
+  filter(Outcome.subcategory=="1e. Behavior")
+View(Behavior_out)
+write.csv(Behavior_out,paste0(tabledir,today.date,"_1e_outcomes.csv"))
+
+# Now going to Get EVERY Row of data for each of the aids!
+Behavior_out2 <- Behavior_out %>% 
+  select(aid) %>%
+  distinct(aid)
+View(Behavior_out2)
+
+Behavior_out_ALL <- 
+  merge(Behavior_out2,data_all,sort=TRUE)
+View(Behavior_out_ALL)
+write.csv(Behavior_out_ALL,paste0(tabledir,today.date,"_1e_outcomes_ALL_ROWS.csv"))
+
+## Outcome 1k. Body Conditions. and 1l. Adaptability - Coral studies and issues!
+Coral_issues <- data_all %>% 
+  filter(Outcome.subcategory=="1k. Body Conditions"|
+           Outcome.subcategory=="1l. Adaptability")
+# View(Coral_issues)
+write.csv(Coral_issues,paste0(tabledir,today.date,"_1kand1l_outcomes.csv"))
+
+
+```
+
+
 # Quick Checks to make sure data is sorting correctly
 
 ```{r eval=T}
