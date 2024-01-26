@@ -127,11 +127,12 @@ write.csv(CPUE_outcomes,paste0(tabledir,today.date,"_CPUE_outcomes.csv"))
 # View all Outcome Subcategories!
 unique(data_all$Outcome.subcategory)
 
+
 ## OUTCOME 1e.BEHAVIOR!
 Behavior_out <- data_all %>% 
   filter(Outcome.subcategory=="1e. Behavior")
 View(Behavior_out)
-write.csv(Behavior_out,paste0(tabledir,today.date,"_1e_outcomes.csv"))
+#write.csv(Behavior_out,paste0(tabledir,today.date,"_1e_outcomes.csv"))
 
 # Now going to Get EVERY Row of data for each of the aids!
 Behavior_out2 <- Behavior_out %>% 
@@ -144,12 +145,54 @@ Behavior_out_ALL <-
 View(Behavior_out_ALL)
 write.csv(Behavior_out_ALL,paste0(tabledir,today.date,"_1e_outcomes_ALL_ROWS.csv"))
 
+
 ## Outcome 1k. Body Conditions. and 1l. Adaptability - Coral studies and issues!
 Coral_issues <- data_all %>% 
   filter(Outcome.subcategory=="1k. Body Conditions"|
            Outcome.subcategory=="1l. Adaptability")
 # View(Coral_issues)
-write.csv(Coral_issues,paste0(tabledir,today.date,"_1kand1l_outcomes.csv"))
+# write.csv(Coral_issues,paste0(tabledir,today.date,"_1kand1l_outcomes.csv"))
+
+# Now going to Get EVERY Row of data for each of the aids!
+Coral_issues2 <- Coral_issues %>% 
+  select(aid) %>%
+  distinct(aid)
+View(Coral_issues2)
+
+Coral_issues_ALL <- 
+  merge(Coral_issues2,data_all,sort=TRUE)
+View(Coral_issues_ALL)
+write.csv(Coral_issues_ALL,paste0(tabledir,today.date,"_1kand1l_outcomes_ALL_ROWS.csv"))
+
+#SPECIES DIVERSITY ISSUES!!!
+## For Species Diversity, I will be pulling out SPECIFIC AIDs First (the "No" Examples)
+Diversity_issues <- data_all %>% 
+  filter(aid=="508"|
+           aid=="196"|
+           aid=="193"|
+           aid=="606"|
+           aid=="100"|
+           aid=="442"|
+           aid=="259"
+         )
+# View(Diversity_issues)
+write.csv(Diversity_issues,paste0(tabledir,today.date,"_Diversity_outcomes.csv"))
+
+### Now I really need to Search for ALL Species Diversity Papers - GO back and do a complete run-through
+## FIREST I'm going to pull out all the CODED AIDs, so I don't have to search through those
+Diversity_CODED <- data_all %>% 
+  filter(Outcome.subcategory=="2b. Species Diversity") %>% 
+  select(aid) %>%
+  distinct(aid)
+View(Diversity_CODED)
+# write.csv(Diversity_CODED,paste0(tabledir,today.date,"_1kand1l_outcomes.csv"))
+
+
+#### NEXT, I will want to pull out the SOCIAL ONLY papers, and get all of their AIDS, So that I DON'T have to check them for species diversity LOL
+#NOTE: I've already gone through the first 100 by hand, easy to go through the rest like that in 1. Completes - Move accordingly
+
+
+
 
 
 ```
