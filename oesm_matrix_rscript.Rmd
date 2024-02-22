@@ -185,13 +185,18 @@ Diversity_CODED <- data_all %>%
   select(aid) %>%
   distinct(aid)
 View(Diversity_CODED)
-# write.csv(Diversity_CODED,paste0(tabledir,today.date,"_1kand1l_outcomes.csv"))
+# write.csv(Diversity_CODED,paste0(tabledir,today.date,"_diversity.csv"))
 
 
 #### NEXT, I will want to pull out the SOCIAL ONLY papers, and get all of their AIDS, So that I DON'T have to check them for species diversity LOL
 #NOTE: I've already gone through the first 100 by hand, easy to go through the rest like that in 1. Completes - Move accordingly
 
 
+## Pull out KNOWLEDGE (6a)!
+know_out <- data_all %>% 
+  filter(Outcome.subcategory=="6a. Knowledge")
+View(know_out)
+write.csv(know_out,paste0(tabledir,today.date,"_6a_knowledge.csv"))
 
 
 
