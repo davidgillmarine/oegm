@@ -18,7 +18,7 @@ mapdir <-  paste0(workdir,"spatial/raw/")
 plotdir <- paste0(workdir,"output/plots/")
 tabledir <- paste0(workdir,"output/tables/")
 
-pacman::p_load(rio,rgeos,treemap,gtools,cowplot,rnaturalearth,rnaturalearthdata,tidyverse)
+pacman::p_load(rio,rgeos,treemap,gtools,cowplot,rnaturalearth,rnaturalearthdata,tidyverse,dplyr)
 
 today.date <- gsub("-","",Sys.Date())
 
@@ -196,8 +196,19 @@ View(Diversity_CODED)
 know_out <- data_all %>% 
   filter(Outcome.subcategory=="6a. Knowledge")
 View(know_out)
-write.csv(know_out,paste0(tabledir,today.date,"_6a_knowledge.csv"))
+# write.csv(know_out,paste0(tabledir,today.date,"_6a_knowledge.csv"))
 
+## Pull out Behavior/Response to new practice (6b)!
+behave_out <- data_all %>% 
+  filter(Outcome.subcategory=="6b. Behavior/response to new practices or technologies")
+View(behave_out)
+# write.csv(behave_out,paste0(tabledir,today.date,"_6b_behavior.csv"))
+
+## Pull out Culture(5h) - also looking for WTP!
+culture_out <- data_all %>% 
+  filter(Outcome.subcategory=="5h. Culture")
+View(culture_out)
+# write.csv(culture_out,paste0(tabledir,today.date,"_5h_culture.csv"))
 
 
 ```
