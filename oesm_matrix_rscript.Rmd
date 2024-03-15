@@ -230,7 +230,6 @@ data_all <-data_all %>%
   mutate_at(vars(Int_cat,Intervention.subcategory), ~gsub("^9","8",.)) %>% 
   mutate_at(vars(Int_cat,Intervention.subcategory), ~gsub("^10","9",.))  
 
-
 #new quick checks
 unique(data_all$Int_cat)  # 9 interventions, #1-9
 unique(data_all$Outcome_cat) # 7 outcomes, #1-7
@@ -858,7 +857,6 @@ out_time_gps <- out_time_gps %>%
 plot_grid(pInt_time_gps,pout_time_gps)
 ggsave(paste0(plotdir,today.date,'_studies_over_time.png'),width = 12,height = 4)
 
-
 ```
 # Stats Section
 This section outputs a lot of the different stats used in the paper. Right now, I am just inputting them by hand, and so definitely would be useful to print out the stats I want to copy/paste and easy access
@@ -899,8 +897,7 @@ Geographical scale of intervention is used
 
 # 1st step, clean up country columns and lists
 ##MAKING COUNTRY COLUMNS
-
-#### Add country list
+### Add country list
 cty <- country$Country
 
 # Continent
@@ -913,8 +910,8 @@ data_all %>%
 data_all %>%
   group_by(study.ctry) %>% 
   summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
-  arrange (desc(num))  # this arranges them in descending order 
-  # arrange(num)
+  arrange (desc(num)) %>% # this arranges them in descending order 
+  print()
 
 # Scale of Study
 data_all %>%
@@ -1064,17 +1061,7 @@ In the paper, I look at rate of integrated (multiple) intervention studies over 
    filter(n.int>1)
 )
 n_distinct(multi.int.studies$aid)/n_distinct(data_all$aid)*100
-#multi.int.aid <- multi.int.studies$aid[multi.int.studies$n.int>1]
-
-
-# spot checks
-  # table(test$n.int) # unsure what this does
-  # filter(test,n.int==3) # unsure what this does
-unique(data_all$Int_cat[data_all$aid==187])
-data_all %>% 
-  select(aid,Int_cat) %>% 
-  filter(aid==187)
-
+multi.int.aid <- multi.int.studies$aid[multi.int.studies$n.int>1]
 
 Multi_int_time_gps <- data_all %>%
   filter(aid%in%multi.int.aid) %>% 
@@ -1092,7 +1079,6 @@ View(Multi_int_time_gps)
 97/208*100
 # David: how do I ask mulit.int.studies to count the number of distinct aids 
 # and then give me the percent out of total num.studies? tried, cant!
-
 
 ```
 
@@ -1124,7 +1110,6 @@ data_all %>%
           Outcome_cat==  "4. Ecosystem Services") %>%  
   summarise(num=n_distinct(aid), pct=num/num.studies*100)
 
-  
   # Subcategories (want % of each):
 data_all %>% 
   group_by(Outcome.subcategory) %>% 
@@ -1167,46 +1152,20 @@ Eco_Soc_ES_Out <- data_all %>%
 # View(select(Eco_Soc_ES_Out,Outcome_cat,eco.aid:interdisc.aid)) # spot check
 write.csv(Eco_Soc_ES_Out,paste0(tabledir,today.date,"_Eco_and_Soc_and_ES_Outcomes.csv"))
 
-
-
 ```
-## Bass Screening Round 2: For Ease
-1. Filter OUT Interdisc outcome papers
-2. Remove obvious fisheries papers
-3. Remove (by me, by highlights in the file) any fisheries papers
+# Looking at Fisheries Papers (as deemed by screeners!)
 
 ```{r eval=T}
 
+# Looking at Fisheries Papers (as deemed by screeners!)
 
-# 1. Filter OUT Interdisc outcome papers
-  # Non_Interdisc Outcomes and export csv
-Non_Interdisc_Out <- data_all %>%
-  filter(interdisc.aid == 0)
-# View(select(Non_Interdisc_Out,Outcome_cat,eco.aid:interdisc.aid)) # spot check
-write.csv(Non_Interdisc_Out,paste0(tabledir,today.date,"_Non_Interdisc_Outcomes.csv"))
+Fisheries_Papers <- data_all %>%
+  filter(Fisheries.Paper. == "Yes")
+# View() # spot check
+# write.csv(Fisheries_Papers,paste0(tabledir,today.date,"_Fisheries_Papers.csv"))
 
-# 2. Remove obvious fisheries papers
-
-unique(data_all$Intervention.subcategory)
-fish.interventions <- c("2b. Fisheries management")
-
-data_all <- data_all %>%
-  # select(aid, Outcome_cat) %>%
-  mutate(fish.int=ifelse(Intervention.subcategory%in%fish.interventions,1,0)) %>% 
-  group_by(aid) %>% 
-  mutate(fish.aid=max(fish.int),
-         fish.interdisc.aid=ifelse(fish.aid==1 | interdisc.aid==1,1,0)) 
-
-# Which studies have both Fisheries Management interventions?
-n_distinct(data_all$aid[data_all$fish.interdisc.aid == 1])
-
-  # no 2b. Fisheries management interventions and Non_Interdisc Outcomes with and export csv
-No_Fish_Int_Non_Interdisc_Out <- data_all %>%
-  filter(fish.interdisc.aid == 0)
-# View(select(Non_Interdisc_Out,Outcome_cat,eco.aid:interdisc.aid)) # spot check
-write.csv(No_Fish_Int_Non_Interdisc_Out,paste0(tabledir,today.date,"_Non_Fish_Int_Non_Interdisc_Outcomes.csv"))
-
-
+# How many studies are Fisheries Papers?
+n_distinct(data_all$aid[data_all$Fisheries.Paper. == "Yes"])
 
 ```
 
@@ -1221,14 +1180,12 @@ interd.dat <- data_all %>%
   interdisc.aid == 1 ~ "interdisciplinary"),
   typ=as.factor(typ))
 
-
 interd.out <- interd.dat %>% 
   group_by(Outcome_cat,typ) %>% 
   count() %>% 
   group_by(Outcome_cat) %>% 
   mutate(prop=n/sum(n)) %>% 
   filter(!is.na(typ))
-
 
 interd.int <- interd.dat %>% 
   group_by(Int_cat,typ) %>% 
@@ -1251,7 +1208,6 @@ ggplot(interd.int, aes(fill=typ, y=n, x=Int_cat)) +
     geom_bar(position="stack", stat="identity") +
     coord_flip(),
  nrow=2)
-
 
 Eco_Soc_ES_Out <- data_all %>%
   filter(interdisc.aid == 1)
