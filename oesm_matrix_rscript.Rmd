@@ -18,6 +18,7 @@ mapdir <-  paste0(workdir,"spatial/raw/")
 plotdir <- paste0(workdir,"output/plots/")
 tabledir <- paste0(workdir,"output/tables/")
 
+library(pacman) # I shouldn't need to do this, but pacman NEVER works for me with the p_load below, so I need to add this
 pacman::p_load(rio,rgeos,treemap,gtools,cowplot,rnaturalearth,rnaturalearthdata,tidyverse,dplyr)
 
 today.date <- gsub("-","",Sys.Date())
@@ -411,6 +412,9 @@ plot_grid(heat.map.coral + scale_fill_gradient2(low="#f7fbff",high= "coral3",nam
           labels=letters[1:3], ncol = 3, nrow = 1, hjust=-1, align = "hv")
 ggsave(paste0(plotdir,today.date,'_habitat_int_out_map.png'),width = 17,height = 8)
 
+#NOTE:
+# maps might not show up below, but check folders - they should still come out fine
+
 
 ```
 
@@ -418,19 +422,23 @@ ggsave(paste0(plotdir,today.date,'_habitat_int_out_map.png'),width = 17,height =
 Creates a world map of all habitats
 Note: the read in map section takes about a minute to load!
 
+SKIP FOR NOW
+
 ```{r eval=T}
 #---- World map ----
 
 
 ###---- NEW!! ----
-# new packages to install for new worldmap (bring to the top if these work)
-install.packages(c("cowplot", "googleway", "ggplot2", "ggrepel", 
-"ggspatial", "libwgeom", "sf", "rnaturalearth", "rnaturalearthdata"))
+#SKIP FOR NOW until I can load these packages in at the TOP! Otherwise they mess up my loaded packages!!
 
-library("ggplot2")
-library("sf")
-library("rnaturalearth")
-library("rnaturalearthdata")
+# # new packages to install for new worldmap (bring to the top if these work)
+# install.packages(c("cowplot", "googleway", "ggplot2", "ggrepel", 
+# "ggspatial", "libwgeom", "sf", "rnaturalearth", "rnaturalearthdata"))
+# 
+# library("ggplot2")
+# library("sf")
+# library("rnaturalearth")
+# library("rnaturalearthdata")
 
 
 
@@ -913,8 +921,6 @@ data_all %>%
   group_by(Scale.of.study) %>% 
   summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
   arrange (desc(num))  # this arranges them in descending order 
-### NOTE: These are messy, need to make some edits here!
-
 
 ```
 
@@ -949,7 +955,6 @@ data_all %>%
   summarise(habitat="Only One",num=n_distinct(aid), pct=num/num.studies*100)
 
 # How many studies took place in multiple habitats? (2 or more)
-  #doesn't include "other"
 data_all %>% 
   filter(coral + seagrass + mangrove >= 2) %>% 
   summarise(habitat="Multiple: 2 or more!", num=n_distinct(aid), pct=num/num.studies*100)
@@ -1036,7 +1041,6 @@ data_all %>%
   group_by(Does.the.study.explicitly.examine.impacts.on.different.human.groups.) %>% 
   summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
   arrange (desc(num))  # this arranges them in descending order 
-
 
 # If so, what types?
 data_all %>%
