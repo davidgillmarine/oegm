@@ -186,33 +186,30 @@ The below script is commented off, but kept the code for how to easily check the
 #quick checks
 unique(data_all$Int_cat)  # 9 Interventions (we took #8 out)
 unique(data_all$Outcome_cat) # 7 outcomes
-sort(unique(data_all$Intervention.subcategory)) # 32 sub-interventions (#8s were not included)
-  # Seems like only 26 sub-interventions were coded for
+sort(unique(data_all$Intervention.subcategory)) # 32 sub-interventions (in int_sub_list)
+  # Only 26 sub-interventions were coded for
 sort(unique(data_all$Outcome.subcategory)) # 43 sub-outcomes (bc we added in Catch/Yield x2)
-  # Seems like only 41 sub-interventions were coded for
+  # Only 41 sub-interventions were coded for
 
 # those that were not observed
 int_list$Int_cat_orig[!int_list$Int_cat_orig%in%data_all$Int_cat] # 8. Research and monitoring
-  # NUll here, bc Research and monitoring is NO LONGER in the key
 int_sub_list$int_sub[!int_sub_list$int_sub%in%data_all$Intervention.subcategory] # 6 sub-interventions. Correct: 32-26=6
-   # ISSUE HERE: GEtting NULL
 out_list$Outcome_cat_orig[!out_list$Outcome_cat_orig%in%data_all$Outcome_cat] #correct, 0 bc all were coded for
-  # ISSUE HERE: GEtting NULL
-out_sub_list$out_sub[!out_sub_list$out_sub%in%data_all$Outcome.subcategory] # 2 sub-outcomes. Correct: 42-40=2
-  # ISSUE HERE: GEtting NULL
+out_sub_list$out_sub[!out_sub_list$out_sub%in%data_all$Outcome.subcategory] # 2 sub-outcomes. Correct: 43-41=2
 
 # incorrect values entered (all should be zero)
-data_all$Int_cat[!data_all$Int_cat%in%int_list$Int_cat_orig] 
-data_all$Intervention.subcategory[!data_all$Intervention.subcategory%in%int_sub_list$int_sub] 
-data_all$Outcome_cat[!data_all$Outcome_cat%in%out_list$Outcome_cat_orig] 
-data_all$Outcome.subcategory[!data_all$Outcome.subcategory%in%out_sub_list$out_sub] 
+data_all$Int_cat[!data_all$Int_cat%in%int_list$Int_cat_orig] #0
+data_all$Intervention.subcategory[!data_all$Intervention.subcategory%in%int_sub_list$int_sub] #0
+data_all$Outcome_cat[!data_all$Outcome_cat%in%out_list$Outcome_cat_orig] #0
+data_all$Outcome.subcategory[!data_all$Outcome.subcategory%in%out_sub_list$out_sub] #0
   # Correct - all are 0!
 
 # Add habitat fields
 unique(data_all$Habitat.type) 
 data_all <- data_all %>% 
 mutate(coral=ifelse(grepl("Coral",Habitat.type,ignore.case = T),1,0),
-       seagrass=ifelse(grepl("Seagrass",Habitat.type,ignore.case = T),1,0), # note: ignores case, so the lowercase "seagrass" is fine!
+       seagrass=ifelse(grepl("Seagrass",Habitat.type,ignore.case = T),1,0), 
+       # note: ignores case, so the lowercase "seagrass" is fine!
        mangrove=ifelse(grepl("Mangrove",Habitat.type,ignore.case = T),1,0),)
 
 # check habitat coding
@@ -232,29 +229,14 @@ data_all <-data_all %>%
   mutate_at(vars(Int_cat,Intervention.subcategory), ~gsub("^9","8",.)) %>% 
   mutate_at(vars(Int_cat,Intervention.subcategory), ~gsub("^10","9",.))  
 
-# ADJUSTING 1c. Yield/CPUE to be in category 4... 
-  # not sure exactly what we want to do with it, but it will at least work better for Austin for the time-being
-# Adjust 1c. Yield/CPUE as an intervention entirely, and adjust numbers
-data_all <-data_all %>% 
-  mutate_at(vars(Outcome.subcategory), ~gsub("^1c","4e",.)) %>% # Moving "1c. Yield/CPUE"to be "4e. Yield/CPUE" and then adjusting all other 1 #s
-  mutate_at(vars(Outcome.subcategory), ~gsub("^1d","1c",.)) %>% 
-  mutate_at(vars(Outcome.subcategory), ~gsub("^1e","1d",.)) %>%
-  mutate_at(vars(Outcome.subcategory), ~gsub("^1f","1e",.)) %>% 
-  mutate_at(vars(Outcome.subcategory), ~gsub("^1g","1f",.)) %>% 
-  mutate_at(vars(Outcome.subcategory), ~gsub("^1h","1g",.)) %>% 
-  mutate_at(vars(Outcome.subcategory), ~gsub("^1i","1h",.)) %>% 
-  mutate_at(vars(Outcome.subcategory), ~gsub("^1j","1i",.)) %>% 
-  mutate_at(vars(Outcome.subcategory), ~gsub("^1k","1j",.)) %>% 
-  mutate_at(vars(Outcome.subcategory), ~gsub("^1l","1k",.)) 
-
 
 #new quick checks
 unique(data_all$Int_cat)  # 9 interventions, #1-9
 unique(data_all$Outcome_cat) # 7 outcomes, #1-7
 sort(unique(data_all$Intervention.subcategory)) # 26 sub-interventions coded - no.1-9
-sort(unique(data_all$Outcome.subcategory)) # 40 sub-outcomes coded, no.1-7. with "4e. Yield/CPUE"
+sort(unique(data_all$Outcome.subcategory)) # 41 sub-outcomes coded, no.1-7.
 
-# # Get full intervention list
+# Get full intervention list
   int_list <- data_all %>%
     ungroup() %>%
     distinct(Int_cat) %>%
