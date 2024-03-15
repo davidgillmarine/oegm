@@ -1,7 +1,7 @@
 ---
 title: "OEGM script"
 author: "David A. Gill & Dana I. Grieco"
-date: "12/04/2023"
+date: "3/15/2024"
 output: html_document
 ---
 # Note for Others:
@@ -29,31 +29,32 @@ today.date <- gsub("-","",Sys.Date())
 ```{r eval=T}
 
 #read in data, skip first 2 rows
-all.data<-import(paste0(inputdir,"20240314_All_Papers.xlsx"), which="FULL Data Extraction Sheet",skip =2, .name_repair = "universal") %>% 
+all.data<-import(paste0(inputdir,"20240315_All_Papers.xlsx"), which="FULL Data Extraction Sheet",skip =2, .name_repair = "universal") %>% 
   mutate(Date=as.character(Date))
 
 country <- import(paste0(inputdir,"allcountries.csv"))
 
 # Count total papers in Full Text Screening
-length(unique(all.data$Article.ID)) # should be 779
+length(unique(all.data$Article.ID)) # should be 779 (as of 3/14/24)
 
 # Count Rejected Papers
 Reject_data <- all.data %>%  
   filter(Full.text.screening.=="Reject") %>% 
   rename(Int_cat=Intervention.category,Outcome_cat=Outcome.category, aid=Article.ID, study.ctry=Country.ies..of.study)
-length(unique(Reject_data$aid)) #= how many rejected papers # should be 607
+length(unique(Reject_data$aid)) #= how many rejected papers # should be 608 (as of 3/14/24)
 
 # Select accepted papers, rename variables==
 data_all <- all.data %>%  
   filter(Full.text.screening.=="Accept" & !is.na(Intervention.category) & !is.na(Outcome.category)) %>% 
   rename(Int_cat=Intervention.category,Outcome_cat=Outcome.category, aid=Article.ID, study.ctry=Country.ies..of.study)
-length(unique(data_all$aid)) # = how many accepted & completely screened papers # should be 172
+length(unique(data_all$aid)) # = how many accepted & completely screened papers # should be 171 (as of 3/14/24)
 
 # read in full intervention lists
 int_list<-import(paste0(inputdir,"intervention abbreviations.csv"))
 out_list<-import(paste0(inputdir,"outcome abbreviations 2.csv")) #adjusted for '23 name changes
 
-drop.down.lists<-import(paste0(inputdir,"20240314_All_Papers.xlsx"), which="Dropdowns", skip =1, .name_repair = "universal")
+#NOTE: the DROP DOWN LISTS here, which collect ALL of the dropdowns, are taken from the ALL PAPERS Master Sheet!
+drop.down.lists<-import(paste0(inputdir,"20240315_All_Papers.xlsx"), which="Dropdowns", skip =1, .name_repair = "universal")
 
 int_sub_list <-  drop.down.lists %>% 
   select(Intervention.subcategory) %>% 
@@ -63,7 +64,7 @@ out_sub_list <-  drop.down.lists %>%
   select(Outcome.subcategory) %>% 
   na.omit() %>% 
   rename(out_sub=Outcome.subcategory) 
-num.studies <- length(unique(data_all$aid))
+num.studies <- length(unique(data_all$aid)) #should again be 171
 
 ```
 
@@ -72,11 +73,6 @@ num.studies <- length(unique(data_all$aid))
 ```{r eval=T}
 
 #--- Clean up data ----
-
-# Something went wrong? shift over rows that were missing a column so the data shifted (aid=772), inspect in original data
-# data_all[data_all$aid%in%772,32:42] # wrong
-# data_all[data_all$aid%in%772,32:42]  <- data_all[data_all$aid%in%772,31:41] 
-# data_all[data_all$aid%in%772,32:42]  # right
 
 # Re-codes intervention and outcomes fields to the correct version 
 # interventions
@@ -108,130 +104,80 @@ for (i in 1:nrow(out_sub_list)){
 
 ```
 
-# CPUE Analysis - Needs to happen to decide what to do with category 1c. Catch/Yield
-
-```{r eval=T}
-
-CPUE_outcomes <- data_all %>% 
-  filter(Outcome.subcategory=="1c. Yield/CPUE")
-# View(CPUE_outcomes)
-write.csv(CPUE_outcomes,paste0(tabledir,today.date,"_CPUE_outcomes.csv"))
-
-```
-
-
 # TROUBLE-SHOOTING - 1/24/24!!!
+here, I was troubleshooting by checking different outcome categories for coding. For example, I checked cat "1c. Yield/CPUE" and decided that some of this category should be coded in category 2, AND re-coded this category to be double-coded with 5b! I also re-checked many other outcome categories, and fixed ones that had issues (e.g. 1e. behavior, 1k body conditions, 2b species diversity, culture, knowledge, etc.)
+
+The below script is commented off, but kept the code for how to easily check these categories, and export when I needed to dive deeper.
 
 ```{r eval=T}
 
-# View all Outcome Subcategories!
-unique(data_all$Outcome.subcategory)
+# # View all Outcome Subcategories!
+# unique(data_all$Outcome.subcategory)
 
+# # CPUE (1c)
+# CPUE_outcomes <- data_all %>% 
+#   filter(Outcome.subcategory=="1c. Yield/CPUE")
+# View(CPUE_outcomes)
+# write.csv(CPUE_outcomes,paste0(tabledir,today.date,"_CPUE_outcomes.csv"))
 
-## OUTCOME 1e.BEHAVIOR!
-Behavior_out <- data_all %>% 
-  filter(Outcome.subcategory=="1e. Behavior")
-View(Behavior_out)
-#write.csv(Behavior_out,paste0(tabledir,today.date,"_1e_outcomes.csv"))
-
-# Now going to Get EVERY Row of data for each of the aids!
-Behavior_out2 <- Behavior_out %>% 
-  select(aid) %>%
-  distinct(aid)
-View(Behavior_out2)
-
-Behavior_out_ALL <- 
-  merge(Behavior_out2,data_all,sort=TRUE)
-View(Behavior_out_ALL)
-write.csv(Behavior_out_ALL,paste0(tabledir,today.date,"_1e_outcomes_ALL_ROWS.csv"))
-
-
-## Outcome 1k. Body Conditions. and 1l. Adaptability - Coral studies and issues!
-Coral_issues <- data_all %>% 
-  filter(Outcome.subcategory=="1k. Body Conditions"|
-           Outcome.subcategory=="1l. Adaptability")
-# View(Coral_issues)
-# write.csv(Coral_issues,paste0(tabledir,today.date,"_1kand1l_outcomes.csv"))
-
-# Now going to Get EVERY Row of data for each of the aids!
-Coral_issues2 <- Coral_issues %>% 
-  select(aid) %>%
-  distinct(aid)
-View(Coral_issues2)
-
-Coral_issues_ALL <- 
-  merge(Coral_issues2,data_all,sort=TRUE)
-View(Coral_issues_ALL)
-write.csv(Coral_issues_ALL,paste0(tabledir,today.date,"_1kand1l_outcomes_ALL_ROWS.csv"))
-
-#SPECIES DIVERSITY ISSUES!!!
-## For Species Diversity, I will be pulling out SPECIFIC AIDs First (the "No" Examples)
-Diversity_issues <- data_all %>% 
-  filter(aid=="508"|
-           aid=="196"|
-           aid=="193"|
-           aid=="606"|
-           aid=="100"|
-           aid=="442"|
-           aid=="259"
-         )
-# View(Diversity_issues)
-write.csv(Diversity_issues,paste0(tabledir,today.date,"_Diversity_outcomes.csv"))
-
-### Now I really need to Search for ALL Species Diversity Papers - GO back and do a complete run-through
-## FIREST I'm going to pull out all the CODED AIDs, so I don't have to search through those
-Diversity_CODED <- data_all %>% 
-  filter(Outcome.subcategory=="2b. Species Diversity") %>% 
-  select(aid) %>%
-  distinct(aid)
-View(Diversity_CODED)
-# write.csv(Diversity_CODED,paste0(tabledir,today.date,"_diversity.csv"))
-
-
-#### NEXT, I will want to pull out the SOCIAL ONLY papers, and get all of their AIDS, So that I DON'T have to check them for species diversity LOL
-#NOTE: I've already gone through the first 100 by hand, easy to go through the rest like that in 1. Completes - Move accordingly
-
-
-## Pull out KNOWLEDGE (6a)!
-know_out <- data_all %>% 
-  filter(Outcome.subcategory=="6a. Knowledge")
-View(know_out)
-# write.csv(know_out,paste0(tabledir,today.date,"_6a_knowledge.csv"))
-
-## Pull out Behavior/Response to new practice (6b)!
-behave_out <- data_all %>% 
-  filter(Outcome.subcategory=="6b. Behavior/response to new practices or technologies")
-View(behave_out)
-# write.csv(behave_out,paste0(tabledir,today.date,"_6b_behavior.csv"))
-
-## Pull out Culture(5h) - also looking for WTP!
-culture_out <- data_all %>% 
-  filter(Outcome.subcategory=="5h. Culture")
-View(culture_out)
-# write.csv(culture_out,paste0(tabledir,today.date,"_5h_culture.csv"))
-
-## Pull out 2e. Species Interactions
-interactions_out <- data_all %>% 
-  filter(Outcome.subcategory=="2e. Species Interactions")
-View(interactions_out)
-write.csv(interactions_out,paste0(tabledir,today.date,"_2e.csv"))
-
-## Pull out 3b
-herbpred_out <- data_all %>% 
-  filter(Outcome.subcategory=="3b. Herbivory and Predation")
-View(herbpred_out)
-write.csv(herbpred_out,paste0(tabledir,today.date,"_3b.csv"))
-
-## Pull out 1g. Reproduction - to check to things that are also behavior...
-reprod_out <- data_all %>% 
-  filter(Outcome.subcategory=="1g. Reproduction")
-View(reprod_out)
-write.csv(reprod_out,paste0(tabledir,today.date,"_1g.csv"))
-
-1g. Reproduction
+# # 1e.BEHAVIOR!
+# Behavior_out <- data_all %>% 
+#   filter(Outcome.subcategory=="1e. Behavior")
+# # View(Behavior_out)
+# # write.csv(Behavior_out,paste0(tabledir,today.date,"_1e.csv"))
+# # Now going to Get EVERY Row of data for each of the aids!
+# Behavior_out_aid <- Behavior_out %>% 
+#   select(aid) %>%
+#   distinct(aid)
+# # View(Behavior_out_aid)
+# 
+# # Coral Attachment Issues: Outcome 1k. Body Conditions. and 1l. Adaptability - Coral studies and issues!
+# Coral_issues <- data_all %>% 
+#   filter(Outcome.subcategory=="1k. Body Conditions"|
+#            Outcome.subcategory=="1l. Adaptability")
+# # View(Coral_issues)
+# # write.csv(Coral_issues,paste0(tabledir,today.date,"_1kand1l_outcomes.csv"))
+# 
+# # 2b. Species Diversity - Undercoded
+# ## For Species Diversity, I will be pulling out SPECIFIC AIDs First (to check those)
+# Diversity_issues <- data_all %>% 
+#   filter(aid=="508"|
+#            aid=="196"|
+#            aid=="193"|
+#            aid=="606"|
+#          )
+# # View(Diversity_issues)
+# # write.csv(Diversity_issues,paste0(tabledir,today.date,"_Diversity_outcomes.csv"))
+# # Now I really need to Search for ALL Species Diversity Papers - GO back and do a complete run-through
+# Diversity_CODED <- data_all %>% 
+#   filter(Outcome.subcategory=="2b. Species Diversity") %>% 
+#   select(aid) %>%
+#   distinct(aid)
+# # View(Diversity_CODED)
+# # write.csv(Diversity_CODED,paste0(tabledir,today.date,"_diversity.csv"))
+# 
+#
+# # NEXT, I will want to pull out the Social Outcome papers, and get all of their AIDS
+# 
+# # KNOWLEDGE (6a)!
+# know_out <- data_all %>% 
+#   filter(Outcome.subcategory=="6a. Knowledge")
+# # View(know_out)
+# # write.csv(know_out,paste0(tabledir,today.date,"_6a_knowledge.csv"))
+# 
+# # Behavior/Response to new practice (6b)!
+# behave_out <- data_all %>% 
+#   filter(Outcome.subcategory=="6b. Behavior/response to new practices or technologies")
+# # View(behave_out)
+# # write.csv(behave_out,paste0(tabledir,today.date,"_6b_behavior.csv"))
+# 
+# # Culture(5h) - also looking for WTP
+# culture_out <- data_all %>% 
+#   filter(Outcome.subcategory=="5h. Culture")
+# # View(culture_out)
+# # write.csv(culture_out,paste0(tabledir,today.date,"_5h_culture.csv"))
 
 ```
-
 
 # Quick Checks to make sure data is sorting correctly
 
@@ -242,14 +188,18 @@ unique(data_all$Int_cat)  # 9 Interventions (we took #8 out)
 unique(data_all$Outcome_cat) # 7 outcomes
 sort(unique(data_all$Intervention.subcategory)) # 32 sub-interventions (#8s were not included)
   # Seems like only 26 sub-interventions were coded for
-sort(unique(data_all$Outcome.subcategory)) # 42 sub-outcomes (bc we added in 1c. Catch/Yield)
-  # Seems like only 40 sub-interventions were coded for
+sort(unique(data_all$Outcome.subcategory)) # 43 sub-outcomes (bc we added in Catch/Yield x2)
+  # Seems like only 41 sub-interventions were coded for
 
 # those that were not observed
 int_list$Int_cat_orig[!int_list$Int_cat_orig%in%data_all$Int_cat] # 8. Research and monitoring
+  # NUll here, bc Research and monitoring is NO LONGER in the key
 int_sub_list$int_sub[!int_sub_list$int_sub%in%data_all$Intervention.subcategory] # 6 sub-interventions. Correct: 32-26=6
+   # ISSUE HERE: GEtting NULL
 out_list$Outcome_cat_orig[!out_list$Outcome_cat_orig%in%data_all$Outcome_cat] #correct, 0 bc all were coded for
+  # ISSUE HERE: GEtting NULL
 out_sub_list$out_sub[!out_sub_list$out_sub%in%data_all$Outcome.subcategory] # 2 sub-outcomes. Correct: 42-40=2
+  # ISSUE HERE: GEtting NULL
 
 # incorrect values entered (all should be zero)
 data_all$Int_cat[!data_all$Int_cat%in%int_list$Int_cat_orig] 
