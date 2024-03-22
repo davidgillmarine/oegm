@@ -1060,7 +1060,10 @@ In the paper, I look at rate of integrated (multiple) intervention studies over 
     summarise(n.int=n_distinct(Int_cat)) %>% 
    filter(n.int>1)
 )
+
+#Distinct number of Multiple Intervention Studies!
 n_distinct(multi.int.studies$aid)/n_distinct(data_all$aid)*100
+
 multi.int.aid <- multi.int.studies$aid[multi.int.studies$n.int>1]
 
 Multi_int_time_gps <- data_all %>%
@@ -1075,11 +1078,6 @@ Multi_int_time_gps <- data_all %>%
   filter(!is.na(Year.of.publication))
 View(Multi_int_time_gps)
 
-# Studies with multiple conservation interventions
-97/208*100
-# David: how do I ask mulit.int.studies to count the number of distinct aids 
-# and then give me the percent out of total num.studies? tried, cant!
-
 ```
 
 6. O: Outcomes:
@@ -1091,7 +1089,7 @@ data_all %>%
   summarise(num=n_distinct(aid), pct=num/num.studies*100)%>% 
   arrange (desc(num))  # this arranges them in descending order 
 
-  # % Pop/Species and Ecological Community combined (no overlaps):
+# % Pop/Species and Ecological Community combined (no overlaps):
 data_all %>%  
   filter(Outcome_cat== "1. Population/Species"| 
          Outcome_cat==  "2. Ecological Community") %>%  
