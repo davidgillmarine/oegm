@@ -1,0 +1,300 @@
+---
+title: "OESM_Gap_Map_for_Austin"
+author: "D.I.Grieco"
+date: "2024-04-10"
+output: html_document
+---
+
+# Setup
+Loads libraries, reads in data, cleans datasets
+```{r eval=T}
+#set working directory to the correct folders on your machine
+workdir <- "R:/Gill/research/oegm/"
+inputdir <- paste0(workdir,"tables/raw/")
+mapdir <-  paste0(workdir,"spatial/raw/")
+plotdir <- paste0(workdir,"output/plots/")
+tabledir <- paste0(workdir,"output/tables/")
+
+library(pacman) # I shouldn't need to do this, but pacman NEVER works for me with the p_load below, so I need to add this
+pacman::p_load(rio,rgeos,treemap,gtools,cowplot,rnaturalearth,rnaturalearthdata,tidyverse,dplyr)
+
+today.date <- gsub("-","",Sys.Date())
+
+```
+
+# Organize data
+
+```{r eval=T}
+
+#read in data, skip first 2 rows
+all.data<-import(paste0(inputdir,"20240315_All_Papers.xlsx"), which="FULL Data Extraction Sheet",skip =2, .name_repair = "universal") %>% 
+  mutate(Date=as.character(Date))
+
+country <- import(paste0(inputdir,"allcountries.csv"))
+
+# Count total papers in Full Text Screening
+length(unique(all.data$Article.ID)) # should be 779 (as of 3/14/24)
+
+# Count Rejected Papers
+Reject_data <- all.data %>%  
+  filter(Full.text.screening.=="Reject") %>% 
+  rename(Int_cat=Intervention.category,Outcome_cat=Outcome.category, aid=Article.ID, study.ctry=Country.ies..of.study)
+length(unique(Reject_data$aid)) #= how many rejected papers # should be 608 (as of 3/14/24)
+
+# Select accepted papers, rename variables==
+data_all <- all.data %>%  
+  filter(Full.text.screening.=="Accept" & !is.na(Intervention.category) & !is.na(Outcome.category)) %>% 
+  rename(Int_cat=Intervention.category,Outcome_cat=Outcome.category, aid=Article.ID, study.ctry=Country.ies..of.study)
+length(unique(data_all$aid)) # = how many accepted & completely screened papers # should be 171 (as of 3/14/24)
+
+# read in full intervention lists
+int_list<-import(paste0(inputdir,"intervention abbreviations.csv"))
+out_list<-import(paste0(inputdir,"outcome abbreviations 2.csv")) #adjusted for '23 name changes
+
+#NOTE: the DROP DOWN LISTS here, which collect ALL of the dropdowns, are taken from the ALL PAPERS Master Sheet!
+drop.down.lists<-import(paste0(inputdir,"20240315_All_Papers.xlsx"), which="Dropdowns", skip =1, .name_repair = "universal")
+
+int_sub_list <-  drop.down.lists %>% 
+  select(Intervention.subcategory) %>% 
+  na.omit() %>% 
+  rename(int_sub=Intervention.subcategory)
+out_sub_list <-  drop.down.lists %>% 
+  select(Outcome.subcategory) %>% 
+  na.omit() %>% 
+  rename(out_sub=Outcome.subcategory) 
+num.studies <- length(unique(data_all$aid)) #should again be 171
+
+```
+
+# Quick Checks to make sure data is sorting correctly
+
+```{r eval=T}
+
+#quick checks
+unique(data_all$Int_cat)  # 9 Interventions (we took #8 out)
+unique(data_all$Outcome_cat) # 7 outcomes
+sort(unique(data_all$Intervention.subcategory)) # 32 sub-interventions (in int_sub_list)
+  # Only 26 sub-interventions were coded for
+sort(unique(data_all$Outcome.subcategory)) # 43 sub-outcomes (bc we added in Catch/Yield x2)
+  # Only 41 sub-interventions were coded for
+
+# those that were not observed
+int_list$Int_cat_orig[!int_list$Int_cat_orig%in%data_all$Int_cat] # 8. Research and monitoring
+int_sub_list$int_sub[!int_sub_list$int_sub%in%data_all$Intervention.subcategory] # 6 sub-interventions. Correct: 32-26=6
+out_list$Outcome_cat_orig[!out_list$Outcome_cat_orig%in%data_all$Outcome_cat] #correct, 0 bc all were coded for
+out_sub_list$out_sub[!out_sub_list$out_sub%in%data_all$Outcome.subcategory] # 2 sub-outcomes. Correct: 43-41=2
+
+# incorrect values entered (all should be zero)
+data_all$Int_cat[!data_all$Int_cat%in%int_list$Int_cat_orig] #0
+data_all$Intervention.subcategory[!data_all$Intervention.subcategory%in%int_sub_list$int_sub] #0
+data_all$Outcome_cat[!data_all$Outcome_cat%in%out_list$Outcome_cat_orig] #0
+data_all$Outcome.subcategory[!data_all$Outcome.subcategory%in%out_sub_list$out_sub] #0
+  # Correct - all are 0!
+
+# Add habitat fields
+unique(data_all$Habitat.type) 
+data_all <- data_all %>% 
+mutate(coral=ifelse(grepl("Coral",Habitat.type,ignore.case = T),1,0),
+       seagrass=ifelse(grepl("Seagrass",Habitat.type,ignore.case = T),1,0), 
+       # note: ignores case, so the lowercase "seagrass" is fine!
+       mangrove=ifelse(grepl("Mangrove",Habitat.type,ignore.case = T),1,0),)
+
+# check habitat coding
+unique(data_all$Habitat.type[data_all$coral==1])
+unique(data_all$Habitat.type[data_all$seagrass==1])
+unique(data_all$Habitat.type[data_all$mangrove==1])
+  # Correct - all sorted
+
+habitat.test <- data_all %>% 
+  filter(coral==0 & mangrove==0 & seagrass==0) %>% 
+  select(Habitat.type)
+unique(habitat.test$Habitat.type) # should just be 0 - no other categories (we took out the "Other" category)
+
+# remove 8. Research and Monitoring as an intervention entirely, and adjust numbers
+data_all <-data_all %>% 
+  filter(Int_cat!="8. Research & monitoring")%>% 
+  mutate_at(vars(Int_cat,Intervention.subcategory), ~gsub("^9","8",.)) %>% 
+  mutate_at(vars(Int_cat,Intervention.subcategory), ~gsub("^10","9",.))  
+
+#new quick checks
+unique(data_all$Int_cat)  # 9 interventions, #1-9
+unique(data_all$Outcome_cat) # 7 outcomes, #1-7
+sort(unique(data_all$Intervention.subcategory)) # 26 sub-interventions coded - no.1-9
+sort(unique(data_all$Outcome.subcategory)) # 41 sub-outcomes coded, no.1-7.
+
+# Get full intervention list
+  int_list <- data_all %>%
+    ungroup() %>%
+    distinct(Int_cat) %>%
+    rename(int_val=Int_cat) %>% 
+    arrange(int_val)
+  out_list <- data_all %>%
+    ungroup() %>%
+    distinct(Outcome_cat) %>%
+    rename(out_val=Outcome_cat) %>% 
+    arrange(out_val)
+# Get full sub-intervention list
+  int_sub_list <- data_all %>%
+    ungroup() %>%
+    distinct(Intervention.subcategory) %>%
+    rename(int_val=Intervention.subcategory) %>% 
+    arrange(int_val)
+  out_sub_list <- data_all %>%
+    ungroup() %>%
+    distinct(Outcome.subcategory) %>%
+    rename(out_val=Outcome.subcategory) %>% 
+    arrange(out_val)
+
+```
+
+# Heat map function
+Creates a heat map from the OESM accepted articles, based on intervention and outcome categories and subcategories
+
+Under # Create Heatmap, the "geom_text" line adds text (numbers) on each heat map cell. We #ed that line for the first OEGM paper, since it was only a subsample of the literature, and thus numbers themselves could be misleading. Similarly, 
+
+In the future, we should be able to make this heat map interactive with plotly (see https://www.r-graph-gallery.com/79-levelplot-with-ggplot2.html)
+
+```{r eval=T}
+#--- Heat map function ----
+my_heat_map <- function (.data,intc, outc, high.col="#2171b5") {
+  
+  
+# don't know why... but this works
+  .data$intc<- as.vector(.data %>%  pull(intc))
+  .data$outc<- as.vector(.data %>%  pull(outc))
+
+# Set full intervention list type  
+if(intc=="Int_cat"){int_list_full=int_list}
+if(intc=="Intervention.subcategory"){int_list_full=int_sub_list}
+if(outc=="Outcome_cat"){out_list_full=out_list}
+if(outc=="Outcome.subcategory"){out_list_full=out_sub_list}
+
+# Get unique article ID, int. and out. list (and sum of articles)
+  typology_dat <- .data %>% 
+    select(aid, intc, outc) %>% 
+    filter(intc!="" & !is.na(intc)) %>%  # just in case
+    distinct() %>% 
+    full_join(int_list_full,by =c("intc"="int_val")) %>% 
+    full_join(out_list_full,by =c("outc"="out_val")) %>% 
+    group_by(intc) %>% 
+    mutate(int_val=paste0(intc)) %>% 
+      # mutate(int_val=paste0(intc," (",n_distinct(aid,na.rm = T),")")) %>%  #adds article counts to int names
+    group_by(outc) %>% 
+    mutate(out_val=paste0(outc)) %>% 
+      # mutate(out_val=paste0(outc," (",n_distinct(aid,na.rm = T),")")) %>% #adds article counts to out names
+    ungroup() %>% 
+    select(-c(intc,outc)) 
+  
+  # Get expanded intervention-outcome list for this dataset
+  int_list <- typology_dat %>%
+    ungroup() %>%
+    filter(int_val!="NA (0)") %>% 
+    distinct(int_val) %>%
+    arrange(int_val)
+  out_list <- typology_dat %>%
+    ungroup() %>%
+    distinct(out_val) %>%
+    filter(out_val!="NA (0)") %>% 
+    arrange(out_val)
+  io_list <- expand.grid(int_list$int_val,out_list$out_val) %>% 
+    rename(int_val=Var1,out_val=Var2)
+
+#head(io_list)
+  
+  #gather data and get counts 
+  io_counts <<- typology_dat %>%
+    group_by(int_val, out_val) %>% 
+    count() %>%
+    full_join(io_list,by = c("int_val", "out_val")) %>%   # inserts missing combinations
+    filter(int_val!="NA (0)" &  out_val!="NA (0)") %>% 
+    mutate(n=replace_na(n,0)) %>%
+    ungroup() %>% 
+    mutate(int_val=factor(int_val,levels=mixedsort(int_list$int_val)))  # set int list in right order
+  
+  # head(io_counts)
+  # nrow(int_list)*nrow(out_list)==nrow(io_counts) # quick check (should be true)
+  
+# Create Heatmap
+  heat.map <<- ggplot(data=io_counts, aes(x=int_val,y=reorder(out_val, desc(out_val)),fill=n)) +
+      geom_tile(color="gray90",size=0.1) +
+      # geom_text(aes(label=n),show.legend = F) + # adds numbers into cells
+    scale_fill_gradient2(low="#f7fbff",high=high.col,name="Number of Studies",
+        na.value="black", limits=c(0,max(io_counts$n))) + 
+      coord_equal() +
+      # theme_tufte(base_family="Helvetica") +	# having issues with font, font colour in windows...
+      theme(axis.ticks=element_line(size=0.3),
+        axis.text=element_text(size=10),
+        axis.text.x = element_text(angle=45,hjust=0,vjust=1),
+        axis.text.y = element_text(angle=0,hjust=0,vjust=0),
+        legend.title=element_text(size=10),
+        legend.title.align=1,
+        legend.text=element_text(size=8),
+        legend.margin = margin(grid::unit(0,"cm")),
+        legend.position ="bottom",
+        legend.direction ="horizontal",
+        legend.key.size=grid::unit(1, "cm"),
+        legend.key.width=grid::unit(1, "cm"),
+        plot.background=element_blank(),
+        panel.border=element_blank(),
+        plot.title=element_text(hjust=0,size=12,face="bold"),
+        text=element_text(family="sans")) +  # "serif"=TN Roman, "sans" = Arial
+      scale_x_discrete(position = "top") +
+      scale_y_discrete(position = "right") 
+      #  labs(x="Conservation Intervention", y="Outcome", title ="All ecosystems") +
+  
+}
+```
+
+# Create heat maps 
+```{r eval=T}
+#--- Create maps ----
+# All ecosystems
+my_heat_map(data_all,"Int_cat","Outcome_cat")
+io_counts.all <- io_counts
+(heat.map.all <- heat.map +
+    labs(x="Conservation Intervention", y="Outcome", title ="All ecosystems"))
+ggsave(paste0(plotdir,today.date,'_int_out_map.png'),width = 8,height = 8)
+
+# All ecosystems - Intervention subcategory X Outcome
+my_heat_map(data_all,"Intervention.subcategory", "Outcome_cat")
+io_counts.subint <- io_counts
+(heat.map.subint <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="All ecosystems"))
+ggsave(paste0(plotdir,today.date,'_sub.int_out_map.png'),width = 16,height = 8)
+
+# All ecosystems - Intervention  X Outcome subcategory
+my_heat_map(data_all,"Int_cat", "Outcome.subcategory")
+io_counts.subint <- io_counts
+(heat.map.subint <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="All ecosystems"))
+ggsave(paste0(plotdir,today.date,'_int_sub.out_map.png'),width = 8,height = 16)
+
+# All ecosystems - Intervention subcategory X Outcome subcategory
+my_heat_map(data_all,"Intervention.subcategory", "Outcome.subcategory")
+io_counts.subintout <- io_counts
+(heat.map.subint <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="All ecosystems"))
+ggsave(paste0(plotdir,today.date,'_sub.int_sub.out_map.png'),width = 16,height = 12)
+
+# Coral
+my_heat_map(filter(data_all,coral==1),"Int_cat","Outcome_cat", high.col = "coral3")
+io_counts.coral <- io_counts
+(heat.map.coral <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="Coral"))
+
+# Mangrove
+my_heat_map(filter(data_all,mangrove==1),"Int_cat","Outcome_cat", high.col = "orange2")
+io_counts.mangrove <- io_counts
+(heat.map.mangrove <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="Mangrove")) 
+
+# Seagrass
+my_heat_map(filter(data_all,seagrass==1),"Int_cat","Outcome_cat", high.col = "green4")
+io_counts.seagrass <- io_counts
+(heat.map.seagrass <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="Seagrass")) 
+
+# Ecosystem maps on same scale
+max.val <- max(io_counts.mangrove$n,io_counts.coral$n,io_counts.seagrass$n)
+plot_grid(heat.map.coral + scale_fill_gradient2(low="#f7fbff",high= "coral3",name="# Cases",na.value="black", limits=c(0,max.val)),
+          heat.map.seagrass + scale_fill_gradient2(low="#f7fbff",high= "green4",name="# Cases",na.value="black", limits=c(0,max.val)),
+          heat.map.mangrove + scale_fill_gradient2(low="#f7fbff",high= "orange2",name="# Cases",na.value="black", limits=c(0,max.val)),
+          labels=letters[1:3], ncol = 3, nrow = 1, hjust=-1, align = "hv")
+ggsave(paste0(plotdir,today.date,'_habitat_int_out_map.png'),width = 17,height = 8)
+
+#NOTE:
+# maps might not show up below, but check folders - they should still come out fine
