@@ -20,6 +20,7 @@ tabledir <- paste0(workdir,"output/tables/")
 
 library(pacman) # I shouldn't need to do this, but pacman NEVER works for me with the p_load below, so I need to add this
 pacman::p_load(rio,rgeos,treemap,gtools,cowplot,rnaturalearth,rnaturalearthdata,tidyverse,dplyr)
+  #WARNING: package ‘rgeos’ is not available for this version of R - take out? I think this is the OLD world map!
 
 today.date <- gsub("-","",Sys.Date())
 
@@ -36,23 +37,23 @@ all.data<-import(paste0(inputdir,"20240315_All_Papers.xlsx"), which="FULL Data E
 country <- import(paste0(inputdir,"allcountries.csv"))
 
 # Count total papers in Full Text Screening
-length(unique(all.data$Article.ID)) # should be 779 (as of 3/14/24)
+length(unique(all.data$Article.ID)) # should be 779 (as of 3/15/24)
 
 # Count Rejected Papers
 Reject_data <- all.data %>%  
   filter(Full.text.screening.=="Reject") %>% 
-  rename(Int_cat=Intervention.category,Outcome_cat=Outcome.category, aid=Article.ID, study.ctry=Country.ies..of.study)
-length(unique(Reject_data$aid)) #= how many rejected papers # should be 608 (as of 3/14/24)
+  rename(Why_rejected=If.rejected..why.,PICO_details=Further.PICO.Details, aid=Article.ID,study.ctry=Country.ies..of.study)
+length(unique(Reject_data$aid)) #= how many rejected papers # should be 608 (as of 3/15/24)
 
 # Select accepted papers, rename variables==
 data_all <- all.data %>%  
   filter(Full.text.screening.=="Accept" & !is.na(Intervention.category) & !is.na(Outcome.category)) %>% 
   rename(Int_cat=Intervention.category,Outcome_cat=Outcome.category, aid=Article.ID, study.ctry=Country.ies..of.study)
-length(unique(data_all$aid)) # = how many accepted & completely screened papers # should be 171 (as of 3/14/24)
+length(unique(data_all$aid)) # = how many accepted & completely screened papers # should be 171 (as of 3/15/24)
 
 # read in full intervention lists
 int_list<-import(paste0(inputdir,"intervention abbreviations.csv"))
-out_list<-import(paste0(inputdir,"outcome abbreviations 2.csv")) #adjusted for '23 name changes
+out_list<-import(paste0(inputdir,"outcome abbreviations 2.csv")) #adjusted for '24 name changes
 
 #NOTE: the DROP DOWN LISTS here, which collect ALL of the dropdowns, are taken from the ALL PAPERS Master Sheet!
 drop.down.lists<-import(paste0(inputdir,"20240315_All_Papers.xlsx"), which="Dropdowns", skip =1, .name_repair = "universal")
@@ -69,7 +70,74 @@ num.studies <- length(unique(data_all$aid)) #should again be 171
 
 ```
 
-# Clean Up Data
+# CLEAN UP Rejected at Full Text Paper Data
+
+```{r eval=T}
+# If Rejected, Why?!
+unique(Reject_data$Why_rejected)  # Separate ;, then count each group
+
+## Update Fields to get stats for each category (without semicolon (;) confusion)
+Reject_data <- Reject_data %>% 
+mutate(OtherReason=ifelse(grepl("Other Reason",Why_rejected,ignore.case = T),1,0), # note: ignores case, so the lowercase is fine!
+       Doesnt_fit_PICO=ifelse(grepl("Doesn't fit PICO/Inclusion Criteria",Why_rejected,ignore.case = T),1,0), 
+       Could_not_locate=ifelse(grepl("Could not locate",Why_rejected,ignore.case = T),1,0), 
+       Not_accessible=ifelse(grepl("Not accessible",Why_rejected,ignore.case = T),1,0), 
+       Review_or_MA=ifelse(grepl("Reviews/Meta-Analysis",Why_rejected,ignore.case = T),1,0), 
+       Duplicate=ifelse(grepl("Duplicate",Why_rejected,ignore.case = T),1,0), 
+       Non_English=ifelse(grepl("Non-English Language",Why_rejected,ignore.case = T),1,0),)
+
+## check Why Rejected Coding
+unique(Reject_data$Why_rejected[Reject_data$OtherReason==1])
+unique(Reject_data$Why_rejected[Reject_data$Doesnt_fit_PICO==1])
+unique(Reject_data$Why_rejected[Reject_data$Could_not_locate==1])
+unique(Reject_data$Why_rejected[Reject_data$Not_accessible==1])
+unique(Reject_data$Why_rejected[Reject_data$Review_or_MA==1])
+unique(Reject_data$Why_rejected[Reject_data$Duplicate==1])
+unique(Reject_data$Why_rejected[Reject_data$Non_English==1])
+  # Correct? yes
+
+Why_rejected.test <- Reject_data %>% 
+  filter(OtherReason==0 & Doesnt_fit_PICO==0 & Could_not_locate==0 & Not_accessible==0 & Review_or_MA==0 & Duplicate==0 & Non_English==0) %>% 
+  select(Why_rejected)
+unique(Why_rejected.test$Why_rejected) # should just be 0 - no other categories
+  # Correct? yes
+
+## 
+
+# Further PICO Details (I.E intervention, outcome, etc)
+unique(Reject_data$PICO_details)  # Separate ;, then count each group
+
+
+## Update Fields to get stats for each category (without semicolon (;) confusion)
+Reject_data <- Reject_data %>% 
+mutate(Population=ifelse(grepl("Population",PICO_details,ignore.case = T),1,0), # note: ignores case, so the lowercase is fine!
+       Intervention=ifelse(grepl("Intervention",PICO_details,ignore.case = T),1,0), 
+       Outcome=ifelse(grepl("Outcome",PICO_details,ignore.case = T),1,0), 
+       Theoretical_Modeled_Study=ifelse(grepl("Theoretical/Modeled Study Design",PICO_details,ignore.case = T),1,0), 
+       Not_Peer_Reviewed=ifelse(grepl("Not Peer Reviewed",PICO_details,ignore.case = T),1,0),
+       N_A=ifelse(grepl("NA",PICO_details,ignore.case = T),1,0),) 
+          ## NA Studies - AKA The Paper DID Fit PICO, but something else had been wrong with it in the EARLIER column... don't worry about these!
+
+## check Why Rejected Coding
+unique(Reject_data$PICO_details[Reject_data$Population==1])
+unique(Reject_data$PICO_details[Reject_data$Intervention==1])
+unique(Reject_data$PICO_details[Reject_data$Outcome==1])
+unique(Reject_data$PICO_details[Reject_data$Theoretical_Modeled_Study==1])
+unique(Reject_data$PICO_details[Reject_data$Review_or_MA==1])
+unique(Reject_data$PICO_details[Reject_data$Not_Peer_Reviewed==1])
+unique(Reject_data$PICO_details[Reject_data$N_A==1])
+  # Correct? yes
+
+PICO_details.test <- Reject_data %>% 
+  filter(Population==0 & Intervention==0 & Outcome==0 & Theoretical_Modeled_Study==0 & Review_or_MA==0 & Not_Peer_Reviewed==0 & N_A==0) %>% 
+  select(PICO_details)
+unique(PICO_details.test$PICO_details) # should just be 0 - no other categories
+  # Correct? yes
+
+```
+
+
+# Clean Up Accepted Paper Data
 
 ```{r eval=T}
 
@@ -157,7 +225,6 @@ The below script is commented off, but kept the code for how to easily check the
 # # View(Diversity_CODED)
 # # write.csv(Diversity_CODED,paste0(tabledir,today.date,"_diversity.csv"))
 # 
-#
 # # NEXT, I will want to pull out the Social Outcome papers, and get all of their AIDS
 # 
 # # KNOWLEDGE (6a)!
@@ -858,21 +925,98 @@ plot_grid(pInt_time_gps,pout_time_gps)
 ggsave(paste0(plotdir,today.date,'_studies_over_time.png'),width = 12,height = 4)
 
 ```
+
 # Stats Section
 This section outputs a lot of the different stats used in the paper. Right now, I am just inputting them by hand, and so definitely would be useful to print out the stats I want to copy/paste and easy access
 
-1. Basic Percentages
+1. Basic Stats (Paper #s and %s)
 ```{r eval=T}
-
 # --- Percentages --- #
 # test <-  data_all %>%
 #   select(aid, Int_cat, Intervention.subcategory, Outcome_cat,Outcome.subcategory)
 
-#Total number of studies
-num.studies <- length(unique(data_all$aid))
+# List of data headings
+head(data_all,0)
 
-#List of data headings
-head(data_all,1)
+# Total papers in Full Text Screening
+length(unique(all.data$Article.ID))
+
+# Total Rejected Full-Text Papers
+num.rejects <- length(unique(Reject_data$aid))
+print(num.rejects)
+
+# Reasons for Rejection
+
+## List of data headings
+head(Reject_data,0)
+## Note: these DO contain overlap, ie. some studies have multiple reasons for rejection!
+
+## Other Reason
+Reject_data %>%
+  filter(OtherReason==1) %>% 
+  summarise(Why_rejected="Other Reason", num=n_distinct(aid), pct=num/num.rejects*100)
+
+## Could_not_locate
+Reject_data %>%
+  filter(Could_not_locate==1) %>% 
+  summarise(Why_rejected="Could not Locate", num=n_distinct(aid), pct=num/num.rejects*100) 
+
+## Not_accessible
+Reject_data %>%
+  filter(Not_accessible==1) %>% 
+  summarise(Why_rejected="Not accessible", num=n_distinct(aid), pct=num/num.rejects*100)
+
+## Review_or_MA
+Reject_data %>%
+  filter(Review_or_MA==1) %>% 
+  summarise(Why_rejected="Reviews/Meta-Analysis", num=n_distinct(aid), pct=num/num.rejects*100) 
+
+## Duplicate
+Reject_data %>%
+  filter(Duplicate==1) %>% 
+  summarise(Why_rejected="Duplicate", num=n_distinct(aid), pct=num/num.rejects*100) 
+
+## Non_English
+Reject_data %>%
+  filter(Non_English==1) %>% 
+  summarise(Why_rejected="Non English Language", num=n_distinct(aid), pct=num/num.rejects*100) 
+
+## Doesnt_fit_PICO
+Reject_data %>%
+  filter(Doesnt_fit_PICO==1) %>% 
+  summarise(Why_rejected="Doesn't fit PICO or Inclusion Criteria", num=n_distinct(aid), pct=num/num.rejects*100) 
+
+# Now, let's Dive into the "Doesn't Fit PICO" section:
+
+## Population
+Reject_data %>%
+  filter(Population==1) %>% 
+  summarise(PICO_details="Population", num=n_distinct(aid), pct=num/num.rejects*100)
+
+## Intervention
+Reject_data %>%
+  filter(Intervention==1) %>% 
+  summarise(PICO_details="Intervention", num=n_distinct(aid), pct=num/num.rejects*100) 
+
+## Outcome
+Reject_data %>%
+  filter(Outcome==1) %>% 
+  summarise(PICO_details="Outcome", num=n_distinct(aid), pct=num/num.rejects*100)
+
+## Theoretical_Modeled_Study
+Reject_data %>%
+  filter(Theoretical_Modeled_Study==1) %>% 
+  summarise(PICO_details="Theoretical or Modeled_Study", num=n_distinct(aid), pct=num/num.rejects*100) 
+
+## Not_Peer_Reviewed
+Reject_data %>%
+  filter(Not_Peer_Reviewed==1) %>% 
+  summarise(PICO_details="Not Peer Reviewed", num=n_distinct(aid), pct=num/num.rejects*100) 
+
+
+#Total Accepted Full-Text studies
+print(num.studies)
+
 ```
 
 2. P: Geographies
@@ -924,7 +1068,6 @@ data_all %>%
 3. P: Habitats
 
 ```{r eval=T}
-
 # Coral
 data_all %>%
   filter(coral==1) %>% 
