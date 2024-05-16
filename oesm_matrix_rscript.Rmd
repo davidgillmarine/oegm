@@ -102,11 +102,8 @@ Why_rejected.test <- Reject_data %>%
 unique(Why_rejected.test$Why_rejected) # should just be 0 - no other categories
   # Correct? yes
 
-## 
-
 # Further PICO Details (I.E intervention, outcome, etc)
 unique(Reject_data$PICO_details)  # Separate ;, then count each group
-
 
 ## Update Fields to get stats for each category (without semicolon (;) confusion)
 Reject_data <- Reject_data %>% 
@@ -493,20 +490,156 @@ SKIP FOR NOW
 ```{r eval=T}
 #---- World map ----
 
+# Download country shapes
+
+world_countries <- ne_countries(
+  scale = 10,
+  type = "countries",
+  returnclass = "sf")
+
+# Clean and Organize Data
+
+unique(data_all$study.ctry)
+
+# fix data in country column
+  ## NOTE: NOW Edited to Match the NEW Map!!! (2024 - ne_countries - scale 10 type countries)
+ctry.fix <- data_all %>%
+  mutate(study.ctry=gsub(",",";",study.ctry),  # replace "," with ";" to help with splitting
+         study.ctry=gsub("Korea; South","South Korea",study.ctry),
+         study.ctry=gsub("Turks and Caicos","Turks and Caicos Islands",study.ctry),
+         study.ctry=gsub("Tanzania*.","United Republic of Tanzania",study.ctry),
+             #Not sure if this will work, trying to do "Tanzania and anything after it"
+             # now is doubled... not sure why, will just have a 2nd code... 
+         study.ctry=gsub("United Republic of Tanzania United Republic Of","United Republic of Tanzania",study.ctry),
+         study.ctry=gsub("Commonwealth of the Northern Mariana Islands","Northern Mariana Islands",study.ctry),
+         study.ctry=gsub("Taiwan; Province Of China","Taiwan",study.ctry),
+         study.ctry=gsub("Cote D'Ivoire","Ivory Coast",study.ctry),
+         study.ctry=gsub("United States","United States of America",study.ctry),
+         study.ctry=gsub("USA","United States of America",study.ctry),
+         study.ctry=gsub(".*Virgin Islands","United States Virgin Islands",study.ctry),
+            # Means "Virgin Islands" and anything before it - turns both "U.S. Virgin Islands" and "Virgin Islands" into above
+         study.ctry=gsub("Viet Nam","Vietnam",study.ctry),
+  ## Would Like a better Name / Map / Disputed... come back to
+         study.ctry=gsub("Chagos currently disputed between UK and Republic of Mauritius","British Indian Ocean Territory",study.ctry),
+         study.ctry=gsub(".*Hawaii)","United States of America",study.ctry),
+         study.ctry=gsub(".*Palmyra Atoll near Kiribati but owned by United States of America)","United States of America",study.ctry),
+         study.ctry=gsub(".*Guadeloupe)","France",study.ctry),
+         study.ctry=gsub(".*Mayotte)","France",study.ctry),
+         study.ctry=gsub(".*Reunion);","France",study.ctry),
+  ## Want to check back on name changes / the way I'm referring to them
+         study.ctry=gsub("Commonwealth of the Northern Mariana Islands","Northern Mariana Islands",study.ctry),
+         study.ctry=gsub("Lao People's Democratic Republic","Laos",study.ctry),
+         ) 
+
+# all habitats (FOR THIS MAP)
+ctry.all <- ctry.fix %>% 
+  group_by(aid,study.ctry) %>%
+  summarise() %>% 
+  filter(!is.na(study.ctry))
+head(ctry.all)
+
+# get no. articles per country (and percentage) to create vector of column names for each country by counting the number of ";" 
+max.ctry <- paste0("ctry",rep(1:max(str_count(ctry.all$study.ctry, ";")+1))) 
+
+# Join the Dataframe to rnaturalearth ne_countries (world_countries) 
+ctry_sum <- ctry.all %>% 
+  separate(study.ctry,max.ctry, sep="; ",fill="right") %>% # fill=right fills blanks with NAs
+  gather("X","admin", max.ctry) %>%   #gather is a tidyr function that reshapes columns into key pairs
+      #What does this "X" mean?! I really don't know, but it works
+      #admin is the sub-country column in world_countries dataframe
+  filter(!is.na(admin)) %>% 
+  select(-X) %>% 
+  group_by(admin) %>% 
+  count() %>% 
+  mutate(pct=n/num.studies)
+arrange(ctry_sum,desc(n))
+
+# Countries that need to be fixed
+ctry_sum$admin[!ctry_sum$admin%in%world_countries$admin]
+# go back and fix any that need to be fixed in initial part of this section!
+
+# join to full world_countries list
+ctry_sum1 <- world_countries %>% 
+  left_join(ctry_sum,by="admin") %>%
+  mutate(n=na.replace(n,0)) 
+
+ctry_sum$admin[!ctry_sum$admin%in%ctry_sum1$admin] # any missing?
+
+#### I MADE IT THIS FAR! only have a few edits: "Bahamas" "Mauritiana" "NA" "Saint Vincent And The Grenadines" "Timor-Leste"
+
+
+
+
+
+
+
+## Drew's WORLD MAP CODE (some is above!!!)
+
+  # Requires rnaturalearth and tidyverse packages (loaded at the top)
+
+
+# Load and process your data 
+your_data <- 
+
+
+# Join your data to country shapes
+# You will need to have (or create) a column in your data to join to the country shapes from Natural Earth. Ideally, this will match the adm0_a3 field. Sint Maarten, for example, is SXM. You could also try matching to one of the name fields (name, name_long) in Natural Earth instead of the code. But this can get tricky because the names have to match exactly. 
+map_data <- left_join(ne_countries, your_data, by = c("adm0_a3" = "your_data_code"))
+
+# Map
+ggplot(map_data) +
+  geom_sf() 
+
+
+#---- OLD Code ----
+
+
+  ### I believe I used SF in my class this summer! Come back to this!!!
+# read in map
+map <- rgdal::readOGR(paste0(mapdir,"TM_WORLD_BORDERS-0.3/TM_WORLD_BORDERS-0.3.shp")) #rgdal was taken from R! Need to use SF or Terra!!! 
+map <-broom::tidy(map,region="ISO3")
+#map@data[map@data$NAME=="Turks and Caicos Islands",]
+
+#plot study map
+(study_ctry_map <- ggplot() +
+    geom_map(data=ctry_sum1, aes(map_id=code, fill=n),map=map) +
+    expand_limits(x=map$long,y=map$lat) +
+    theme(
+        panel.background = element_rect(fill = "#CCCCCC", colour = "#CCCCCC"),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.border=element_blank(),
+        plot.title=element_text(hjust=0,size=12), # face="bold"
+        axis.ticks = element_blank(), 
+        axis.text = element_blank(),
+        axis.title = element_blank(),
+        legend.title=element_text(size=10),
+        legend.title.align=1,
+        legend.text=element_text(size=8),
+        legend.position ="bottom",
+        text=element_text(family="sans") # "serif"=TN Roman, "sans" = Arial
+        ) +
+    scale_fill_gradient2(
+        name="Number of Studies",
+        low="white",mid="#2171b5",high="#08519c",
+        midpoint=max(ctry_sum1$n)/2,limits=c(0,max(ctry_sum1$n))) )
+    # labs(title="Study countries")  # if axes: x="X axis label", y="Y axis label"
+  ggsave(paste0(plotdir,today.date,'_study_country_map.png'),width = 10,height = 5)
+
+
+```
+
+
+
+
+
+
+
+```{r}
+
 
 ###---- NEW!! ----
 #SKIP FOR NOW until I can load these packages in at the TOP! Otherwise they mess up my loaded packages!!
-
-# # new packages to install for new worldmap (bring to the top if these work)
-# install.packages(c("cowplot", "googleway", "ggplot2", "ggrepel", 
-# "ggspatial", "libwgeom", "sf", "rnaturalearth", "rnaturalearthdata"))
-# 
-# library("ggplot2")
-# library("sf")
-# library("rnaturalearth")
-# library("rnaturalearthdata")
-
-
 
 ###---- KEEP this the SAME!!! Just making tweaks based on new data set----
 unique(data_all$study.ctry)
@@ -927,6 +1060,7 @@ ggsave(paste0(plotdir,today.date,'_studies_over_time.png'),width = 12,height = 4
 ```
 
 # Stats Section
+
 This section outputs a lot of the different stats used in the paper. Right now, I am just inputting them by hand, and so definitely would be useful to print out the stats I want to copy/paste and easy access
 
 1. Basic Stats (Paper #s and %s)
@@ -936,7 +1070,7 @@ This section outputs a lot of the different stats used in the paper. Right now, 
 #   select(aid, Int_cat, Intervention.subcategory, Outcome_cat,Outcome.subcategory)
 
 # List of data headings
-head(data_all,0)
+# head(data_all,0)
 
 # Total papers in Full Text Screening
 length(unique(all.data$Article.ID))
@@ -948,13 +1082,8 @@ print(num.rejects)
 # Reasons for Rejection
 
 ## List of data headings
-head(Reject_data,0)
+# head(Reject_data,0)
 ## Note: these DO contain overlap, ie. some studies have multiple reasons for rejection!
-
-## Other Reason
-Reject_data %>%
-  filter(OtherReason==1) %>% 
-  summarise(Why_rejected="Other Reason", num=n_distinct(aid), pct=num/num.rejects*100)
 
 ## Could_not_locate
 Reject_data %>%
@@ -966,25 +1095,49 @@ Reject_data %>%
   filter(Not_accessible==1) %>% 
   summarise(Why_rejected="Not accessible", num=n_distinct(aid), pct=num/num.rejects*100)
 
-## Review_or_MA
+## Non_English
 Reject_data %>%
-  filter(Review_or_MA==1) %>% 
-  summarise(Why_rejected="Reviews/Meta-Analysis", num=n_distinct(aid), pct=num/num.rejects*100) 
+  filter(Non_English==1) %>% 
+  summarise(Why_rejected="Non English Language", num=n_distinct(aid), pct=num/num.rejects*100) 
 
 ## Duplicate
 Reject_data %>%
   filter(Duplicate==1) %>% 
   summarise(Why_rejected="Duplicate", num=n_distinct(aid), pct=num/num.rejects*100) 
 
-## Non_English
+# Important: I need to get the TOTAL number of Articles in the above 4 categories for the ROSES Diagram (aka need to make sure I am accounting for potential overlap)
+Reject_data %>% 
+  filter(Could_not_locate + Not_accessible + Non_English + Duplicate == 1) %>% 
+  summarise(Why_rejected="TOP Roses Cat: 779 - Y",num=n_distinct(aid), pct=num/num.rejects*100)
+
+## Review_or_MA
 Reject_data %>%
-  filter(Non_English==1) %>% 
-  summarise(Why_rejected="Non English Language", num=n_distinct(aid), pct=num/num.rejects*100) 
+  filter(Review_or_MA==1) %>% 
+  summarise(Why_rejected="Reviews/Meta-Analysis", num=n_distinct(aid), pct=num/num.rejects*100) 
 
 ## Doesnt_fit_PICO
 Reject_data %>%
   filter(Doesnt_fit_PICO==1) %>% 
   summarise(Why_rejected="Doesn't fit PICO or Inclusion Criteria", num=n_distinct(aid), pct=num/num.rejects*100) 
+
+## Other Reason
+Reject_data %>%
+  filter(OtherReason==1) %>% 
+  summarise(Why_rejected="Other Reason", num=n_distinct(aid), pct=num/num.rejects*100)
+
+# Important: I need to get the TOTAL number of Articles in the above 3 categories for the ROSES Diagram (aka need to make sure I am accounting for potential overlap)
+Reject_data %>% 
+  filter(Review_or_MA + OtherReason + Doesnt_fit_PICO == 1) %>% 
+  summarise(Why_rejected="TOP Roses Cat: 779 - Y",num=n_distinct(aid), pct=num/num.rejects*100)
+
+# Important: I need to get the TOTAL number of ALL REJECTED Articles in the above 7 categories for the ROSES Diagram (aka ALL Full-text rejects - check to make sure the numbers match up)
+Reject_data %>% 
+  filter(Could_not_locate + Not_accessible + Non_English + Duplicate + Review_or_MA + OtherReason + Doesnt_fit_PICO == 1) %>% 
+  summarise(Why_rejected="TOP Roses Cat: 779 - Z",num=n_distinct(aid), pct=num/num.rejects*100)
+
+
+### THIS ONLY GIVES ME 604 Papers!!! WHY??!?!?!? NEED TO Come back to this
+
 
 # Now, let's Dive into the "Doesn't Fit PICO" section:
 
@@ -1016,7 +1169,6 @@ Reject_data %>%
 
 #Total Accepted Full-Text studies
 print(num.studies)
-
 ```
 
 2. P: Geographies
@@ -1042,7 +1194,7 @@ Geographical scale of intervention is used
 # 1st step, clean up country columns and lists
 ##MAKING COUNTRY COLUMNS
 ### Add country list
-cty <- country$Country
+ctry <- country$Country
 
 # Continent
 data_all %>%
