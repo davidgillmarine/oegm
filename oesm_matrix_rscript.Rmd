@@ -7,6 +7,41 @@ output: html_document
 # Note for Others:
 If you use this script, please acknowledge David A. Gill, Samantha H. Cheng, and Dana I. Grieco in your paper. Thank you!
 
+#Before Beginning: Update R and R Studio
+
+##Updating R Studio
+Go to 'Help' > 'Check for Updates' to install newest version
+
+## Updating R
+First, check your current version of R, and see if it is the same or behind the current version listed at https://cran.r-project.org/bin/windows/base/
+```{r echo=FALSE, warning=FALSE, include=FALSE, eval=FALSE}
+sessionInfo()
+```
+If you do need to update r, install the installr package if you don’t have it.
+```{r echo=FALSE, warning=FALSE, include=FALSE, eval=FALSE}
+# installing/loading the package:
+if(!require(installr)) {
+  install.packages("installr"); 
+  require(installr)
+} #load / install+load installr
+```
+Then call updateR() function to call update. This will start the updating process of your R installation. It will check for newer versions, and if one is available, will guide you through the decisions you’d need to make.
+  *Note: R studio might direct you to use updateR() in R Gui. If it does, you will need to load installr 'library(installr)' IN R Gui before updating.*
+```{r echo=FALSE, warning=FALSE, eval=FALSE, include=FALSE}
+# using the package:
+ # updateR()
+```
+**After you update R, make sure to DELETE the old version of R from your computer!** Otherwise, R Studio will just stay attached to the old version of R.
+
+# Install Pacman IF you've updated R
+[Pacman](http://trinker.github.io/pacman/vignettes/Introduction_to_pacman.html) is a package management tool. The most important part of this package is that it will install and load packages (install.packages() and library()) by only using p_load(). It can also load and install github packages using p_load_git(). It also can update packages (update.packages) using p_update OR using the update option. The biggest draw is that Pacman can do this for ALL packages at once! :)
+ 
+```{r installing load pacman, echo=FALSE, include=FALSE, eval=FALSE}
+# install.packages("pacman")
+# use this package to load other packages, re-download if updated R. don't need to load it itself - use it with pacman::function to do this
+```
+### A note for installation:
+With installing and updating packages, remember that you can also use Tools > Check for Package updates and the packages tab (in the bottom right console window) > updates to make sure all of the packages are up to date and update any packages that need updating!
 
 # Setup
 Loads libraries, reads in data, cleans datasets
@@ -18,13 +53,24 @@ mapdir <-  paste0(workdir,"spatial/raw/")
 plotdir <- paste0(workdir,"output/plots/")
 tabledir <- paste0(workdir,"output/tables/")
 
-library(pacman) # I shouldn't need to do this, but pacman NEVER works for me with the p_load below, so I need to add this
-pacman::p_load(rio,treemap,gtools,cowplot,rnaturalearth,rnaturalearthdata,tidyverse,dplyr)
+library(pacman) # I shouldn't need to do this, but pacman NEVER works for me with the :: below, so I need to add this
+pacman::p_load(rmarkdown, broom, rio,treemap,gtools,cowplot,rnaturalearth,rnaturalearthdata,tidyverse,dplyr)
   #WARNING: package ‘rgeos’ is not available for this version of R - take out? I think this is the OLD world map!
 
 today.date <- gsub("-","",Sys.Date())
-
 ```
+
+## Triple-Check that Packages are Loaded
+```{r double-check installation, echo=FALSE, warning=FALSE, include=FALSE, eval=FALSE}
+# check to make sure packages don't need updates
+old.packages()
+  # this will list all packages where update is available
+
+#update all available packages, without prompts for permission/clarification
+update.packages(ask=FALSE)
+```
+#if old packages aren't updating, then go to Session > Restart R, and then run this chunk before going back to the top of the script
+  otherwise, they can do the "package in use, won't update" situation
 
 # Organize data
 
