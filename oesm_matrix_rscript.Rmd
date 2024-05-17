@@ -20,10 +20,10 @@ sessionInfo()
 If you do need to update r, install the installr package if you don’t have it.
 ```{r echo=FALSE, warning=FALSE, include=FALSE, eval=FALSE}
 # installing/loading the package:
-if(!require(installr)) {
-  install.packages("installr"); 
-  require(installr)
-} #load / install+load installr
+# if(!require(installr)) {
+#   install.packages("installr"); 
+#   require(installr)
+# } #load / install+load installr
 ```
 Then call updateR() function to call update. This will start the updating process of your R installation. It will check for newer versions, and if one is available, will guide you through the decisions you’d need to make.
   *Note: R studio might direct you to use updateR() in R Gui. If it does, you will need to load installr 'library(installr)' IN R Gui before updating.*
@@ -54,8 +54,9 @@ plotdir <- paste0(workdir,"output/plots/")
 tabledir <- paste0(workdir,"output/tables/")
 
 library(pacman) # I shouldn't need to do this, but pacman NEVER works for me with the :: below, so I need to add this
-pacman::p_load(rmarkdown, broom, rio,treemap,gtools,cowplot,rnaturalearth,rnaturalearthdata,tidyverse,dplyr)
+pacman::p_load(rmarkdown, broom, rio,treemap,gtools,cowplot,rnaturalearth,rnaturalearthdata,devtools,sf,rnaturalearthhires,tidyverse,dplyr)
   #WARNING: package ‘rgeos’ is not available for this version of R - take out? I think this is the OLD world map!
+  # MAKE SURE rnaturalearthhires loads - installed via github -  devtools::install_github("ropensci/rnaturalearthhires")
 
 today.date <- gsub("-","",Sys.Date())
 ```
@@ -182,7 +183,6 @@ unique(PICO_details.test$PICO_details) # should just be 0 - no other categories
 # Clean Up Accepted Paper Data
 
 ```{r eval=T}
-
 #--- Clean up data ----
 
 # Re-codes intervention and outcomes fields to the correct version 
@@ -522,16 +522,19 @@ ggsave(paste0(plotdir,today.date,'_habitat_int_out_map.png'),width = 17,height =
 
 Creates a world map of all habitats
 
+https://ggplot2.tidyverse.org/reference/ggsf.html - geom_sf resource!
+ -> https://ggplot2.tidyverse.org/reference/coord_map.html?q=worldmap#ref-examples
+ 
+
 ```{r eval=T}
 #---- World map ----
   # Requires rnaturalearth and tidyverse packages (loaded at the top)
 
 # Clean and Organize Data
-
 unique(data_all$study.ctry)
 
 # fix data in country column
-  ## NOTE: NOW Edited to Match the NEW Map!!! (2024 - ne_countries - scale 10 type countries)
+  ## the "admin" column in ne_countries joins to the country shapes from Natural Earth by name. This can get tricky because the names have to match exactly, which is what I do below
 ctry.fix <- data_all %>%
   mutate(study.ctry=gsub(",",";",study.ctry),  # replace "," with ";" to help with splitting
          study.ctry=gsub("Bahamas","The Bahamas",study.ctry),
@@ -580,66 +583,51 @@ world_countries <- ne_countries(
   scale = 10,
   type = "countries",
   returnclass = "sf")
+# class(world_countries) # this tells me that this is an sf file and df - helpful!
 
 # Join the Dataframe to rnaturalearth ne_countries (world_countries) 
 ctry_sum <- ctry.all %>% 
   separate(study.ctry,max.ctry, sep="; ",fill="right") %>% # fill=right fills blanks with NAs
-  gather("X","admin", max.ctry) %>%   #gather is a tidyr function that reshapes columns into key pairs
+  gather("X","admin", max.ctry) %>%   #gather is a tidyr function that reshapes columns into key pairs 
+      #renames "study.ctry" to "admin"
       #What does this "X" mean?! I really don't know, but it works
       #admin is the sub-country column in world_countries dataframe
   filter(!is.na(admin)) %>% 
   select(-X) %>% 
   group_by(admin) %>% 
-  count() %>% 
-  mutate(pct=n/num.studies)
-  
-arrange(ctry_sum,desc(n))
+  count() %>%     #count creates an "n" column
+  mutate(pct=n/num.studies) %>%   #this creates the "pct" column
+  arrange(desc(n))
 
 # Countries that need to be fixed
 ctry_sum$admin[!ctry_sum$admin%in%world_countries$admin]
-# go back and fix any that need to be fixed in initial part of this section!
+  #Note: the NA country is AID 705 Campbell et al. - I emailed the corresponding author, they did not know the countries...
 
-# join to full world_countries country shapes (from ne_countries)
-  # My column in my data that joins to the country shapes from Natural Earth is the admin field. This can get tricky because the names have to match exactly (which is why I did all that work above with name updates)
-ctry_sum1 <- world_countries %>% 
-  left_join(ctry_sum,by="admin") %>%
+# join to full world_countries country data with OEGM data in a df
+ctry_sum1 <- ctry_sum %>%  # ctry_sum is the data frame and world_countries is the sf 
+  full_join(world_countries,by="admin") %>%  # full_join keeps all ROWS (even the n=0 rows!)
   mutate(n=na.replace(n,0)) 
-        # this SHOULD give me a column for n... but it's NOT doing that?!
+ctry_sum1$admin[!ctry_sum1$admin%in%world_countries$admin] # any missing?
 
-ctry_sum$admin[!ctry_sum$admin%in%ctry_sum1$admin] # any missing?
-  #Note: the NA country is AID 705 Campbell et al. - I emailed the corresponding author, waiting to hear back!
+# join cntry_sum1 with the regions and continents in the old "country" dataset (again, full_join)
+ctry_sum2 <- country %>%   
+  full_join(ctry_sum1, by = c("code" = "adm0_a3")) %>% 
+  select(-Country) %>%
+  #select(admin,n,pct,code,Subregion,Region) %>%
+  arrange(desc(n))
+ctry_sum2$admin[!ctry_sum2$admin%in%world_countries$admin] # any missing? ###MANY NAs now!
 
-# Map the World!- from Drew
-# Load and process your data 
-your_data <- 
+# TURN THE FILE BACK INTO AN SF
+ctry_sum3 <- st_as_sf(ctry_sum2)
+class(ctry_sum3)
+  #SUCCESS ctry_sum3 is an sf! 
 
-# Join your data to country shapes
-map_data <- left_join(world_countries, ctry_sum, by = "admin")
-
-
-
-
-# Map
-ggplot(ctry_sum1) +
-  geom_sf() 
-
-
-ggplot(map_data) +
-  geom_sf() 
-
-#---- OLD Code ----
-# # read in map
-# map <- rgdal::readOGR(paste0(mapdir,"TM_WORLD_BORDERS-0.3/TM_WORLD_BORDERS-0.3.shp")) #rgdal was taken from R! Need to use SF or Terra!!! 
-# map <-broom::tidy(map,region="ISO3")
-# #map@data[map@data$NAME=="Turks and Caicos Islands",]
-
-#plot study map
-(study_ctry_map <- ggplot() +
-    geom_map(data=ctry_sum1, aes(map_id=adm0_a3, fill=n),map=ne_countries()) + #adm0_a3 = the country code in ne_countries 
-            #ne_countries or world_country
-    expand_limits(x=ne_countries$long,y=ne_countries$lat) +
-    theme(
-        panel.background = element_rect(fill = "#CCCCCC", colour = "#CCCCCC"),
+# Plot study map
+(study_ctry_map <- ggplot(data=ctry_sum3) +
+  geom_sf(aes(fill=n), color=NA) + #note: color=NA takes out country boarders (otherwise grey)
+  theme(
+        panel.background = element_rect(fill = "#CCCCCC", colour = "#CCCCCC"), 
+          #this grey looks deep, but it allows for better contrast with the white than gray90
         panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
         panel.border=element_blank(),
@@ -653,14 +641,15 @@ ggplot(map_data) +
         legend.position ="bottom",
         text=element_text(family="sans") # "serif"=TN Roman, "sans" = Arial
         ) +
-    scale_fill_gradient2(
-        name="Number of Studies",
-        low="white",mid="#2171b5",high="#08519c",
-        midpoint=max(ctry_sum1$n)/2,limits=c(0,max(ctry_sum1$n))) )
-    # labs(title="Study countries")  # if axes: x="X axis label", y="Y axis label"
-  ggsave(paste0(plotdir,today.date,'_study_country_map.png'),width = 10,height = 5)
-
-
+  scale_fill_gradient2(
+    name = "Number of Studies",
+    low="white",mid="#2171b5",high="#08519c", 
+        #the low color here is white - allows for better contrast
+        #the mid color here is the high color for the Gap Map
+    midpoint=max(ctry_sum1$n)/2,     #keep ctry_sum1 - doesnt read sum3
+    limits=c(0,max(ctry_sum1$n))) +
+ coord_sf(xlim = c(-180, 180), ylim = c(-59, 84), expand = FALSE) )
+ggsave(paste0(plotdir,today.date,'_study_country_map.png'),width = 12,height = 5)
 ```
 
 
@@ -674,19 +663,7 @@ ggplot(map_data) +
 
 ###---- NEW!! ----
 #SKIP FOR NOW until I can load these packages in at the TOP! Otherwise they mess up my loaded packages!!
-
 ###---- KEEP this the SAME!!! Just making tweaks based on new data set----
-
-# all habitats
-ctry.all <- ctry.fix %>% 
-  group_by(aid,study.ctry) %>%
-  summarise() %>% 
-  filter(!is.na(study.ctry))
-head(ctry.all)
-
-
-# get no. articles per country (and percentage) to create vector of column names for each country by counting the number of ";" 
-max.ctry <- paste0("ctry",rep(1:max(str_count(ctry.all$study.ctry, ";")+1))) 
 
 ctry_sum <-ctry.all %>% 
   separate(study.ctry,max.ctry, sep="; ",fill="right") %>% # fill=right fills blanks with NAs
@@ -712,24 +689,15 @@ ctry_sum$Country[!ctry_sum$Country%in%ctry_sum1$Country] # any missing?
 
 
 ### I believe I used SF in my class this summer! Come back to this!!!
-
-####THIS IS where I'm in the process of changing to sf!!
 # ----- NEW ------
- ### LOOKING FOR A MAP THAT CONTAINS France (Reunion) and France (Mayotte)
 # following https://r-spatial.org/r/2018/10/25/ggplot2-sf.html 
 world <- ne_countries(scale = "medium", returnclass = "sf") # world has 240 entries, no Reunion no Mayotte
 large.world <- ne_countries(scale = "large", returnclass = "sf") # large world has 240 entries, no Reunion no Mayotte
 
 
-
-
 ### THIS is the change I haven't gotten to yet!!!
 #------ OLD TO TWEAK -----
-
-# read in map
-map <- rgdal::readOGR(paste0(mapdir,"TM_WORLD_BORDERS-0.3/TM_WORLD_BORDERS-0.3.shp")) #rgdal was taken from R! Need to use SF or Terra!!! 
-map <-broom::tidy(map,region="ISO3")
-#map@data[map@data$NAME=="Turks and Caicos Islands",]
+map <-left_join(world_countries, ctry_sum, by = "admin")
 
 #plot study map
 (study_ctry_map <- ggplot() +
