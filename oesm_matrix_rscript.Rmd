@@ -525,7 +525,6 @@ Creates a world map of all habitats
 https://ggplot2.tidyverse.org/reference/ggsf.html - geom_sf resource!
  -> https://ggplot2.tidyverse.org/reference/coord_map.html?q=worldmap#ref-examples
  
-
 ```{r eval=T}
 #---- World map ----
   # Requires rnaturalearth and tidyverse packages (loaded at the top)
