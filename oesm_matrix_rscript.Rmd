@@ -651,8 +651,9 @@ class(ctry_sum3)
 ggsave(paste0(plotdir,today.date,'_study_country_map.png'),width = 12,height = 5)
 ```
 
-
 # World Map - Coral
+
+NEXT - coming back to this!!! Edits to the indivudal maps next :)
 
 ```{r eval=T}
 
