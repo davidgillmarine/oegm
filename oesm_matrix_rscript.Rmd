@@ -19,7 +19,7 @@ plotdir <- paste0(workdir,"output/plots/")
 tabledir <- paste0(workdir,"output/tables/")
 
 library(pacman) # I shouldn't need to do this, but pacman NEVER works for me with the p_load below, so I need to add this
-pacman::p_load(rio,rgeos,treemap,gtools,cowplot,rnaturalearth,rnaturalearthdata,tidyverse,dplyr)
+pacman::p_load(rio,treemap,gtools,cowplot,rnaturalearth,rnaturalearthdata,tidyverse,dplyr)
   #WARNING: package ‘rgeos’ is not available for this version of R - take out? I think this is the OLD world map!
 
 today.date <- gsub("-","",Sys.Date())
@@ -35,6 +35,7 @@ all.data<-import(paste0(inputdir,"20240315_All_Papers.xlsx"), which="FULL Data E
   mutate(Date=as.character(Date))
 
 country <- import(paste0(inputdir,"allcountries.csv"))
+  # OLD country datafile, but will still be useful!
 
 # Count total papers in Full Text Screening
 length(unique(all.data$Article.ID)) # should be 779 (as of 3/15/24)
@@ -130,9 +131,7 @@ PICO_details.test <- Reject_data %>%
   select(PICO_details)
 unique(PICO_details.test$PICO_details) # should just be 0 - no other categories
   # Correct? yes
-
 ```
-
 
 # Clean Up Accepted Paper Data
 
@@ -167,7 +166,6 @@ for (i in 1:nrow(out_sub_list)){
     mutate(Outcome.subcategory=ifelse(grepl(num.val,Outcome.subcategory),
                                            grep(num.val,out_sub_list$out_sub,value = T),Outcome.subcategory))
 }
-
 ```
 
 # TROUBLE-SHOOTING - 1/24/24!!!
@@ -247,7 +245,6 @@ The below script is commented off, but kept the code for how to easily check the
 # Quick Checks to make sure data is sorting correctly
 
 ```{r eval=T}
-
 #quick checks
 unique(data_all$Int_cat)  # 9 Interventions (we took #8 out)
 unique(data_all$Outcome_cat) # 7 outcomes
@@ -322,9 +319,7 @@ sort(unique(data_all$Outcome.subcategory)) # 41 sub-outcomes coded, no.1-7.
     distinct(Outcome.subcategory) %>%
     rename(out_val=Outcome.subcategory) %>% 
     arrange(out_val)
-
 ```
-
 
 # Heat map function
 Creates a heat map from the OESM accepted articles, based on intervention and outcome categories and subcategories
@@ -420,7 +415,6 @@ if(outc=="Outcome.subcategory"){out_list_full=out_sub_list}
       scale_x_discrete(position = "top") +
       scale_y_discrete(position = "right") 
       #  labs(x="Conservation Intervention", y="Outcome", title ="All ecosystems") +
-  
 }
 ```
 
@@ -477,25 +471,14 @@ ggsave(paste0(plotdir,today.date,'_habitat_int_out_map.png'),width = 17,height =
 
 #NOTE:
 # maps might not show up below, but check folders - they should still come out fine
-
-
 ```
-
 # World map
-Creates a world map of all habitats
-Note: the read in map section takes about a minute to load!
 
-SKIP FOR NOW
+Creates a world map of all habitats
 
 ```{r eval=T}
 #---- World map ----
-
-# Download country shapes
-
-world_countries <- ne_countries(
-  scale = 10,
-  type = "countries",
-  returnclass = "sf")
+  # Requires rnaturalearth and tidyverse packages (loaded at the top)
 
 # Clean and Organize Data
 
@@ -505,6 +488,10 @@ unique(data_all$study.ctry)
   ## NOTE: NOW Edited to Match the NEW Map!!! (2024 - ne_countries - scale 10 type countries)
 ctry.fix <- data_all %>%
   mutate(study.ctry=gsub(",",";",study.ctry),  # replace "," with ";" to help with splitting
+         study.ctry=gsub("Bahamas","The Bahamas",study.ctry),
+         study.ctry=gsub("Mauritiana","Mauritania",study.ctry),
+         study.ctry=gsub("Saint Vincent And The Grenadines","Saint Vincent and the Grenadines",study.ctry),
+         study.ctry=gsub("Timor-Leste","East Timor",study.ctry),
          study.ctry=gsub("Korea; South","South Korea",study.ctry),
          study.ctry=gsub("Turks and Caicos","Turks and Caicos Islands",study.ctry),
          study.ctry=gsub("Tanzania*.","United Republic of Tanzania",study.ctry),
@@ -539,7 +526,14 @@ ctry.all <- ctry.fix %>%
 head(ctry.all)
 
 # get no. articles per country (and percentage) to create vector of column names for each country by counting the number of ";" 
+    # thus isn't working out well... this gets 18 as the number... but it looks like this highest number is 23 (Australia)
 max.ctry <- paste0("ctry",rep(1:max(str_count(ctry.all$study.ctry, ";")+1))) 
+
+# Download country shapes from ne_countries map
+world_countries <- ne_countries(
+  scale = 10,
+  type = "countries",
+  returnclass = "sf")
 
 # Join the Dataframe to rnaturalearth ne_countries (world_countries) 
 ctry_sum <- ctry.all %>% 
@@ -552,58 +546,52 @@ ctry_sum <- ctry.all %>%
   group_by(admin) %>% 
   count() %>% 
   mutate(pct=n/num.studies)
+  
 arrange(ctry_sum,desc(n))
 
 # Countries that need to be fixed
 ctry_sum$admin[!ctry_sum$admin%in%world_countries$admin]
 # go back and fix any that need to be fixed in initial part of this section!
 
-# join to full world_countries list
+# join to full world_countries country shapes (from ne_countries)
+  # My column in my data that joins to the country shapes from Natural Earth is the admin field. This can get tricky because the names have to match exactly (which is why I did all that work above with name updates)
 ctry_sum1 <- world_countries %>% 
   left_join(ctry_sum,by="admin") %>%
   mutate(n=na.replace(n,0)) 
+        # this SHOULD give me a column for n... but it's NOT doing that?!
 
 ctry_sum$admin[!ctry_sum$admin%in%ctry_sum1$admin] # any missing?
+  #Note: the NA country is AID 705 Campbell et al. - I emailed the corresponding author, waiting to hear back!
 
-#### I MADE IT THIS FAR! only have a few edits: "Bahamas" "Mauritiana" "NA" "Saint Vincent And The Grenadines" "Timor-Leste"
-
-
-
-
-
-
-
-## Drew's WORLD MAP CODE (some is above!!!)
-
-  # Requires rnaturalearth and tidyverse packages (loaded at the top)
-
-
+# Map the World!- from Drew
 # Load and process your data 
 your_data <- 
 
-
 # Join your data to country shapes
-# You will need to have (or create) a column in your data to join to the country shapes from Natural Earth. Ideally, this will match the adm0_a3 field. Sint Maarten, for example, is SXM. You could also try matching to one of the name fields (name, name_long) in Natural Earth instead of the code. But this can get tricky because the names have to match exactly. 
-map_data <- left_join(ne_countries, your_data, by = c("adm0_a3" = "your_data_code"))
+map_data <- left_join(world_countries, ctry_sum, by = "admin")
+
+
+
 
 # Map
-ggplot(map_data) +
+ggplot(ctry_sum1) +
   geom_sf() 
 
 
+ggplot(map_data) +
+  geom_sf() 
+
 #---- OLD Code ----
-
-
-  ### I believe I used SF in my class this summer! Come back to this!!!
-# read in map
-map <- rgdal::readOGR(paste0(mapdir,"TM_WORLD_BORDERS-0.3/TM_WORLD_BORDERS-0.3.shp")) #rgdal was taken from R! Need to use SF or Terra!!! 
-map <-broom::tidy(map,region="ISO3")
-#map@data[map@data$NAME=="Turks and Caicos Islands",]
+# # read in map
+# map <- rgdal::readOGR(paste0(mapdir,"TM_WORLD_BORDERS-0.3/TM_WORLD_BORDERS-0.3.shp")) #rgdal was taken from R! Need to use SF or Terra!!! 
+# map <-broom::tidy(map,region="ISO3")
+# #map@data[map@data$NAME=="Turks and Caicos Islands",]
 
 #plot study map
 (study_ctry_map <- ggplot() +
-    geom_map(data=ctry_sum1, aes(map_id=code, fill=n),map=map) +
-    expand_limits(x=map$long,y=map$lat) +
+    geom_map(data=ctry_sum1, aes(map_id=adm0_a3, fill=n),map=ne_countries()) + #adm0_a3 = the country code in ne_countries 
+            #ne_countries or world_country
+    expand_limits(x=ne_countries$long,y=ne_countries$lat) +
     theme(
         panel.background = element_rect(fill = "#CCCCCC", colour = "#CCCCCC"),
         panel.grid.major = element_blank(), 
@@ -642,17 +630,6 @@ map <-broom::tidy(map,region="ISO3")
 #SKIP FOR NOW until I can load these packages in at the TOP! Otherwise they mess up my loaded packages!!
 
 ###---- KEEP this the SAME!!! Just making tweaks based on new data set----
-unique(data_all$study.ctry)
-  # fix data in country column
-  # note: added more countries to this list in 2023 code
-ctry.fix <- data_all %>%
-  mutate(study.ctry=gsub(",",";",study.ctry),  # replace "," with ";" to help with splitting
-         study.ctry=gsub("Korea; South","Korea, South",study.ctry), #first is old (in our dropdowns), second matches map countries
-         study.ctry=gsub("Turks and Caicos","Turks and Caicos Islands",study.ctry),
-         study.ctry=gsub(".*Virgin Islands","U.S. Virgin Islands",study.ctry),
-         study.ctry=gsub("Tanzania; United Republic Of","Tanzania, United Republic Of",study.ctry),
-         study.ctry=gsub("Vietnam","Viet Nam",study.ctry),
-         study.ctry=gsub("Taiwan; Province Of China","Taiwan, Province Of China",study.ctry)) 
 
 # all habitats
 ctry.all <- ctry.fix %>% 
@@ -660,7 +637,7 @@ ctry.all <- ctry.fix %>%
   summarise() %>% 
   filter(!is.na(study.ctry))
 head(ctry.all)
-  #Note: the NA country is AID 705 Campbell et al. - I emailed the corresponding author, waiting to hear back!
+
 
 # get no. articles per country (and percentage) to create vector of column names for each country by counting the number of ";" 
 max.ctry <- paste0("ctry",rep(1:max(str_count(ctry.all$study.ctry, ";")+1))) 
@@ -694,7 +671,6 @@ ctry_sum$Country[!ctry_sum$Country%in%ctry_sum1$Country] # any missing?
 # ----- NEW ------
  ### LOOKING FOR A MAP THAT CONTAINS France (Reunion) and France (Mayotte)
 # following https://r-spatial.org/r/2018/10/25/ggplot2-sf.html 
-
 world <- ne_countries(scale = "medium", returnclass = "sf") # world has 240 entries, no Reunion no Mayotte
 large.world <- ne_countries(scale = "large", returnclass = "sf") # large world has 240 entries, no Reunion no Mayotte
 
