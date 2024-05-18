@@ -285,7 +285,6 @@ The below script is commented off, but kept the code for how to easily check the
 #   filter(Outcome.subcategory=="5h. Culture")
 # # View(culture_out)
 # # write.csv(culture_out,paste0(tabledir,today.date,"_5h_culture.csv"))
-
 ```
 
 # Quick Checks to make sure data is sorting correctly
@@ -515,19 +514,15 @@ plot_grid(heat.map.coral + scale_fill_gradient2(low="#f7fbff",high= "coral3",nam
           labels=letters[1:3], ncol = 3, nrow = 1, hjust=-1, align = "hv")
 ggsave(paste0(plotdir,today.date,'_habitat_int_out_map.png'),width = 17,height = 8)
 
-#NOTE:
-# maps might not show up below, but check folders - they should still come out fine
+# NOTE: maps might not show up below, but check folders - they should still come out fine
 ```
 # World map
-
-Creates a world map of all habitats
-
-https://ggplot2.tidyverse.org/reference/ggsf.html - geom_sf resource!
- -> https://ggplot2.tidyverse.org/reference/coord_map.html?q=worldmap#ref-examples
+ 
+Step 1: Data Cleaning
  
 ```{r eval=T}
 #---- World map ----
-  # Requires rnaturalearth and tidyverse packages (loaded at the top)
+# Data Cleaning
 
 # Clean and Organize Data
 unique(data_all$study.ctry)
@@ -565,8 +560,21 @@ ctry.fix <- data_all %>%
          study.ctry=gsub("Commonwealth of the Northern Mariana Islands","Northern Mariana Islands",study.ctry),
          study.ctry=gsub("Lao People's Democratic Republic","Laos",study.ctry),
          ) 
+```
 
-# all habitats (FOR THIS MAP)
+# All Habitats World Map
+
+Creates a world map of all habitats
+
+https://ggplot2.tidyverse.org/reference/ggsf.html - geom_sf resource!
+ -> https://ggplot2.tidyverse.org/reference/coord_map.html?q=worldmap#ref-examples
+ 
+Requires rnaturalearth and tidyverse packages (loaded at the top)
+
+```{r eval=T}
+
+# All Habitats  World Map
+
 ctry.all <- ctry.fix %>% 
   group_by(aid,study.ctry) %>%
   summarise() %>% 
@@ -595,7 +603,7 @@ ctry_sum <- ctry.all %>%
   select(-X) %>% 
   group_by(admin) %>% 
   count() %>%     #count creates an "n" column
-  mutate(pct=n/num.studies) %>%   #this creates the "pct" column
+  mutate(pct=n/num.studies*100) %>%   #this creates the "pct" column
   arrange(desc(n))
 
 # Countries that need to be fixed
@@ -653,11 +661,8 @@ ggsave(paste0(plotdir,today.date,'_study_country_map.png'),width = 12,height = 5
 
 # World Map - Coral
 
-NEXT - coming back to this!!! Edits to the indivudal maps next :)
-
 ```{r eval=T}
-
-# -- coral map
+# All Habitats  World Map
 ctry.coral <- ctry.fix %>% 
   filter(coral==1) %>% 
   group_by(aid,study.ctry) %>%
@@ -666,42 +671,46 @@ ctry.coral <- ctry.fix %>%
 head(ctry.coral)
 
 # get no. articles per country (and percentage) to create vector of column names for each country by counting the number of ";" 
-max.ctry <- paste0("ctry",rep(1:max(str_count(ctry.coral$study.ctry, ";")+1))) 
-num.studies <- length(unique(data_all$aid[data_all$coral==1]))
+    # thus isn't working out well... this gets 18 as the number... but it looks like this highest number is 23 (Australia)
+max.ctry.coral <- paste0("ctry",rep(1:max(str_count(ctry.all$study.ctry, ";")+1))) 
 
-ctry_sum_coral <-ctry.coral %>% 
-  separate(study.ctry,max.ctry, sep="; ",fill="right") %>% # fill=right fills blanks with NAs
-  gather("X","Country", max.ctry) %>% 
-  filter(!is.na(Country)) %>% 
+# Join the Dataframe to rnaturalearth ne_countries (world_countries) 
+ctry_sum_coral <- ctry.all %>% 
+  separate(study.ctry,max.ctry.coral, sep="; ",fill="right") %>% # fill=right fills blanks with NAs
+  gather("X","admin", max.ctry.coral) %>%   #gather is a tidyr function that reshapes columns into key pairs 
+      #renames "study.ctry" to "admin"
+      #What does this "X" mean?! I really don't know, but it works
+      #admin is the sub-country column in world_countries dataframe
+  filter(!is.na(admin)) %>% 
   select(-X) %>% 
-  group_by(Country) %>% 
-  count() %>% 
-  mutate(pct=n/num.studies)
+  group_by(admin) %>% 
+  count() %>%     #count creates an "n" column
+  mutate(pct=n/num.studies) %>%   #this creates the "pct" column
+  arrange(desc(n))
 
-arrange(ctry_sum_coral,desc(n))
-
-# Countries that need to be fixed
-ctry_sum_coral$Country[!ctry_sum_coral$Country%in%country$Country]
-# agrep("Virgin Islands",country$Country, value = T) - search original list
-
-# join to full country list
-ctry_sum_coral1 <- country %>% 
-  left_join(ctry_sum_coral,by="Country") %>%
+# join to full world_countries country data with OEGM data in a df
+ctry_sum_coral1 <- ctry_sum_coral %>%  # ctry_sum is the data frame and world_countries is the sf 
+  full_join(world_countries,by="admin") %>%  # full_join keeps all ROWS (even the n=0 rows!)
   mutate(n=na.replace(n,0)) 
 
-ctry_sum_coral$Country[!ctry_sum_coral$Country%in%ctry_sum_coral1$Country] # any missing?
+# join cntry_sum1 with the regions and continents in the old "country" dataset (again, full_join)
+ctry_sum_coral2 <- country %>%   
+  full_join(ctry_sum_coral1, by = c("code" = "adm0_a3")) %>% 
+  select(-Country) %>%
+  #select(admin,n,pct,code,Subregion,Region) %>%
+  arrange(desc(n))
+ctry_sum_coral2$admin[!ctry_sum_coral2$admin%in%world_countries$admin] # any missing?
 
-# read in map
-map <- rgdal::readOGR(paste0(mapdir,"TM_WORLD_BORDERS-0.3/TM_WORLD_BORDERS-0.3.shp"))
-map <-broom::tidy(map,region="ISO3")
-#map@data[map@data$NAME=="Turks and Caicos Islands",]
+# TURN THE FILE BACK INTO AN SF
+ctry_sum_coral3 <- st_as_sf(ctry_sum_coral2)
+class(ctry_sum_coral3)
 
-#plot study map
-(study_ctry_coral_map <- ggplot() +
-    geom_map(data=ctry_sum_coral1, aes(map_id=code, fill=n),map=map) +
-    expand_limits(x=map$long,y=map$lat) +
-    theme(
-        panel.background = element_rect(fill = "#CCCCCC", colour = "#CCCCCC"),
+# Plot study map
+(study_ctry_map_coral <- ggplot(data=ctry_sum_coral3) +
+  geom_sf(aes(fill=n), color=NA) + #note: color=NA takes out country boarders (otherwise grey)
+  theme(
+        panel.background = element_rect(fill = "#CCCCCC", colour = "#CCCCCC"), 
+          #this grey looks deep, but it allows for better contrast with the white than gray90
         panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
         panel.border=element_blank(),
@@ -715,12 +724,29 @@ map <-broom::tidy(map,region="ISO3")
         legend.position ="bottom",
         text=element_text(family="sans") # "serif"=TN Roman, "sans" = Arial
         ) +
-    scale_fill_gradient2(
-        name="Number of Studies",
-        low="white",mid="darksalmon",high="coral3",
-        midpoint=max(ctry_sum_coral1$n)/2,limits=c(0,max(ctry_sum_coral1$n))) )
-    # labs(title="Study countries - Coral")  # if axes: x="X axis label", y="Y axis label"
-ggsave(paste0(plotdir,today.date,'_study_country_coral_map.png'),width = 10,height = 5)
+  scale_fill_gradient2(
+    name = "Number of Studies",
+    low="white",mid="darksalmon",high="coral3", 
+        #the low color here is white - allows for better contrast
+        #the high color here is the high color for the Gap Map
+    midpoint=max(ctry_sum_coral1$n)/2,     #keep ctry_sum_coral1 - doesnt read sum3
+    limits=c(0,max(ctry_sum_coral1$n))) +
+ coord_sf(xlim = c(-180, 180), ylim = c(-59, 84), expand = FALSE) )
+ggsave(paste0(plotdir,today.date,'_study_country_map_CORAL.png'),width = 12,height = 5)
+```
+
+# World Map - Mangrove and Seagrass
+
+Haven't made, don't think we'll need these? Comment off for now?
+
+# Create heat maps 
+```{r eval=T}
+#GAP MAP COLORS
+# # Mangrove
+# high.col = "orange2"
+# 
+# # Seagrass
+# high.col = "green4"
 ```
 
 # Treemapping
@@ -731,7 +757,6 @@ Outcome and Intervention tree maps
 https://observablehq.com/@d3/treemap-stratify?intent=fork
 
 ```{r eval=T}
-
 #---- Treemapping ----
 # - Outcomes
 unique(data_all$Outcome.subcategory)
@@ -793,13 +818,11 @@ treemap(intervention2,index=c("int.cat","Intervention.subcategory"),
         inflate.labels=F,
         title="Study interventions")
 dev.off()
-
 ```
 
 # Studies over time 
 
 ```{r eval=T}
-
 #---- Studies over time ----
 All_time_gps <- data_all %>%
   group_by(Year.of.publication) %>% 
@@ -850,9 +873,7 @@ Int_time_gps <- Int_time_gps %>%
     ggtitle('Intervention') )
    # scale_y_continuous(limits=c(0,80), breaks=seq(0,80,10), labels=c("0","","20","","40","","60","","80")))
 
-
 # Outcomes
-
 out_time_gps <-  data_all %>%
   group_by(Year.of.publication,Outcome_cat) %>% 
   summarise(out_per_yr= n_distinct(aid)) %>% 
@@ -882,7 +903,6 @@ out_time_gps <- out_time_gps %>%
 # scale_y_continuous(limits=c(0,80), breaks=seq(0,80,10), labels=c("0","","20","","40","","60","","80")))
 plot_grid(pInt_time_gps,pout_time_gps)
 ggsave(paste0(plotdir,today.date,'_studies_over_time.png'),width = 12,height = 4)
-
 ```
 
 # Stats Section
@@ -894,7 +914,6 @@ This section outputs a lot of the different stats used in the paper. Right now, 
 # --- Percentages --- #
 # test <-  data_all %>%
 #   select(aid, Int_cat, Intervention.subcategory, Outcome_cat,Outcome.subcategory)
-
 # List of data headings
 # head(data_all,0)
 
@@ -961,9 +980,7 @@ Reject_data %>%
   filter(Could_not_locate + Not_accessible + Non_English + Duplicate + Review_or_MA + OtherReason + Doesnt_fit_PICO == 1) %>% 
   summarise(Why_rejected="TOP Roses Cat: 779 - Z",num=n_distinct(aid), pct=num/num.rejects*100)
 
-
 ### THIS ONLY GIVES ME 604 Papers!!! WHY??!?!?!? NEED TO Come back to this
-
 
 # Now, let's Dive into the "Doesn't Fit PICO" section:
 
@@ -992,7 +1009,6 @@ Reject_data %>%
   filter(Not_Peer_Reviewed==1) %>% 
   summarise(PICO_details="Not Peer Reviewed", num=n_distinct(aid), pct=num/num.rejects*100) 
 
-
 #Total Accepted Full-Text studies
 print(num.studies)
 ```
@@ -1012,28 +1028,34 @@ Scale of study isnt actually used in the report
 
 Geographical scale of intervention is used
 
-
 ```{r eval=T}
 
 # P: Geographies (aka intervention location)
 
-# 1st step, clean up country columns and lists
-##MAKING COUNTRY COLUMNS
-### Add country list
-ctry <- country$Country
+##use data from world map I created!
 
-# Continent
-data_all %>%
-  group_by(Continent) %>% 
-  summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
-  arrange (desc(num))  # this arranges them in descending order 
-
-# Country
-data_all %>%
-  group_by(study.ctry) %>% 
-  summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
-  arrange (desc(num)) %>% # this arranges them in descending order 
+# Countries: Print Country LIST for Stats
+ctry_sum2 %>%
+  filter(!is.na(pct)) %>%
+  # filter(!is.na(admin)) %>%  
+      #note: need to check out what this study was that recorded ONLY regions - can we go back and get countries?!
+  select(admin,n,pct,Subregion,Region) %>% 
+  arrange (desc(n)) %>% # this arranges them in descending order 
   print()
+    # note: Indian Ocean territory = issue for region - doesn't have Region
+
+# Regions: Print Continents for Stats
+region <- ctry_sum2 %>% 
+  filter(!is.na(pct)) %>% 
+  select(admin,n,pct,Subregion,Region) %>% 
+  arrange(desc(Region)) %>% 
+  print()
+
+```
+
+More on Interventions and Studies
+
+```{r eval=T}
 
 # Scale of Study
 data_all %>%
@@ -1062,10 +1084,10 @@ data_all %>%
   summarise(habitat="Mangrove", num=n_distinct(aid), pct=num/num.studies*100) 
 
 # Note: these DO contain overlap, ie. some studies have multiple habitats:
-data_all %>%
-  group_by(Habitat.type) %>% 
-  summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
-  arrange (desc(num)) 
+# data_all %>%
+#   group_by(Habitat.type) %>% 
+#   summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
+#   arrange (desc(num)) 
 
 # How many studies took place in only one of three habitats?
 data_all %>% 
@@ -1087,7 +1109,6 @@ data_all %>%
 4. I: Interventions
 
 ```{r eval=T}
-  
 # I: Interventions
 data_all %>%
   group_by(Int_cat) %>% 
@@ -1115,8 +1136,6 @@ data_all %>%
   summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
   arrange (desc(num))  # arranges them in descending order 
   # arrange (num) # arranges in ascending order, swap
-
-
 ```
 
 5. C: Comparators, Study designs used
