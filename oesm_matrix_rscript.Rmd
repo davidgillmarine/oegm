@@ -560,6 +560,15 @@ ctry.fix <- data_all %>%
          study.ctry=gsub("Commonwealth of the Northern Mariana Islands","Northern Mariana Islands",study.ctry),
          study.ctry=gsub("Lao People's Democratic Republic","Laos",study.ctry),
          ) 
+
+#Update the country data file to match two of the sites:
+country2 <- country %>%
+  mutate(Country=gsub("Bahamas","The Bahamas",Country)) %>% 
+    #to match the name change above for this country
+  add_row(Country = "British Indian Ocean Territory", Region = "Asia", code = "IOT", Subregion = "Southern Asia")
+    # Note here: I picked Asia and Southern Asia because of the proxmity to the Maldives
+      # Next Closest were Mauritius and Seychelles, Technically Africa... hard pick...
+         
 ```
 
 # All Habitats World Map
@@ -617,7 +626,7 @@ ctry_sum1 <- ctry_sum %>%  # ctry_sum is the data frame and world_countries is t
 ctry_sum1$admin[!ctry_sum1$admin%in%world_countries$admin] # any missing?
 
 # join cntry_sum1 with the regions and continents in the old "country" dataset (again, full_join)
-ctry_sum2 <- country %>%   
+ctry_sum2 <- country2 %>%   
   full_join(ctry_sum1, by = c("code" = "adm0_a3")) %>% 
   select(-Country) %>%
   #select(admin,n,pct,code,Subregion,Region) %>%
@@ -1016,15 +1025,13 @@ print(num.studies)
 2. P: Geographies
 
 #Note: 
-this code is incomplete
 Need to do the "search for term within a row" method here (that we used for countries above (in the map)), and do it for all of the following rows 
 
 For Continent percentages, I literally added up the counts and re-divided (out of 183) for percentages. very tedious
 Sums: Asia (48), Oceania (40), Central America and the Caribbean (36), Africa (34), and North America (32), South America (13), Europe (6) 
 
-For country percentages, I used the ctry_sum list, and not this
+For country percentages, I used the ctry_sum2 list, and not this
 
-Scale of study isnt actually used in the report
 
 Geographical scale of intervention is used
 
@@ -1043,6 +1050,10 @@ ctry_sum2 %>%
   arrange (desc(n)) %>% # this arranges them in descending order 
   print()
     # note: Indian Ocean territory = issue for region - doesn't have Region
+    # neither does Bahamas
+
+
+
 
 # Regions: Print Continents for Stats
 region <- ctry_sum2 %>% 
@@ -1051,17 +1062,43 @@ region <- ctry_sum2 %>%
   arrange(desc(Region)) %>% 
   print()
 
-```
 
-More on Interventions and Studies
 
-```{r eval=T}
+#####BETTER WAY
 
-# Scale of Study
-data_all %>%
-  group_by(Scale.of.study) %>% 
-  summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
-  arrange (desc(num))  # this arranges them in descending order 
+
+# Join the Dataframe to rnaturalearth ne_countries (world_countries) 
+region <- ctry.all %>% 
+  separate(study.ctry,max.ctry, sep="; ",fill="right") %>% # fill=right fills blanks with NAs
+  gather("X","admin", max.ctry) %>%   #gather is a tidyr function that reshapes columns into key pairs 
+      #renames "study.ctry" to "admin"
+      #What does this "X" mean?! I really don't know, but it works
+      #admin is the sub-country column in world_countries dataframe
+  filter(!is.na(admin)) %>% #weirdly doesn't remove aid 705
+  select(-X) %>% 
+  group_by(admin) %>%
+  full_join(world_countries,by="admin") %>%  # full_join keeps all ROWS (even the n=0 rows!) - need country CODES
+  filter(!is.na(aid)) %>%
+  # slice(aid=705) %>% # need this again here to remove aid 705
+      ###COME BACK TO THIS AND FIX
+  select(aid, admin, adm0_a3, sovereignt, type, economy)
+
+
+  
+# join region with the regions and continents in the old "country" dataset (again, full_join)
+region2 <- country2 %>%   
+  full_join(region, by = c("code" = "adm0_a3"), relationship = "many-to-many") %>% 
+  select(-Country) %>%
+  #select(admin,n,pct,code,Subregion,Region) %>%
+  arrange(desc(n))
+
+region2 <- region %>% 
+  left_join(country2, by = c("adm0_a3"  = "code"))
+
+  
+  count() %>%     #count creates an "n" column
+  mutate(pct=n/num.studies*100) %>%   #this creates the "pct" column
+  arrange(desc(n))
 
 ```
 
@@ -1106,44 +1143,8 @@ data_all %>%
   
 ```
 
-4. I: Interventions
+5. C: Comparators, Study designs used aka MANY Stats here!
 
-```{r eval=T}
-# I: Interventions
-data_all %>%
-  group_by(Int_cat) %>% 
-  summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
-  arrange (desc(num))  # arranges them in descending order 
-
-  # Highest: % - top 3 (tie for second highest)
-data_all %>%  
-  filter(Int_cat== "1. Land/water management"| 
-           Int_cat== "2. Species management"| 
-           Int_cat== "7. Legal & policy frameworks") %>%  
-  summarise(intervention="Highest 3", num=n_distinct(aid), pct=num/num.studies*100)
-
-  # Lowest: % - bottom 4 (tie for lowest and second lowest)
-data_all %>%  
-  filter(Int_cat== "3. Awareness raising "| 
-           Int_cat== "5. Livelihood, economic, and other incentives"|
-           Int_cat== "4. Enforcement & protection"| 
-           Int_cat== "8. Education & training") %>%  
-  summarise(intervention="Lowest 4", num=n_distinct(aid), pct=num/num.studies*100)
-
-  # Subcategories (want % of each):
-data_all %>%
-  group_by(Intervention.subcategory) %>% 
-  summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
-  arrange (desc(num))  # arranges them in descending order 
-  # arrange (num) # arranges in ascending order, swap
-```
-
-5. C: Comparators, Study designs used
-
-IN PROGRESS
-
-# Discuss w David: what do we want from this section/how in depth?
-# Still playing around
 
 ```{r eval=T}
 
@@ -1186,6 +1187,60 @@ data_all %>%
   summarise(num=n_distinct(aid), pct=num/num.studies*100)
     #  arrange (desc(num))  # this arranges them in descending order 
 
+# Scale of Study - as related to the INTERVENTION
+data_all %>%
+  group_by(Scale.of.study) %>% 
+  summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
+  arrange (desc(num))  # this arranges them in descending order 
+
+```
+
+# Looking at Fisheries Papers (as deemed by screeners!)
+
+```{r eval=T}
+
+# Looking at Fisheries Papers (as deemed by screeners!)
+
+Fisheries_Papers <- data_all %>%
+  filter(Fisheries.Paper. == "Yes")
+# View() # spot check
+# write.csv(Fisheries_Papers,paste0(tabledir,today.date,"_Fisheries_Papers.csv"))
+
+# How many studies are Fisheries Papers?
+n_distinct(data_all$aid[data_all$Fisheries.Paper. == "Yes"])
+
+```
+
+4. I: Interventions
+
+```{r eval=T}
+# I: Interventions
+data_all %>%
+  group_by(Int_cat) %>% 
+  summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
+  arrange (desc(num))  # arranges them in descending order 
+
+  # Highest: % - top 3 (tie for second highest)
+data_all %>%  
+  filter(Int_cat== "1. Land/water management"| 
+           Int_cat== "2. Species management"| 
+           Int_cat== "7. Legal & policy frameworks") %>%  
+  summarise(intervention="Highest 3", num=n_distinct(aid), pct=num/num.studies*100)
+
+  # Lowest: % - bottom 4 (tie for lowest and second lowest)
+data_all %>%  
+  filter(Int_cat== "3. Awareness raising "| 
+           Int_cat== "5. Livelihood, economic, and other incentives"|
+           Int_cat== "4. Enforcement & protection"| 
+           Int_cat== "8. Education & training") %>%  
+  summarise(intervention="Lowest 4", num=n_distinct(aid), pct=num/num.studies*100)
+
+  # Subcategories (want % of each):
+data_all %>%
+  group_by(Intervention.subcategory) %>% 
+  summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
+  arrange (desc(num))  # arranges them in descending order 
+  # arrange (num) # arranges in ascending order, swap
 ```
 
 # Multiple Intervention Studies
@@ -1201,7 +1256,7 @@ In the paper, I look at rate of integrated (multiple) intervention studies over 
    filter(n.int>1)
 )
 
-#Distinct number of Multiple Intervention Studies!
+#Distinct PERCENT of Multiple Intervention Studies!
 n_distinct(multi.int.studies$aid)/n_distinct(data_all$aid)*100
 
 multi.int.aid <- multi.int.studies$aid[multi.int.studies$n.int>1]
@@ -1257,6 +1312,8 @@ data_all %>%
   
 ```
 
+# Interdisciplinary Outcomes
+
 # Add eco vs soc outcome counts
 ```{r eval=T}
 unique(data_all$Outcome_cat)
@@ -1291,22 +1348,6 @@ Eco_Soc_ES_Out <- data_all %>%
 write.csv(Eco_Soc_ES_Out,paste0(tabledir,today.date,"_Eco_and_Soc_and_ES_Outcomes.csv"))
 
 ```
-# Looking at Fisheries Papers (as deemed by screeners!)
-
-```{r eval=T}
-
-# Looking at Fisheries Papers (as deemed by screeners!)
-
-Fisheries_Papers <- data_all %>%
-  filter(Fisheries.Paper. == "Yes")
-# View() # spot check
-# write.csv(Fisheries_Papers,paste0(tabledir,today.date,"_Fisheries_Papers.csv"))
-
-# How many studies are Fisheries Papers?
-n_distinct(data_all$aid[data_all$Fisheries.Paper. == "Yes"])
-
-```
-
 
 ## Interdisciplinary outcome comparison heat maps
 ```{r eval=T}
