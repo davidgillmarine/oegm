@@ -115,7 +115,6 @@ out_sub_list <-  drop.down.lists %>%
   na.omit() %>% 
   rename(out_sub=Outcome.subcategory) 
 num.studies <- length(unique(data_all$aid)) #should again be 171
-
 ```
 
 # CLEAN UP Rejected at Full Text Paper Data
@@ -943,22 +942,18 @@ print(num.rejects)
 Reject_data %>%
   filter(Could_not_locate==1) %>% 
   summarise(Why_rejected="Could not Locate", num=n_distinct(aid), pct=num/num.rejects*100) 
-
 ## Not_accessible
 Reject_data %>%
   filter(Not_accessible==1) %>% 
   summarise(Why_rejected="Not accessible", num=n_distinct(aid), pct=num/num.rejects*100)
-
 ## Non_English
 Reject_data %>%
   filter(Non_English==1) %>% 
   summarise(Why_rejected="Non English Language", num=n_distinct(aid), pct=num/num.rejects*100) 
-
 ## Duplicate
 Reject_data %>%
   filter(Duplicate==1) %>% 
   summarise(Why_rejected="Duplicate", num=n_distinct(aid), pct=num/num.rejects*100) 
-
 # Important: I need to get the TOTAL number of Articles in the above 4 categories for the ROSES Diagram (aka need to make sure I am accounting for potential overlap)
 Reject_data %>% 
   filter(Could_not_locate + Not_accessible + Non_English + Duplicate == 1) %>% 
@@ -968,17 +963,14 @@ Reject_data %>%
 Reject_data %>%
   filter(Review_or_MA==1) %>% 
   summarise(Why_rejected="Reviews/Meta-Analysis", num=n_distinct(aid), pct=num/num.rejects*100) 
-
 ## Doesnt_fit_PICO
 Reject_data %>%
   filter(Doesnt_fit_PICO==1) %>% 
   summarise(Why_rejected="Doesn't fit PICO or Inclusion Criteria", num=n_distinct(aid), pct=num/num.rejects*100) 
-
 ## Other Reason
 Reject_data %>%
   filter(OtherReason==1) %>% 
   summarise(Why_rejected="Other Reason", num=n_distinct(aid), pct=num/num.rejects*100)
-
 # Important: I need to get the TOTAL number of Articles in the above 3 categories for the ROSES Diagram (aka need to make sure I am accounting for potential overlap)
 Reject_data %>% 
   filter(Review_or_MA + OtherReason + Doesnt_fit_PICO == 1) %>% 
@@ -991,28 +983,48 @@ Reject_data %>%
 
 ### THIS ONLY GIVES ME 604 Papers!!! WHY??!?!?!? NEED TO Come back to this
 
+
+
+### TRYING ANOTHER WAY
+# Reasons for Rejection
+## get no. entries
+max.rej <- paste0("WhyRej",rep(1:max(str_count(Reject_data$Why_rejected, ";")+1))) 
+## now, get why rejected
+Why.Rejected <- Reject_data %>% 
+  mutate(Why_rejected=gsub(",",";",Why_rejected)) %>%  # replace "," with ";" to help with splitting (had both , and ; as separators)
+  group_by(aid,Why_rejected) %>%
+  summarise() %>% 
+  filter(!is.na(Why_rejected)) %>% 
+  separate(Why_rejected,max.rej, sep="; ",fill="right") %>% # fill=right fills blanks with NAs
+  gather("X","WhyRej", max.rej) %>%   #gather is a tidyr function that reshapes columns into key pairs 
+  filter(!is.na(WhyRej)) %>% #weirdly doesn't remove aid 705
+  select(-X) %>% 
+  group_by(WhyRej) %>%
+  select(aid, WhyRej) %>% 
+  count(WhyRej) %>%     #count creates an "n" column
+  mutate(group.pct=n/num.studies*100) %>%   #this creates the "pct" column
+  arrange(desc(n)) %>% 
+  print()
+
+
 # Now, let's Dive into the "Doesn't Fit PICO" section:
 
 ## Population
 Reject_data %>%
   filter(Population==1) %>% 
   summarise(PICO_details="Population", num=n_distinct(aid), pct=num/num.rejects*100)
-
 ## Intervention
 Reject_data %>%
   filter(Intervention==1) %>% 
   summarise(PICO_details="Intervention", num=n_distinct(aid), pct=num/num.rejects*100) 
-
 ## Outcome
 Reject_data %>%
   filter(Outcome==1) %>% 
   summarise(PICO_details="Outcome", num=n_distinct(aid), pct=num/num.rejects*100)
-
 ## Theoretical_Modeled_Study
 Reject_data %>%
   filter(Theoretical_Modeled_Study==1) %>% 
   summarise(PICO_details="Theoretical or Modeled_Study", num=n_distinct(aid), pct=num/num.rejects*100) 
-
 ## Not_Peer_Reviewed
 Reject_data %>%
   filter(Not_Peer_Reviewed==1) %>% 
@@ -1117,67 +1129,87 @@ data_all %>%
 
 ```{r eval=T}
 
-  # Primary vs Secondary Data
+# Primary vs Secondary Data (Mutually Exclusive)
 data_all %>%
   group_by(Primary.or.secondary.data.) %>% 
   summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
   arrange (desc(num))  # this arranges them in descending order 
 
-  # Type of Data
+# Type of Data (Mutually Exclusive)
 data_all %>%
   group_by(What.type.of.data.does.this.study.consider.) %>% 
   summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
   arrange (desc(num))  # this arranges them in descending order 
 
-  # Comparator Type
-comparator.types <- data_all  %>%
-  group_by(Comparator.type) %>% 
-  summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
-  arrange (desc(num)) # this arranges them in descending order 
-  # arrange (num) # for ascending order, swap
-view(comparator.types)
-##### Need to do the "search for term within a row" method here, like how we sorted the coral
+# Comparator Type
+## get no. articles per comparator
+max.comp <- paste0("comp",rep(1:max(str_count(data_all$Comparator.type, ";")+1))) 
 
-#Find and look at the 5 "None" comparator studies
+## now, get comparator types
+comparator.types <- data_all %>% 
+  group_by(aid,Comparator.type) %>%
+  summarise() %>% 
+  filter(!is.na(Comparator.type)) %>% 
+  separate(Comparator.type,max.comp, sep=", ",fill="right") %>% # fill=right fills blanks with NAs
+  gather("X","comparator", max.comp) %>%   #gather is a tidyr function that reshapes columns into key pairs 
+  filter(!is.na(comparator)) %>% #weirdly doesn't remove aid 705
+  select(-X) %>% 
+  group_by(comparator) %>%
+  select(aid, comparator) %>% 
+  count(comparator) %>%     #count creates an "n" column
+  mutate(comp.pct=n/num.studies*100) %>%   #this creates the "pct" column
+  arrange(desc(n)) %>% 
+  print()
+
+## Find and look at the 5 "None" comparator studies
 unique(data_all %>% 
   filter(Comparator.type== "None") %>% 
   select(aid))
 
-  # Does the Study population considers human groups?
+# Does the Study population considers human groups? (mutually exclusive)
 data_all %>%
   group_by(Does.the.study.explicitly.examine.impacts.on.different.human.groups.) %>% 
   summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
   arrange (desc(num))  # this arranges them in descending order 
 
-# If so, what types?
-data_all %>%
-  filter(!is.na(If.so..what.types.of.different.groups.)) %>% 
-  group_by(If.so..what.types.of.different.groups.) %>% 
-  summarise(num=n_distinct(aid), pct=num/num.studies*100)
-    #  arrange (desc(num))  # this arranges them in descending order 
+# If so, what types of human groups? - NEED TO get all groups!# Comparator Type
+## get no. articles per
+max.groups <- paste0("comp",rep(1:max(str_count(data_all$If.so..what.types.of.different.groups., ";")+1))) 
 
-# Scale of Study - as related to the INTERVENTION
+## now, get human groups
+human.groups <- data_all %>% 
+  group_by(aid,If.so..what.types.of.different.groups.) %>%
+  summarise() %>% 
+  filter(!is.na(If.so..what.types.of.different.groups.)) %>% 
+  separate(If.so..what.types.of.different.groups.,max.groups, sep=", ",fill="right") %>% # fill=right fills blanks with NAs
+  gather("X","human.groups", max.groups) %>%   #gather is a tidyr function that reshapes columns into key pairs 
+  filter(!is.na(human.groups)) %>% #weirdly doesn't remove aid 705
+  select(-X) %>% 
+  group_by(human.groups) %>%
+  select(aid, human.groups) %>% 
+  count(human.groups) %>%     #count creates an "n" column
+  mutate(group.pct=n/num.studies*100) %>%   #this creates the "pct" column
+  arrange(desc(n)) %>% 
+  print()
+
+# Scale of Study - as related to the INTERVENTION (mutually exclusive)
 data_all %>%
   group_by(Scale.of.study) %>% 
   summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
   arrange (desc(num))  # this arranges them in descending order 
-
 ```
 
 # Looking at Fisheries Papers (as deemed by screeners!)
 
 ```{r eval=T}
-
-# Looking at Fisheries Papers (as deemed by screeners!)
-
+# Looking at Fisheries Papers (as deemed by screeners) - mutually exclusive
 Fisheries_Papers <- data_all %>%
   filter(Fisheries.Paper. == "Yes")
-# View() # spot check
-# write.csv(Fisheries_Papers,paste0(tabledir,today.date,"_Fisheries_Papers.csv"))
+  # View() # spot check
+  # write.csv(Fisheries_Papers,paste0(tabledir,today.date,"_Fisheries_Papers.csv"))
 
-# How many studies are Fisheries Papers?
+## How many studies are Fisheries Papers?
 n_distinct(data_all$aid[data_all$Fisheries.Paper. == "Yes"])
-
 ```
 
 4. I: Interventions
@@ -1215,7 +1247,6 @@ data_all %>%
 
 In the paper, I look at rate of integrated (multiple) intervention studies over time... I just did this by hand based on the multi_int_time_gps table created in this script
 
-
 ```{r eval=T}
 (multi.int.studies <- data_all %>% 
     #   filter(Int_cat!="8. Research & monitoring") %>% 
@@ -1240,7 +1271,6 @@ Multi_int_time_gps <- data_all %>%
   select(Year.of.publication,gp,pub.per.yr,val) %>% 
   filter(!is.na(Year.of.publication))
 View(Multi_int_time_gps)
-
 ```
 
 6. O: Outcomes:
@@ -1279,7 +1309,6 @@ data_all %>%
   # arrange (num) # for ascending order, swap
   
 ```
-
 # Interdisciplinary Outcomes
 
 # Add eco vs soc outcome counts
@@ -1314,7 +1343,6 @@ Eco_Soc_ES_Out <- data_all %>%
   filter(interdisc.aid == 1)
 # View(select(Eco_Soc_ES_Out,Outcome_cat,eco.aid:interdisc.aid)) # spot check
 write.csv(Eco_Soc_ES_Out,paste0(tabledir,today.date,"_Eco_and_Soc_and_ES_Outcomes.csv"))
-
 ```
 
 ## Interdisciplinary outcome comparison heat maps
@@ -1549,7 +1577,6 @@ out.x.count <- data_all %>%
   
 ggsave(paste0(plotdir,today.date,'_multiple_out_map.png'),width = 8,height = 8)
   
-  
   # sub-outcomes
 sub.out.x.count <- data_all %>% 
     select(aid, Outcome.subcategory) %>% 
@@ -1616,7 +1643,6 @@ ggplot(data=sub.out.x.count.intdisc, aes(x=Out1,y=reorder(Out2, desc(Out2)),fill
     labs(x="Ecological + Ecosystem services", y= "Social + Ecosystem services")
   
 ggsave(paste0(plotdir,today.date,'interdisc_multiple_out_map.png'),width = 11,height = 8)
-  
 
 # Multi-intervention interdiscpl-outcomes
 # id multi-intervention studies
@@ -1674,8 +1700,6 @@ ggplot(data=mi.sub.out.x.count.interdisc, aes(x=Out2,y=reorder(Out1, desc(Out1))
   
 ggsave(paste0(plotdir,today.date,'_multi-intervention_multiple_out_map.png'),width = 18,height = 18)
 
-
-
 #--- Chord diagram
 chord.dat <- data_all %>% 
   filter(interdisc.aid==1) %>% 
@@ -1709,10 +1733,7 @@ circos.track(track.index = 1, panel.fun = function(x, y) {
         facing = "clockwise", niceFacing = TRUE, adj = c(0, 0.5))
 }, bg.border = NA) 
 dev.off()
-
-
 ```
-
 
 7. Time periods
 
@@ -1731,7 +1752,6 @@ IN PROGRESS
   
   # could do ^ for outcome, could also try to get a chart that gives # of each
     # intervention and outcome for each year. Should be able to do this!
-
 
 # make barplot
 test.dat <- data_all %>%
