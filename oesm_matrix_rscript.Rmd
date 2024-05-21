@@ -1095,10 +1095,6 @@ data_all %>%
   summarise(habitat="Mangrove", num=n_distinct(aid), pct=num/num.studies*100) 
 
 # Note: these DO contain overlap, ie. some studies have multiple habitats:
-# data_all %>%
-#   group_by(Habitat.type) %>% 
-#   summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
-#   arrange (desc(num)) 
 
 # How many studies took place in only one of three habitats?
 data_all %>% 
@@ -1118,7 +1114,6 @@ data_all %>%
 ```
 
 5. C: Comparators, Study designs used aka MANY Stats here!
-
 
 ```{r eval=T}
 
@@ -1201,13 +1196,12 @@ data_all %>%
            Int_cat== "7. Legal & policy frameworks") %>%  
   summarise(intervention="Highest 3", num=n_distinct(aid), pct=num/num.studies*100)
 
-  # Lowest: % - bottom 4 (tie for lowest and second lowest)
+  # Lowest: % - bottom 3 (tie for lowest)
 data_all %>%  
   filter(Int_cat== "3. Awareness raising "| 
-           Int_cat== "5. Livelihood, economic, and other incentives"|
            Int_cat== "4. Enforcement & protection"| 
            Int_cat== "8. Education & training") %>%  
-  summarise(intervention="Lowest 4", num=n_distinct(aid), pct=num/num.studies*100)
+  summarise(intervention="Lowest 3", num=n_distinct(aid), pct=num/num.studies*100)
 
   # Subcategories (want % of each):
 data_all %>%
