@@ -564,11 +564,11 @@ ctry.fix <- data_all %>%
 #Update the country data file to match two of the sites:
 country2 <- country %>%
   mutate(Country=gsub("Bahamas","The Bahamas",Country)) %>% 
+  mutate(code=gsub("BHM","BHS",code)) %>% #Bahamas had a dif country code in these two datasets
     #to match the name change above for this country
   add_row(Country = "British Indian Ocean Territory", Region = "Asia", code = "IOT", Subregion = "Southern Asia")
-    # Note here: I picked Asia and Southern Asia because of the proxmity to the Maldives
+    # Note here: I picked Asia and Southern Asia because of the proximity to the Maldives
       # Next Closest were Mauritius and Seychelles, Technically Africa... hard pick...
-         
 ```
 
 # All Habitats World Map
@@ -1036,36 +1036,8 @@ For country percentages, I used the ctry_sum2 list, and not this
 Geographical scale of intervention is used
 
 ```{r eval=T}
-
 # P: Geographies (aka intervention location)
-
 ##use data from world map I created!
-
-# Countries: Print Country LIST for Stats
-ctry_sum2 %>%
-  filter(!is.na(pct)) %>%
-  # filter(!is.na(admin)) %>%  
-      #note: need to check out what this study was that recorded ONLY regions - can we go back and get countries?!
-  select(admin,n,pct,Subregion,Region) %>% 
-  arrange (desc(n)) %>% # this arranges them in descending order 
-  print()
-    # note: Indian Ocean territory = issue for region - doesn't have Region
-    # neither does Bahamas
-
-
-
-
-# Regions: Print Continents for Stats
-region <- ctry_sum2 %>% 
-  filter(!is.na(pct)) %>% 
-  select(admin,n,pct,Subregion,Region) %>% 
-  arrange(desc(Region)) %>% 
-  print()
-
-
-
-#####BETTER WAY
-
 
 # Join the Dataframe to rnaturalearth ne_countries (world_countries) 
 region <- ctry.all %>% 
@@ -1079,27 +1051,29 @@ region <- ctry.all %>%
   group_by(admin) %>%
   full_join(world_countries,by="admin") %>%  # full_join keeps all ROWS (even the n=0 rows!) - need country CODES
   filter(!is.na(aid)) %>%
-  # slice(aid=705) %>% # need this again here to remove aid 705
-      ###COME BACK TO THIS AND FIX
+  filter(!(aid == '705')) %>% # need this here to remove aid 705 - doesn't get removed with above
   select(aid, admin, adm0_a3, sovereignt, type, economy)
-
-
   
 # join region with the regions and continents in the old "country" dataset (again, full_join)
-region2 <- country2 %>%   
-  full_join(region, by = c("code" = "adm0_a3"), relationship = "many-to-many") %>% 
-  select(-Country) %>%
-  #select(admin,n,pct,code,Subregion,Region) %>%
-  arrange(desc(n))
-
 region2 <- region %>% 
-  left_join(country2, by = c("adm0_a3"  = "code"))
+  left_join(country2, by = c("adm0_a3"  = "code")) %>% #left join only joins countries/territories represented in region dataset!
+  select(-Country) %>%
+  ungroup() #need to ungroup, because in this datafile things are still GROUPED by "admin", but I want to take OUT admin!
+    #class(region2) - tip, use this if I'm having issues with the dataframe to try and understand it
 
-  
-  count() %>%     #count creates an "n" column
-  mutate(pct=n/num.studies*100) %>%   #this creates the "pct" column
-  arrange(desc(n))
+# sort Subregions of represented papers!
+subregion_dat <- region2 %>% 
+  count(Subregion) %>%     #count creates an "n" column
+  mutate(subregion.pct=n/num.studies*100) %>%   #this creates the "pct" column
+  arrange(desc(n)) %>% 
+  print()
 
+# sort Regions of represented papers!
+region_dat <- region2 %>% 
+  count(Region) %>%     #count creates an "n" column
+  mutate(region.pct=n/num.studies*100) %>%   #this creates the "pct" column
+  arrange(desc(n)) %>% 
+  print()
 ```
 
 3. P: Habitats
