@@ -213,6 +213,155 @@ for (i in 1:nrow(out_sub_list)){
 }
 ```
 
+# MORE Data Cleaning, For Categories Later - Year Change, Name Change!
+
+```{r eval=T}
+
+# AID 344 is technically 2019, but was a 2018 paper, need to update the year
+data_all <-data_all %>% 
+  mutate(Year.of.publication=gsub("2019","2018",Year.of.publication))  # 2019 should be 2018
+
+#Intervention Updates
+# remove 8. Research and Monitoring as an intervention entirely, and adjust numbers
+data_all <-data_all %>% 
+  filter(Int_cat!="8. Research & monitoring")%>% 
+  mutate_at(vars(Int_cat,Intervention.subcategory), ~gsub("^9","8",.)) %>% 
+  mutate_at(vars(Int_cat,Intervention.subcategory), ~gsub("^10","9",.))  
+
+# Intervention Capitalization
+data_all <-data_all %>% 
+  mutate(Int_cat=gsub("1. Land/water management","1. Land/Water Management",Int_cat), 
+    Int_cat=gsub("2. Species management","2. Species Management",Int_cat), 
+    Int_cat=gsub("3. Awareness raising","3. Awareness Raising",Int_cat),
+    Int_cat=gsub("4. Enforcement & protection","4. Enforcement & Protection",Int_cat),
+    Int_cat=gsub("5. Livelihood, economic, and other incentives","5. Livelihood, Economic, & Other Incentives",Int_cat),
+    Int_cat=gsub("6. Conservation designation & planning","6. Conservation Designation & Planning",Int_cat),
+    Int_cat=gsub("7. Legal & policy frameworks","7. Legal & Policy Frameworks",Int_cat),
+    Int_cat=gsub("8. Education & training","8. Education & Training",Int_cat),
+    Int_cat=gsub("9. Institutional/organizational development","9. Institutional/Organizational Development",Int_cat)) 
+
+# fix data in country column
+  ## the "admin" column in ne_countries joins to the country shapes from Natural Earth by name. This can get tricky because the names have to match exactly, which is what I do below
+ctry.fix <- data_all %>%
+  mutate(study.ctry=gsub(",",";",study.ctry),  # replace "," with ";" to help with splitting
+         study.ctry=gsub("Bahamas","The Bahamas",study.ctry),
+         study.ctry=gsub("Mauritiana","Mauritania",study.ctry),
+         study.ctry=gsub("Saint Vincent And The Grenadines","Saint Vincent and the Grenadines",study.ctry),
+         study.ctry=gsub("Timor-Leste","East Timor",study.ctry),
+         study.ctry=gsub("Korea; South","South Korea",study.ctry),
+         study.ctry=gsub("Turks and Caicos","Turks and Caicos Islands",study.ctry),
+         study.ctry=gsub("Tanzania*.","United Republic of Tanzania",study.ctry),
+             #Not sure if this will work, trying to do "Tanzania and anything after it"
+             # now is doubled... not sure why, will just have a 2nd code... 
+         study.ctry=gsub("United Republic of Tanzania United Republic Of","United Republic of Tanzania",study.ctry),
+         study.ctry=gsub("Commonwealth of the Northern Mariana Islands","Northern Mariana Islands",study.ctry),
+         study.ctry=gsub("Taiwan; Province Of China","Taiwan",study.ctry),
+         study.ctry=gsub("Cote D'Ivoire","Ivory Coast",study.ctry),
+         study.ctry=gsub("United States","United States of America",study.ctry),
+         study.ctry=gsub("USA","United States of America",study.ctry),
+         study.ctry=gsub(".*Virgin Islands","United States Virgin Islands",study.ctry),
+            # Means "Virgin Islands" and anything before it - turns both "U.S. Virgin Islands" and "Virgin Islands" into above
+         study.ctry=gsub("Viet Nam","Vietnam",study.ctry),
+  ## Would Like a better Name / Map / Disputed... come back to
+         study.ctry=gsub("Chagos currently disputed between UK and Republic of Mauritius","British Indian Ocean Territory",study.ctry),
+         study.ctry=gsub(".*Hawaii)","United States of America",study.ctry),
+         study.ctry=gsub(".*Palmyra Atoll near Kiribati but owned by United States of America)","United States of America",study.ctry),
+         study.ctry=gsub(".*Guadeloupe)","France",study.ctry),
+         study.ctry=gsub(".*Mayotte)","France",study.ctry),
+         study.ctry=gsub(".*Reunion);","France",study.ctry),
+  ## Want to check back on name changes / the way I'm referring to them
+         study.ctry=gsub("Commonwealth of the Northern Mariana Islands","Northern Mariana Islands",study.ctry),
+         study.ctry=gsub("Lao People's Democratic Republic","Laos",study.ctry),
+         ) 
+
+#Update the country data file to match two of the sites:
+country2 <- country %>%
+  mutate(Country=gsub("Bahamas","The Bahamas",Country)) %>% 
+  mutate(code=gsub("BHM","BHS",code)) %>% #Bahamas had a dif country code in these two datasets
+    #to match the name change above for this country
+  add_row(Country = "British Indian Ocean Territory", Region = "Asia", code = "IOT", Subregion = "Southern Asia")
+    # Note here: I picked Asia and Southern Asia because of the proximity to the Maldives
+      # Next Closest were Mauritius and Seychelles, Technically Africa... hard pick...
+```
+         
+# Habitat Field Checks
+
+```{r eval=T}  
+# Add habitat fields
+unique(data_all$Habitat.type) 
+data_all <- data_all %>% 
+mutate(coral=ifelse(grepl("Coral",Habitat.type,ignore.case = T),1,0),
+       seagrass=ifelse(grepl("Seagrass",Habitat.type,ignore.case = T),1,0), 
+       # note: ignores case, so the lowercase "seagrass" is fine!
+       mangrove=ifelse(grepl("Mangrove",Habitat.type,ignore.case = T),1,0),)
+
+# check habitat coding
+unique(data_all$Habitat.type[data_all$coral==1])
+unique(data_all$Habitat.type[data_all$seagrass==1])
+unique(data_all$Habitat.type[data_all$mangrove==1])
+  # Correct - all sorted
+
+habitat.test <- data_all %>% 
+  filter(coral==0 & mangrove==0 & seagrass==0) %>% 
+  select(Habitat.type)
+unique(habitat.test$Habitat.type) # should just be 0 - no other categories (we took out the "Other" category)       
+```
+
+# NEW Quick Checks to make sure data is sorting correctly - Intervention and Outcomes
+
+```{r eval=T}
+         
+#quick checks
+unique(data_all$Int_cat)  # 9 Interventions (we took #8 out)
+unique(data_all$Outcome_cat) # 7 outcomes
+sort(unique(data_all$Intervention.subcategory)) # 32 sub-interventions (in int_sub_list)
+  # Only 26 sub-interventions were coded for
+sort(unique(data_all$Outcome.subcategory)) # 43 sub-outcomes (bc we added in Catch/Yield x2)
+  # Only 41 sub-interventions were coded for
+
+# those that were not observed
+int_list$Int_cat_orig[!int_list$Int_cat_orig%in%data_all$Int_cat] # 8. Research and monitoring
+int_sub_list$int_sub[!int_sub_list$int_sub%in%data_all$Intervention.subcategory] # 6 sub-interventions. Correct: 32-26=6
+out_list$Outcome_cat_orig[!out_list$Outcome_cat_orig%in%data_all$Outcome_cat] #correct, 0 bc all were coded for
+out_sub_list$out_sub[!out_sub_list$out_sub%in%data_all$Outcome.subcategory] # 2 sub-outcomes. Correct: 43-41=2
+
+# incorrect values entered (all should be zero)
+data_all$Int_cat[!data_all$Int_cat%in%int_list$Int_cat_orig] #0
+data_all$Intervention.subcategory[!data_all$Intervention.subcategory%in%int_sub_list$int_sub] #0
+data_all$Outcome_cat[!data_all$Outcome_cat%in%out_list$Outcome_cat_orig] #0
+data_all$Outcome.subcategory[!data_all$Outcome.subcategory%in%out_sub_list$out_sub] #0
+  # Correct - all are 0!
+
+#new quick checks
+unique(data_all$Int_cat)  # 9 interventions, #1-9
+unique(data_all$Outcome_cat) # 7 outcomes, #1-7
+sort(unique(data_all$Intervention.subcategory)) # 26 sub-interventions coded - no.1-9
+sort(unique(data_all$Outcome.subcategory)) # 41 sub-outcomes coded, no.1-7.
+
+# Get full intervention list
+  int_list <- data_all %>%
+    ungroup() %>%
+    distinct(Int_cat) %>%
+    rename(int_val=Int_cat) %>% 
+    arrange(int_val)
+  out_list <- data_all %>%
+    ungroup() %>%
+    distinct(Outcome_cat) %>%
+    rename(out_val=Outcome_cat) %>% 
+    arrange(out_val)
+# Get full sub-intervention list
+  int_sub_list <- data_all %>%
+    ungroup() %>%
+    distinct(Intervention.subcategory) %>%
+    rename(int_val=Intervention.subcategory) %>% 
+    arrange(int_val)
+  out_sub_list <- data_all %>%
+    ungroup() %>%
+    distinct(Outcome.subcategory) %>%
+    rename(out_val=Outcome.subcategory) %>% 
+    arrange(out_val)
+```
+
 # TROUBLE-SHOOTING - 1/24/24!!!
 here, I was troubleshooting by checking different outcome categories for coding. For example, I checked cat "1c. Yield/CPUE" and decided that some of this category should be coded in category 2, AND re-coded this category to be double-coded with 5b! I also re-checked many other outcome categories, and fixed ones that had issues (e.g. 1e. behavior, 1k body conditions, 2b species diversity, culture, knowledge, etc.)
 
@@ -286,85 +435,6 @@ The below script is commented off, but kept the code for how to easily check the
 # # write.csv(culture_out,paste0(tabledir,today.date,"_5h_culture.csv"))
 ```
 
-# Quick Checks to make sure data is sorting correctly
-
-```{r eval=T}
-#quick checks
-unique(data_all$Int_cat)  # 9 Interventions (we took #8 out)
-unique(data_all$Outcome_cat) # 7 outcomes
-sort(unique(data_all$Intervention.subcategory)) # 32 sub-interventions (in int_sub_list)
-  # Only 26 sub-interventions were coded for
-sort(unique(data_all$Outcome.subcategory)) # 43 sub-outcomes (bc we added in Catch/Yield x2)
-  # Only 41 sub-interventions were coded for
-
-# those that were not observed
-int_list$Int_cat_orig[!int_list$Int_cat_orig%in%data_all$Int_cat] # 8. Research and monitoring
-int_sub_list$int_sub[!int_sub_list$int_sub%in%data_all$Intervention.subcategory] # 6 sub-interventions. Correct: 32-26=6
-out_list$Outcome_cat_orig[!out_list$Outcome_cat_orig%in%data_all$Outcome_cat] #correct, 0 bc all were coded for
-out_sub_list$out_sub[!out_sub_list$out_sub%in%data_all$Outcome.subcategory] # 2 sub-outcomes. Correct: 43-41=2
-
-# incorrect values entered (all should be zero)
-data_all$Int_cat[!data_all$Int_cat%in%int_list$Int_cat_orig] #0
-data_all$Intervention.subcategory[!data_all$Intervention.subcategory%in%int_sub_list$int_sub] #0
-data_all$Outcome_cat[!data_all$Outcome_cat%in%out_list$Outcome_cat_orig] #0
-data_all$Outcome.subcategory[!data_all$Outcome.subcategory%in%out_sub_list$out_sub] #0
-  # Correct - all are 0!
-
-# Add habitat fields
-unique(data_all$Habitat.type) 
-data_all <- data_all %>% 
-mutate(coral=ifelse(grepl("Coral",Habitat.type,ignore.case = T),1,0),
-       seagrass=ifelse(grepl("Seagrass",Habitat.type,ignore.case = T),1,0), 
-       # note: ignores case, so the lowercase "seagrass" is fine!
-       mangrove=ifelse(grepl("Mangrove",Habitat.type,ignore.case = T),1,0),)
-
-# check habitat coding
-unique(data_all$Habitat.type[data_all$coral==1])
-unique(data_all$Habitat.type[data_all$seagrass==1])
-unique(data_all$Habitat.type[data_all$mangrove==1])
-  # Correct - all sorted
-
-habitat.test <- data_all %>% 
-  filter(coral==0 & mangrove==0 & seagrass==0) %>% 
-  select(Habitat.type)
-unique(habitat.test$Habitat.type) # should just be 0 - no other categories (we took out the "Other" category)
-
-# remove 8. Research and Monitoring as an intervention entirely, and adjust numbers
-data_all <-data_all %>% 
-  filter(Int_cat!="8. Research & monitoring")%>% 
-  mutate_at(vars(Int_cat,Intervention.subcategory), ~gsub("^9","8",.)) %>% 
-  mutate_at(vars(Int_cat,Intervention.subcategory), ~gsub("^10","9",.))  
-
-#new quick checks
-unique(data_all$Int_cat)  # 9 interventions, #1-9
-unique(data_all$Outcome_cat) # 7 outcomes, #1-7
-sort(unique(data_all$Intervention.subcategory)) # 26 sub-interventions coded - no.1-9
-sort(unique(data_all$Outcome.subcategory)) # 41 sub-outcomes coded, no.1-7.
-
-# Get full intervention list
-  int_list <- data_all %>%
-    ungroup() %>%
-    distinct(Int_cat) %>%
-    rename(int_val=Int_cat) %>% 
-    arrange(int_val)
-  out_list <- data_all %>%
-    ungroup() %>%
-    distinct(Outcome_cat) %>%
-    rename(out_val=Outcome_cat) %>% 
-    arrange(out_val)
-# Get full sub-intervention list
-  int_sub_list <- data_all %>%
-    ungroup() %>%
-    distinct(Intervention.subcategory) %>%
-    rename(int_val=Intervention.subcategory) %>% 
-    arrange(int_val)
-  out_sub_list <- data_all %>%
-    ungroup() %>%
-    distinct(Outcome.subcategory) %>%
-    rename(out_val=Outcome.subcategory) %>% 
-    arrange(out_val)
-```
-
 # Heat map function
 Creates a heat map from the OESM accepted articles, based on intervention and outcome categories and subcategories
 
@@ -375,7 +445,6 @@ In the future, we should be able to make this heat map interactive with plotly (
 ```{r eval=T}
 #--- Heat map function ----
 my_heat_map <- function (.data,intc, outc, high.col="#2171b5") {
-  
   
 # don't know why... but this works
   .data$intc<- as.vector(.data %>%  pull(intc))
@@ -516,59 +585,6 @@ ggsave(paste0(plotdir,today.date,'_habitat_int_out_map.png'),width = 17,height =
 # NOTE: maps might not show up below, but check folders - they should still come out fine
 ```
 # World map
- 
-Step 1: Data Cleaning
- 
-```{r eval=T}
-#---- World map ----
-# Data Cleaning
-
-# Clean and Organize Data
-unique(data_all$study.ctry)
-
-# fix data in country column
-  ## the "admin" column in ne_countries joins to the country shapes from Natural Earth by name. This can get tricky because the names have to match exactly, which is what I do below
-ctry.fix <- data_all %>%
-  mutate(study.ctry=gsub(",",";",study.ctry),  # replace "," with ";" to help with splitting
-         study.ctry=gsub("Bahamas","The Bahamas",study.ctry),
-         study.ctry=gsub("Mauritiana","Mauritania",study.ctry),
-         study.ctry=gsub("Saint Vincent And The Grenadines","Saint Vincent and the Grenadines",study.ctry),
-         study.ctry=gsub("Timor-Leste","East Timor",study.ctry),
-         study.ctry=gsub("Korea; South","South Korea",study.ctry),
-         study.ctry=gsub("Turks and Caicos","Turks and Caicos Islands",study.ctry),
-         study.ctry=gsub("Tanzania*.","United Republic of Tanzania",study.ctry),
-             #Not sure if this will work, trying to do "Tanzania and anything after it"
-             # now is doubled... not sure why, will just have a 2nd code... 
-         study.ctry=gsub("United Republic of Tanzania United Republic Of","United Republic of Tanzania",study.ctry),
-         study.ctry=gsub("Commonwealth of the Northern Mariana Islands","Northern Mariana Islands",study.ctry),
-         study.ctry=gsub("Taiwan; Province Of China","Taiwan",study.ctry),
-         study.ctry=gsub("Cote D'Ivoire","Ivory Coast",study.ctry),
-         study.ctry=gsub("United States","United States of America",study.ctry),
-         study.ctry=gsub("USA","United States of America",study.ctry),
-         study.ctry=gsub(".*Virgin Islands","United States Virgin Islands",study.ctry),
-            # Means "Virgin Islands" and anything before it - turns both "U.S. Virgin Islands" and "Virgin Islands" into above
-         study.ctry=gsub("Viet Nam","Vietnam",study.ctry),
-  ## Would Like a better Name / Map / Disputed... come back to
-         study.ctry=gsub("Chagos currently disputed between UK and Republic of Mauritius","British Indian Ocean Territory",study.ctry),
-         study.ctry=gsub(".*Hawaii)","United States of America",study.ctry),
-         study.ctry=gsub(".*Palmyra Atoll near Kiribati but owned by United States of America)","United States of America",study.ctry),
-         study.ctry=gsub(".*Guadeloupe)","France",study.ctry),
-         study.ctry=gsub(".*Mayotte)","France",study.ctry),
-         study.ctry=gsub(".*Reunion);","France",study.ctry),
-  ## Want to check back on name changes / the way I'm referring to them
-         study.ctry=gsub("Commonwealth of the Northern Mariana Islands","Northern Mariana Islands",study.ctry),
-         study.ctry=gsub("Lao People's Democratic Republic","Laos",study.ctry),
-         ) 
-
-#Update the country data file to match two of the sites:
-country2 <- country %>%
-  mutate(Country=gsub("Bahamas","The Bahamas",Country)) %>% 
-  mutate(code=gsub("BHM","BHS",code)) %>% #Bahamas had a dif country code in these two datasets
-    #to match the name change above for this country
-  add_row(Country = "British Indian Ocean Territory", Region = "Asia", code = "IOT", Subregion = "Southern Asia")
-    # Note here: I picked Asia and Southern Asia because of the proximity to the Maldives
-      # Next Closest were Mauritius and Seychelles, Technically Africa... hard pick...
-```
 
 # All Habitats World Map
 
@@ -581,8 +597,10 @@ Requires rnaturalearth and tidyverse packages (loaded at the top)
 
 ```{r eval=T}
 
-# All Habitats  World Map
+# Check cleaned data
+unique(ctry.all$study.ctry)
 
+# All Habitats  World Map
 ctry.all <- ctry.fix %>% 
   group_by(aid,study.ctry) %>%
   summarise() %>% 
@@ -828,7 +846,27 @@ treemap(intervention2,index=c("int.cat","Intervention.subcategory"),
 dev.off()
 ```
 
-# Studies over time 
+# Studies over time Figure
+
+Figure of Studies over time, by Intervention and Outcomes
+
+REALLY Useful site for figures: 
+- https://clauswilke.com/dataviz/index.html - AMAZING BOOK!!!
+    - https://github.com/clauswilke/dataviz - ALL SOURCE CODES ARE HERE!!!
+- http://www.sthda.com/english/wiki/ggplot2-essentials 
+- manual colors: https://ggplot2-book.org/scales-colour 
+- https://ggplot2-book.org/scales-other#sec-scale-manual 
+
+Good resource for Colors:
+- https://ggplot2-book.org/scales-colour
+- http://www.sthda.com/english/wiki/ggplot2-colors-how-to-change-colors-automatically-and-manually 
+- https://rpubs.com/kylewbrown/r-colors
+- https://colorbrewer2.org/#type=diverging&scheme=RdYlBu&n=3 
+
+I chose:
+- https://siegal.bio.nyu.edu/color-palette/ - Color-blind friendly!
+    - https://clauswilke.com/dataviz/color-pitfalls.html#fig:palette-Okabe-Ito 
+- I had to choose a few more colors, so I used https://www.color-blindness.com/coblis-color-blindness-simulator/ to make sure they did okay in different color blindness settings!
 
 ```{r eval=T}
 #---- Studies over time ----
@@ -836,6 +874,8 @@ All_time_gps <- data_all %>%
   group_by(Year.of.publication) %>% 
   summarise(pub.per.yr= n_distinct(aid)) %>% 
   ungroup() %>% 
+  add_row(Year.of.publication = "1995", pub.per.yr = 0) %>% # a numerical value DOESN'T have "" around it! the 0)
+      # Note here: there were no 1995 Papers, so I needed to add an entry with 0
   arrange(Year.of.publication) %>% 
   mutate(val=cumsum(pub.per.yr),
          gp="All") %>% 
@@ -843,36 +883,33 @@ All_time_gps <- data_all %>%
   filter(!is.na(Year.of.publication))
 tail(All_time_gps)
 
-# growth by decade
-#overall
-(max(All_time_gps$val)-min(All_time_gps$val))/(max(All_time_gps$Year.of.publication)-min(All_time_gps$Year.of.publication))
-#1990s
-(max(All_time_gps$val[All_time_gps$Year.of.publication<2000])-max(All_time_gps$val[All_time_gps$Year.of.publication<1990]))/10
-#2000-2010
-(max(All_time_gps$val[All_time_gps$Year.of.publication<2010])-max(All_time_gps$val[All_time_gps$Year.of.publication<2000]))/10
-#2010-latest date (? Check this)
-(max(All_time_gps$val)-max(All_time_gps$val[All_time_gps$Year.of.publication<2010]))/(max(All_time_gps$Year.of.publication)-2009)
-
+# Interventions
 Int_time_gps <-  data_all %>%
   group_by(Year.of.publication,Int_cat) %>% 
   summarise(int_per_yr= n_distinct(aid)) %>% 
   spread(Int_cat,value = int_per_yr) %>% 
-  mutate_all(funs(replace(., is.na(.), 0))) %>% 
   ungroup() %>% 
+  add_row(Year.of.publication = "1995", "1. Land/Water Management" = 0) %>% # a numerical value DOESN'T have "" around it! the 0)
+      # Note here: there were no 1995 Papers, so I needed to add an entry with 0
+  mutate_all(funs(replace(., is.na(.), 0))) %>%   #this makes all other NA entries 0!
   arrange(Year.of.publication) %>% 
   mutate_at(vars(-Year.of.publication),funs(cumsum(.))) %>% 
   gather("int_typ","val",-Year.of.publication) %>% 
   bind_rows(All_time_gps %>% rename(int_typ=gp))
 tail(Int_time_gps)
+
 # non-elegant way to convert units to factor in order to reorder plot legends
-order.gp <- Int_time_gps %>% group_by(int_typ) %>% summarise(order_typ=max(val)) %>% arrange(desc(order_typ)) %>% pull(int_typ)
+order.gp <- Int_time_gps %>% 
+  group_by(int_typ) %>% 
+  summarise(order_typ=max(val)) %>% 
+  arrange(desc(order_typ)) %>% 
+  pull(int_typ)
 Int_time_gps <- Int_time_gps %>%  
   mutate(int_typ = factor(int_typ, levels = order.gp)) %>% 
-  rename(Intervention=int_typ)
+  rename(Intervention=int_typ) %>% 
+  mutate(Intervention=gsub("All","All Interventions",Intervention))
 
-# int.cols <- c("black","blue","orangered1","yellow4","tan1")
-# names(int.cols) <- order.gp
-
+#Intervention Graphic
 (pInt_time_gps <- ggplot(Int_time_gps)  + 
     geom_line(aes(x = Year.of.publication, y = val, group = Intervention, colour = Intervention), size = 1.3)  +
     ylab("Cumulative frequency") +
@@ -881,36 +918,177 @@ Int_time_gps <- Int_time_gps %>%
     ggtitle('Intervention') )
    # scale_y_continuous(limits=c(0,80), breaks=seq(0,80,10), labels=c("0","","20","","40","","60","","80")))
 
+
+# Intervention Graphic
+(pInt_time_gps <- ggplot(Int_time_gps)  + 
+    geom_line(aes(x = Year.of.publication, y = val, group = Intervention, colour = Intervention, linetype=Intervention), size = 1.3)  +
+    labs(
+      x = "Year of Publication",
+      y = "Cumulative frequency",
+      title = 'Interventions per Year') +
+    theme(
+        panel.background = element_rect(fill = "gray90", colour = "gray90"), #matches GAP MAP boarder color
+        # panel.grid.major = element_blank(), #THIS is the y-ticks on the grid - want to keep
+        panel.grid.minor = element_blank(), #THIS is the smaller y-ticks on the grid - can remove!
+        # panel.border=element_blank(), #I think this is for if we wanted to separate the two boarders 
+        plot.title=element_text(hjust=0,size=12), # face="bold"
+        axis.ticks.y = element_blank(), #hides y-axis tick marks
+        # axis.text = element_blank(),
+        # axis.title = element_blank(),
+        legend.title=element_blank(), #element_text(size=10), - I don't think we need the "outcome" - redundant
+        legend.title.align=1,
+        legend.text=element_text(size=8),
+        legend.position ="right",
+        text=element_text(family="sans") # "serif"=TN Roman, "sans" = Arial
+        ) +
+    scale_x_discrete(breaks=c("1995","2000","2005","2010","2015","2018")) +   #discrete bc X is a character/factor
+        #  scale_colour_manual(values=int.cols) +
+    scale_y_continuous(limits=c(0,171),     #continuous bc y-axis is a NUMERIC
+                       breaks=seq(0,150,50)) +   # a labeled tick mark from 0 to 150, every 50
+    #scale_linetype_manual(values=c("twodash", "dotted"))+
+    scale_linetype_manual(values=c(      
+      "All Interventions" = "twodash", 
+      "1. Land/Water Management" = "solid", 
+      "2. Species Management" = "solid",
+      "3. Awareness Raising" = "solid",
+      "4. Enforcement & Protection" = "solid",
+      "5. Livelihood, Economic, & Other Incentives" = "solid",
+      "6. Conservation Designation & Planning"= "solid",
+      "7. Legal & Policy Frameworks" = "solid",
+      "8. Education & Training" = "solid",
+      "9. Institutional/Organizational Development" = "solid")) +
+    scale_color_manual(values=c(      # uses Okabe-Ito colors - color-blind friendly!
+      "All Interventions" = "#000000",    #black Okabe-Ito
+      "1. Land/Water Management" = "#0072B2", #blue Okabe-Ito
+      "2. Species Management" = "#56B4E9",   #Sky Blue Okabe-Ito
+      "3. Awareness Raising" = "#009E73",    #Bluish Green Okabe-Ito
+      "4. Enforcement & Protection" = "#F0E442",    # Yellow Okabe-Ito
+      "5. Livelihood, Economic, & Other Incentives" = "#E69F00",      #Orange Okabe-Ito
+      "6. Conservation Designation & Planning" = "#D55E00", #Vermillion Okabe-Ito
+      "7. Legal & Policy Frameworks" =  "#BE0032", # from kelly by grafify
+      "8. Education & Training" = "#CC79A7", #reddish purple Okabe-Ito
+      "9. Institutional/Organizational Development" = "#604E97" #lighter purple - extra color by DIG
+        ))
+          # "#999999",    # Grey Okabe-Ito
+          # '#332288', #indigo - extra color by DIG
+          # "#DCD300" #Yellowgreen that may be easier to see?
+          # "#882D17" #Red/brown/orange
+          # '#882255', #wine - extra color by DIG
+          # 
+          # # fishy by grafify - https://grafify-vignettes.netlify.app/colour_palettes.html
+          # "#6388b4"
+          # "#8cc2ca"
+          # "#55ad89"
+          # "#c3bc3f"
+          # "#ffae34"
+          # "#bb7693"
+          # "#ef6f6a"
+          # "#baa094"
+          # "#767676"
+          # 
+          # # kelly by grafify
+          # "#0067A5"
+          # "#A1CAF1"
+          # "#008856"
+          # "#8DB600"
+          # "#DCD300"
+          # "#F3C300"
+          # "#F6A600"
+          # "#F38400"
+          # "#E25822"
+          # "#882D17"
+          # "#654522"
+          # "#F99379"
+          # "#BE0032"
+          # "#B3446C"
+          # "#875692"
+          # "#604E97"
+          # "#C2B280"
+          # "#848482"
+      ) 
+plot_grid(pInt_time_gps)
+ggsave(paste0(plotdir,today.date,'_Interventions_over_time.png'),width = 12,height = 12)
+
 # Outcomes
 out_time_gps <-  data_all %>%
   group_by(Year.of.publication,Outcome_cat) %>% 
   summarise(out_per_yr= n_distinct(aid)) %>% 
   spread(Outcome_cat,value = out_per_yr) %>% 
-  mutate_all(funs(replace(., is.na(.), 0))) %>% 
   ungroup() %>% 
+  add_row(Year.of.publication = "1995", "1. Population/Species" = 0) %>%  # note: a name w a space DOES need "" around it
+      # Note here: there were no 1995 Papers, so I needed to add an entry with 0
+  mutate_all(funs(replace(., is.na(.), 0))) %>%   #this makes all other NA entries 0!
   arrange(Year.of.publication) %>% 
   mutate_at(vars(-Year.of.publication),funs(cumsum(.))) %>% 
   gather("out_typ","val",-Year.of.publication) %>% 
   bind_rows(All_time_gps %>% rename(out_typ=gp))
 tail(out_time_gps)
+
 # non-elegant way to convert units to factor in order to reorder plot legends
-order.gp <- out_time_gps %>% group_by(out_typ) %>% summarise(order_typ=max(val)) %>% arrange(desc(order_typ)) %>% pull(out_typ)
+order.gp <- out_time_gps %>% 
+  group_by(out_typ) %>% 
+  summarise(order_typ=max(val)) %>% 
+  arrange(desc(order_typ)) %>% 
+  pull(out_typ)
 out_time_gps <- out_time_gps %>%  
   mutate(out_typ = factor(out_typ, levels = order.gp)) %>% 
-  rename(Outcome=out_typ)
+  rename(Outcome=out_typ) %>% 
+  mutate(Outcome=gsub("All","All Outcomes",Outcome))
 
-# int.cols <- c("black","blue","orangered1","yellow4","tan1")
-# names(int.cols) <- order.gp
+# Outcome Graphic
+(pOut_time_gps <- ggplot(out_time_gps)  + 
+    geom_line(aes(x = Year.of.publication, y = val, group = Outcome, colour = Outcome, linetype = Outcome), size = 1.3)  +
+    labs(
+      x = "Year of Publication",
+      y = "Cumulative frequency",
+      title = 'Outcomes per Year') +
+    theme(
+        panel.background = element_rect(fill = "gray90", colour = "gray90"), #matches GAP MAP boarder color
+        # panel.grid.major = element_blank(), #THIS is the y-ticks on the grid - want to keep
+        panel.grid.minor = element_blank(), #THIS is the smaller y-ticks on the grid - can remove!
+        # panel.border=element_blank(), #I think this is for if we wanted to separate the two boarders 
+        plot.title=element_text(hjust=0,size=12), # face="bold"
+        axis.ticks.y = element_blank(), #hides y-axis tick marks
+        # axis.text = element_blank(),
+        # axis.title = element_blank(),
+        legend.title=element_blank(), #element_text(size=10), - I don't think we need the "outcome" - redundant
+        legend.title.align=1,
+        legend.text=element_text(size=8),
+        legend.position ="right",
+        text=element_text(family="sans") # "serif"=TN Roman, "sans" = Arial
+        ) +
+    scale_x_discrete(breaks=c("1995","2000","2005","2010","2015","2018")) +   #discrete bc X is a character/factor
+        #  scale_colour_manual(values=int.cols) +
+    scale_y_continuous(limits=c(0,171),     #continuous bc y-axis is a NUMERIC
+                       breaks=seq(0,150,50)) +   # a labeled tick mark from 0 to 150, every 50
+    #scale_linetype_manual(values=c("twodash", "dotted"))+
+    scale_linetype_manual(values=c(      
+      "All Outcomes" = "twodash", 
+      "1. Population/Species" = "solid", 
+      "2. Ecological Community" = "solid",
+      "3. Ecosystem Function" = "solid",
+      "4. Ecosystem Services" = "solid",
+      "5. Human Wellbeing" = "solid",
+      "6. Knowledge and Behavior" = "solid",
+      "7. Governance" = "solid")) +
+    scale_color_manual(values=c(      # uses Okabe-Ito colors - color-blind friendly!
+      "All Outcomes" = "#000000",    #black Okabe-Ito
+      "1. Population/Species" = "#0072B2", #blue Okabe-Ito
+      "2. Ecological Community" = "#56B4E9",   #Sky Blue Okabe-Ito
+      "3. Ecosystem Function" = "#009E73",    #Bluish Green Okabe-Ito
+      "4. Ecosystem Services" = "#F0E442",    # Yellow Okabe-Ito
+      "5. Human Wellbeing" = "#E69F00",      #Orange Okabe-Ito
+      "6. Knowledge and Behavior" = "#D55E00", #Vermillion Okabe-Ito
+      "7. Governance" =  "#CC79A7"))    #reddish purple Okabe-Ito
+  ) 
+plot_grid(pOut_time_gps)
 
-(pout_time_gps <- ggplot(out_time_gps)  + 
-    geom_line(aes(x = Year.of.publication, y = val, group = Outcome, colour = Outcome), size = 1.3)  +
-    ylab("Cumulative frequency") +
-    #  scale_x_continuous(name="Year", breaks=seq(1985,2025,5)) +
-    #  scale_colour_manual(values=int.cols) +
-    ggtitle('Outcome') )
-# scale_y_continuous(limits=c(0,80), breaks=seq(0,80,10), labels=c("0","","20","","40","","60","","80")))
-plot_grid(pInt_time_gps,pout_time_gps)
-ggsave(paste0(plotdir,today.date,'_studies_over_time.png'),width = 12,height = 4)
+#Plot BOTH Interventions and Outcomes together
+plot_grid(pInt_time_gps,pOut_time_gps, rel_widths = c(1.2,1))
+ggsave(paste0(plotdir,today.date,'_studies_over_time.png'),width = 12,height = 6)
+
+plot_grid(pInt_time_gps, pOut_time_gps, ncol = 1, nrow = 2)
+ggsave(paste0(plotdir,today.date,'_studies_over_time_2rows.png'),width = 12,height = 12)
 ```
 
 # Stats Section
@@ -985,7 +1163,9 @@ Reject_data %>%
 
 
 
-### TRYING ANOTHER WAY
+
+
+# ------TRYING ANOTHER WAY ------------ COME BACK TO THIS
 # Reasons for Rejection
 ## get no. entries
 max.rej <- paste0("WhyRej",rep(1:max(str_count(Reject_data$Why_rejected, ";")+1))) 
@@ -1005,6 +1185,10 @@ Why.Rejected <- Reject_data %>%
   mutate(group.pct=n/num.studies*100) %>%   #this creates the "pct" column
   arrange(desc(n)) %>% 
   print()
+# ------TRYING ANOTHER WAY ------------ COME BACK TO THIS
+
+
+
 
 
 # Now, let's Dive into the "Doesn't Fit PICO" section:
@@ -1034,16 +1218,36 @@ Reject_data %>%
 print(num.studies)
 ```
 
+
+
+# Studies Over Time Stats!
+
+```{r eval=T}
+# STATS - growth by decade
+
+##Avg Count: Studies per year
+(max(All_time_gps$val)-min(All_time_gps$val))/(max(All_time_gps$Year.of.publication)-min(All_time_gps$Year.of.publication))
+### Avg %: Studies per year
+(max(All_time_gps$val)-min(All_time_gps$val))/(max(All_time_gps$Year.of.publication)-min(All_time_gps$Year.of.publication))/num.studies*100
+
+##late 1990s Count - starts in 1994 bc this is the first year
+(max(All_time_gps$val[All_time_gps$Year.of.publication<2000])-max(All_time_gps$val[All_time_gps$Year.of.publication<1994]))/6
+##late 1990s PERCEMT - starts in 1994 bc this is the first year
+(max(All_time_gps$val[All_time_gps$Year.of.publication<2000])-max(All_time_gps$val[All_time_gps$Year.of.publication<1994]))/6/num.studies*100
+
+##2000-2010 Count
+(max(All_time_gps$val[All_time_gps$Year.of.publication<2010])-max(All_time_gps$val[All_time_gps$Year.of.publication<2000]))/10
+##2000-2010 Count
+(max(All_time_gps$val[All_time_gps$Year.of.publication<2010])-max(All_time_gps$val[All_time_gps$Year.of.publication<2000]))/10/num.studies*100
+
+##2010-2019 Count (should be 2018 - 1 paper was just categorized as 2019 instead...)
+(max(All_time_gps$val[All_time_gps$Year.of.publication<2019])-max(All_time_gps$val[All_time_gps$Year.of.publication<2010]))/9
+##2010-2019 Count (should be 2018 - 1 paper was just categorized as 2019 instead...)
+(max(All_time_gps$val[All_time_gps$Year.of.publication<2019])-max(All_time_gps$val[All_time_gps$Year.of.publication<2010]))/9/num.studies*100
+
+```
+
 2. P: Geographies
-
-#Note: 
-Need to do the "search for term within a row" method here (that we used for countries above (in the map)), and do it for all of the following rows 
-
-For Continent percentages, I literally added up the counts and re-divided (out of 183) for percentages. very tedious
-Sums: Asia (48), Oceania (40), Central America and the Caribbean (36), Africa (34), and North America (32), South America (13), Europe (6) 
-
-For country percentages, I used the ctry_sum2 list, and not this
-
 
 Geographical scale of intervention is used
 
@@ -1223,16 +1427,16 @@ data_all %>%
 
   # Highest: % - top 3 (tie for second highest)
 data_all %>%  
-  filter(Int_cat== "1. Land/water management"| 
-           Int_cat== "2. Species management"| 
-           Int_cat== "7. Legal & policy frameworks") %>%  
+  filter(Int_cat== "1. Land/Water Management"| 
+           Int_cat== "2. Species Management"| 
+           Int_cat== "7. Legal & Policy Frameworks") %>%  
   summarise(intervention="Highest 3", num=n_distinct(aid), pct=num/num.studies*100)
 
   # Lowest: % - bottom 3 (tie for lowest)
 data_all %>%  
-  filter(Int_cat== "3. Awareness raising "| 
-           Int_cat== "4. Enforcement & protection"| 
-           Int_cat== "8. Education & training") %>%  
+  filter(Int_cat== "3. Awareness Raising "| 
+           Int_cat== "4. Enforcement & Protection"| 
+           Int_cat== "8. Education & Training") %>%  
   summarise(intervention="Lowest 3", num=n_distinct(aid), pct=num/num.studies*100)
 
   # Subcategories (want % of each):
@@ -1249,7 +1453,7 @@ In the paper, I look at rate of integrated (multiple) intervention studies over 
 
 ```{r eval=T}
 (multi.int.studies <- data_all %>% 
-    #   filter(Int_cat!="8. Research & monitoring") %>% 
+    #   filter(Int_cat!="8. Research & Monitoring") %>% 
     group_by(Year.of.publication,aid) %>% 
     summarise(n.int=n_distinct(Int_cat)) %>% 
    filter(n.int>1)
@@ -1446,7 +1650,7 @@ ggsave(paste0(plotdir,today.date,'_interdisc_habitat_int_out_map.png'),width = 1
 ## Multi-intervention & Interdisciplinary outcome sub heat maps
 ```{r eval=T}
 
-#  INterventions
+#  Interventions
 int.x.count <- data_all %>% 
   select(aid, Int_cat) %>% 
   filter(Int_cat!="" & !is.na(Int_cat)) %>%  # just in case
