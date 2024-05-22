@@ -963,19 +963,20 @@ Int_time_gps <- Int_time_gps %>%
       "2. Species Management" = "#56B4E9",   #Sky Blue Okabe-Ito
       "3. Awareness Raising" = "#009E73",    #Bluish Green Okabe-Ito
       "4. Enforcement & Protection" = "#F0E442",    # Yellow Okabe-Ito
-      "5. Livelihood, Economic, & Other Incentives" = "#E69F00",      #Orange Okabe-Ito
+      "5. Livelihood, Economic, & Other Incentives" = "#E69F00",  #Orange Okabe-Ito
       "6. Conservation Designation & Planning" = "#D55E00", #Vermillion Okabe-Ito
-      "7. Legal & Policy Frameworks" =  "#BE0032", # from kelly by grafify
-      "8. Education & Training" = "#CC79A7", #reddish purple Okabe-Ito
-      "9. Institutional/Organizational Development" = "#604E97" #lighter purple - extra color by DIG
-        ))
-          # "#999999",    # Grey Okabe-Ito
+      "7. Legal & Policy Frameworks" =  "#BE0032", # from kelly by grafify - good on color-blindness.com
+      "8. Education & Training" = '#882255', #wine - extra color by DIG - good on color-blindness.com
+      "9. Institutional/Organizational Development" = "#CC79A7" )) #reddish purple Okabe-Ito
+      )
+plot_grid(pInt_time_gps)
+
+# Potential Extra Colors
+          # "#999999",  # Grey Okabe-Ito
           # '#332288', #indigo - extra color by DIG
           # "#DCD300" #Yellowgreen that may be easier to see?
           # "#882D17" #Red/brown/orange
-          # '#882255', #wine - extra color by DIG
-          # 
-          # # fishy by grafify - https://grafify-vignettes.netlify.app/colour_palettes.html
+        # # fishy by grafify - https://grafify-vignettes.netlify.app/colour_palettes.html
           # "#6388b4"
           # "#8cc2ca"
           # "#55ad89"
@@ -985,8 +986,7 @@ Int_time_gps <- Int_time_gps %>%
           # "#ef6f6a"
           # "#baa094"
           # "#767676"
-          # 
-          # # kelly by grafify
+        # # kelly by grafify
           # "#0067A5"
           # "#A1CAF1"
           # "#008856"
@@ -1005,9 +1005,6 @@ Int_time_gps <- Int_time_gps %>%
           # "#604E97"
           # "#C2B280"
           # "#848482"
-      ) 
-plot_grid(pInt_time_gps)
-ggsave(paste0(plotdir,today.date,'_Interventions_over_time.png'),width = 12,height = 12)
 
 # Outcomes
 out_time_gps <-  data_all %>%
@@ -1073,7 +1070,7 @@ out_time_gps <- out_time_gps %>%
       "7. Governance" = "solid")) +
     scale_color_manual(values=c(      # uses Okabe-Ito colors - color-blind friendly!
       "All Outcomes" = "#000000",    #black Okabe-Ito
-      "1. Population/Species" = "#0072B2", #blue Okabe-Ito
+      "1. Population/Species" = "#0072B2",  #blue Okabe-Ito
       "2. Ecological Community" = "#56B4E9",   #Sky Blue Okabe-Ito
       "3. Ecosystem Function" = "#009E73",    #Bluish Green Okabe-Ito
       "4. Ecosystem Services" = "#F0E442",    # Yellow Okabe-Ito
@@ -1087,8 +1084,8 @@ plot_grid(pOut_time_gps)
 plot_grid(pInt_time_gps,pOut_time_gps, rel_widths = c(1.2,1))
 ggsave(paste0(plotdir,today.date,'_studies_over_time.png'),width = 12,height = 6)
 
-plot_grid(pInt_time_gps, pOut_time_gps, ncol = 1, nrow = 2)
-ggsave(paste0(plotdir,today.date,'_studies_over_time_2rows.png'),width = 12,height = 12)
+# plot_grid(pInt_time_gps, pOut_time_gps, ncol = 1, nrow = 2)
+# ggsave(paste0(plotdir,today.date,'_studies_over_time_2rows.png'),width = 12,height = 12)
 ```
 
 # Stats Section
