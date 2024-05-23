@@ -797,6 +797,7 @@ outcomes2 <-data_all %>%
   arrange(Outcome.subcategory)
 unique(outcomes2$out.cat)
 
+
 png(file=paste0(plotdir,today.date,"_outcome_treemap.png"), width=600, height=600) #switched to .png instead of .pdf
 treemap(outcomes2,index=c("out.cat","Outcome.subcategory"),
         vSize="n",
@@ -813,6 +814,8 @@ treemap(outcomes2,index=c("out.cat","Outcome.subcategory"),
         inflate.labels=F,
         title="Study Outcomes")
 dev.off()
+  # SOMETHING isn't working here - the figure doesn't accurately represent the percentages!!!
+
 
 # - Interventions
 unique(data_all$Intervention.subcategory)
@@ -844,6 +847,134 @@ treemap(intervention2,index=c("int.cat","Intervention.subcategory"),
         inflate.labels=F,
         title="Study interventions")
 dev.off()
+
+
+# ------------------ END OF OLD CODE
+
+
+
+
+
+# Intervention Graphic
+(pInt_time_gps <- ggplot(Int_time_gps)  + 
+    geom_line(aes(x = Year.of.publication, y = val, group = Intervention, colour = Intervention, linetype=Intervention), size = 1.3)  +
+    labs(
+
+    scale_color_manual(values=c(      # uses Okabe-Ito colors - color-blind friendly!
+      "All Interventions" = "#000000",    #black Okabe-Ito
+      "1. Land/Water Management" = "#0072B2", #blue Okabe-Ito
+      "2. Species Management" = "#56B4E9",   #Sky Blue Okabe-Ito
+      "3. Awareness Raising" = "#009E73",    #Bluish Green Okabe-Ito
+      "4. Enforcement & Protection" = "#F0E442",    # Yellow Okabe-Ito
+      "5. Livelihood, Economic, & Other Incentives" = "#E69F00",  #Orange Okabe-Ito
+      "6. Conservation Designation & Planning" = "#D55E00", #Vermillion Okabe-Ito
+      "7. Legal & Policy Frameworks" =  "#BE0032", # from kelly by grafify - good on color-blindness.com
+      "8. Education & Training" = '#882255', #wine - extra color by DIG - good on color-blindness.com
+      "9. Institutional/Organizational Development" = "#CC79A7" )) #reddish purple Okabe-Ito
+      )
+
+  
+  
+  
+
+
+# ------ Outcomes ATTEMPT DIG---------
+
+### Getting the data sorted
+#NOTE: REQUIRES treemapify package, ggforce package, AND colorspace package - NEED TO RE-ADD TO THE TOP OF THE SCRIPT
+  
+unique(data_all$Outcome.subcategory)
+
+outcomes2 <-data_all %>% 
+  filter(!is.na(Outcome.subcategory)) %>% 
+  select(aid,Outcome_cat,Outcome.subcategory) %>% 
+  group_by(Outcome_cat) %>% 
+  mutate(out.cat=paste0(Outcome_cat,"\n (",round(n_distinct(aid)/num.studies*100),"%)")) %>%  #updated to make this a %
+  group_by(Outcome_cat,Outcome.subcategory) %>% 
+  mutate(n=n_distinct(aid)) %>% 
+  ungroup() %>%
+  group_by(Outcome_cat) %>%
+  mutate(out.paper.n=n_distinct(aid)) %>%  #ALSO make this a column, and check my MATH! #percentages PASSED THE CHECK!
+  ungroup() %>%
+  arrange(Outcome_cat,Outcome.subcategory)
+unique(outcomes2$out.cat)
+
+outcomes_tidy <- outcomes2 %>% 
+  ungroup() %>% 
+  select(-aid) %>%
+  distinct() %>%
+  group_by(Outcome.subcategory) %>%
+  mutate(fill = Outcome_cat,
+      fill=gsub("1. Population/Species", "#0072B2",fill),  #blue Okabe-Ito
+      fill=gsub("2. Ecological Community", "#56B4E9",fill),   #Sky Blue Okabe-Ito
+      fill=gsub("3. Ecosystem Function", "#009E73",fill),    #Bluish Green Okabe-Ito
+      fill=gsub("4. Ecosystem Services", "#F0E442",fill),    # Yellow Okabe-Ito
+      fill=gsub("5. Human Wellbeing", "#E69F00",fill),      #Orange Okabe-Ito
+      fill=gsub("6. Knowledge and Behavior", "#D55E00",fill), #Vermillion Okabe-Ito
+      fill=gsub("7. Governance", "#CC79A7",fill))  #reddish purple Okabe-Ito
+
+
+
+#-----DIF attempts at making a COLOR -----#
+
+# minimum and maximum number of outcome subcategory papers (n) in 1 category
+  #sort outcomes_tidy by n
+min.out <- min(outcomes_tidy$n)
+max.out <- max(outcomes_tidy$n)
+
+## manually add colors
+# hues
+hues <- c(50, 100, 250, 300) # brown, green, blue, purple
+hues <- outcomes_tidy_color$fill
+
+#ORIGINAL: filcols <- c(vapply(filcols, function(x) c(lighten(x, .9), lighten(x, .6), lighten(x, .3), x), character(4)))
+filcols2 <- c(vapply(filcols, function(x) c(lighten(x, .9), lighten(x, .8),lighten(x, .75),lighten(x, .7),lighten(x, .65),lighten(x, .6),lighten(x, .55),lighten(x, .5),lighten(x, .4),lighten(x, .35),lighten(x, .3),lighten(x, .2),lighten(x, .1), x), character(14)))
+
+#-----DIF attempts at making a COLOR -----#
+
+
+
+# turn pop density into color
+outcomes_tidy_color <- outcomes_tidy %>%
+  group_by(out.cat) %>%
+  mutate(value = (n-min.out)/(max.out-min.out)) %>%
+  ungroup()
+#### DID NOT FINISH - DO NOT KNOW WHAT TO DO NEXT!!!
+
+ggplot(outcomes_tidy_color, aes(area = n, subgroup = out.cat, fill = value, label = Outcome.subcategory)) + #fill = value gives gradients of color based on value column!
+  geom_treemap() + # color = "white", size = 0.5*.pt, alpha = NA
+  geom_treemap_subgroup_text(     #treemaps are backwards - "subgroup" here is the broader outcome group
+    family = "sans",
+    place = "centre", 
+    colour = "white", 
+    alpha = 0.5,
+    fontface = "italic",
+    grow = TRUE,
+    # reflow = TRUE,
+    min.size = 0
+  ) +
+  geom_treemap_subgroup_border(color = "white") +
+  geom_treemap_text(
+    aes(label = Outcome.subcategory),
+    family = "sans",
+    place = "centre",
+    color = "black",
+    grow = FALSE
+  ) +
+  # coord_cartesian(clip = "off") + # I don't know what this does
+  # guides(colour = "none", fill = "none") + # I don't know what this does
+  scale_color_manual(values=fill) +
+    # scale_fill_continuous(fill=fill) +
+    # scale_fill_identity() + # I don't know what this does
+  labs(title = "Treemap of Conservation Outcomes") + 
+  theme(
+        plot.title=element_text(hjust=0,size=12), # face="bold"
+        text=element_text(family="sans"), # "serif"=TN Roman, "sans" = Arial
+        legend.title=element_blank(), # no legend
+        ) 
+  # scale_color_manual(values=fill)
+  # scale_color_manual(values=outcomes_tidy_color$fill)
+
 ```
 
 # Studies over time Figure
@@ -945,7 +1076,6 @@ Int_time_gps <- Int_time_gps %>%
         #  scale_colour_manual(values=int.cols) +
     scale_y_continuous(limits=c(0,171),     #continuous bc y-axis is a NUMERIC
                        breaks=seq(0,150,50)) +   # a labeled tick mark from 0 to 150, every 50
-    #scale_linetype_manual(values=c("twodash", "dotted"))+
     scale_linetype_manual(values=c(      
       "All Interventions" = "twodash", 
       "1. Land/Water Management" = "solid", 
@@ -1058,7 +1188,6 @@ out_time_gps <- out_time_gps %>%
         #  scale_colour_manual(values=int.cols) +
     scale_y_continuous(limits=c(0,171),     #continuous bc y-axis is a NUMERIC
                        breaks=seq(0,150,50)) +   # a labeled tick mark from 0 to 150, every 50
-    #scale_linetype_manual(values=c("twodash", "dotted"))+
     scale_linetype_manual(values=c(      
       "All Outcomes" = "twodash", 
       "1. Population/Species" = "solid", 
