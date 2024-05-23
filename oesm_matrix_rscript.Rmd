@@ -592,6 +592,9 @@ Creates a world map of all habitats
 https://ggplot2.tidyverse.org/reference/ggsf.html - geom_sf resource!
  -> https://ggplot2.tidyverse.org/reference/coord_map.html?q=worldmap#ref-examples
  
+More about legends:
+- https://www.tidyverse.org/blog/2024/02/ggplot2-3-5-0-legends/ 
+ 
 Requires rnaturalearth and tidyverse packages (loaded at the top)
 
 ```{r eval=T}
@@ -627,8 +630,8 @@ ctry_sum <- ctry.all %>%
   select(-X) %>% 
   group_by(admin) %>% 
   count() %>%     #count creates an "n" column
-  mutate(pct=n/num.studies*100) %>%   #this creates the "pct" column
-  arrange(desc(n))
+  mutate(pct=round(n/num.studies*100)) %>%   #this creates the "pct" column
+  arrange(desc(pct))
 
 # Countries that need to be fixed
 ctry_sum$admin[!ctry_sum$admin%in%world_countries$admin]
@@ -637,7 +640,8 @@ ctry_sum$admin[!ctry_sum$admin%in%world_countries$admin]
 # join to full world_countries country data with OEGM data in a df
 ctry_sum1 <- ctry_sum %>%  # ctry_sum is the data frame and world_countries is the sf 
   full_join(world_countries,by="admin") %>%  # full_join keeps all ROWS (even the n=0 rows!)
-  mutate(n=na.replace(n,0)) 
+  mutate(n=na.replace(n,0)) %>% 
+  mutate(pct=na.replace(pct,0))
 ctry_sum1$admin[!ctry_sum1$admin%in%world_countries$admin] # any missing?
 
 # join cntry_sum1 with the regions and continents in the old "country" dataset (again, full_join)
@@ -645,7 +649,7 @@ ctry_sum2 <- country %>%
   full_join(ctry_sum1, by = c("code" = "adm0_a3")) %>% 
   select(-Country) %>%
   #select(admin,n,pct,code,Subregion,Region) %>%
-  arrange(desc(n))
+  arrange(desc(pct))
 ctry_sum2$admin[!ctry_sum2$admin%in%world_countries$admin] # any missing? ###MANY NAs now!
 
 # TURN THE FILE BACK INTO AN SF
@@ -655,7 +659,7 @@ class(ctry_sum3)
 
 # Plot study map
 (study_ctry_map <- ggplot(data=ctry_sum3) +
-  geom_sf(aes(fill=n), color=NA) + #note: color=NA takes out country boarders (otherwise grey)
+  geom_sf(aes(fill=pct), color=NA) + #note: color=NA takes out country boarders (otherwise grey)
   theme(
         panel.background = element_rect(fill = "#CCCCCC", colour = "#CCCCCC"), 
           #this grey looks deep, but it allows for better contrast with the white than gray90
@@ -668,22 +672,27 @@ class(ctry_sum3)
         axis.title = element_blank(),
         legend.title=element_text(size=10),
         legend.title.align=1,
+        legend.title.position = "left", 
         legend.text=element_text(size=8),
         legend.position ="bottom",
+        legend.justification.bottom = "center",
+        legend.key.width = unit(1, "null"), # making the legend wider, but no way to make it slightly smaller?
         text=element_text(family="sans") # "serif"=TN Roman, "sans" = Arial
         ) +
   scale_fill_gradient2(
-    name = "Number of Studies",
+    name = "Percent of Total Studies",
     low="white",mid="#2171b5",high="#08519c", 
         #the low color here is white - allows for better contrast
         #the mid color here is the high color for the Gap Map
-    midpoint=max(ctry_sum1$n)/2,     #keep ctry_sum1 - doesnt read sum3
-    limits=c(0,max(ctry_sum1$n))) +
+    midpoint=max(ctry_sum1$pct)/2,     #keep ctry_sum1 - doesnt read sum3
+    limits=c(0,max(ctry_sum1$pct))) +
  coord_sf(xlim = c(-180, 180), ylim = c(-59, 84), expand = FALSE) )
-ggsave(paste0(plotdir,today.date,'_study_country_map.png'),width = 9,height = 4.75)
+ggsave(paste0(plotdir,today.date,'_study_country_map.png'),width = 9,height = 4.5) #was 4.75 - some extra
 ```
 
 # World Map - Coral
+
+###NOTE: WILL NEED TO BE ADJUSTED!!! I made updates to the world map since :)
 
 ```{r eval=T}
 # All Habitats  World Map
