@@ -680,7 +680,7 @@ class(ctry_sum3)
     midpoint=max(ctry_sum1$n)/2,     #keep ctry_sum1 - doesnt read sum3
     limits=c(0,max(ctry_sum1$n))) +
  coord_sf(xlim = c(-180, 180), ylim = c(-59, 84), expand = FALSE) )
-ggsave(paste0(plotdir,today.date,'_study_country_map.png'),width = 12,height = 5)
+ggsave(paste0(plotdir,today.date,'_study_country_map.png'),width = 9,height = 4.75)
 ```
 
 # World Map - Coral
