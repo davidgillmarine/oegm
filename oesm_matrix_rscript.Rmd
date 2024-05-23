@@ -54,7 +54,7 @@ plotdir <- paste0(workdir,"output/plots/")
 tabledir <- paste0(workdir,"output/tables/")
 
 library(pacman) # I shouldn't need to do this, but pacman NEVER works for me with the :: below, so I need to add this
-pacman::p_load(rmarkdown, broom, rio,treemap,gtools,cowplot,rnaturalearth,rnaturalearthdata,devtools,sf,rnaturalearthhires,tidyverse,dplyr)
+pacman::p_load(rmarkdown,broom,rio,treemap,gtools,cowplot,rnaturalearth,rnaturalearthdata,devtools,sf,rnaturalearthhires,tidyverse,dplyr)
   #WARNING: package ‘rgeos’ is not available for this version of R - take out? I think this is the OLD world map!
   # MAKE SURE rnaturalearthhires loads - installed via github -  devtools::install_github("ropensci/rnaturalearthhires")
 
@@ -76,7 +76,6 @@ update.packages(ask=FALSE)
 # Organize data
 
 ```{r eval=T}
-
 #read in data, skip first 2 rows
 all.data<-import(paste0(inputdir,"20240315_All_Papers.xlsx"), which="FULL Data Extraction Sheet",skip =2, .name_repair = "universal") %>% 
   mutate(Date=as.character(Date))
@@ -213,10 +212,32 @@ for (i in 1:nrow(out_sub_list)){
 }
 ```
 
+# Habitat Field Data - Creating Columns for Each Habitat
+
+```{r eval=T}  
+# Add habitat fields
+unique(data_all$Habitat.type) 
+data_all <- data_all %>% 
+mutate(coral=ifelse(grepl("Coral",Habitat.type,ignore.case = T),1,0),
+       seagrass=ifelse(grepl("Seagrass",Habitat.type,ignore.case = T),1,0), 
+       # note: ignores case, so the lowercase "seagrass" is fine!
+       mangrove=ifelse(grepl("Mangrove",Habitat.type,ignore.case = T),1,0),)
+
+# check habitat coding
+unique(data_all$Habitat.type[data_all$coral==1])
+unique(data_all$Habitat.type[data_all$seagrass==1])
+unique(data_all$Habitat.type[data_all$mangrove==1])
+  # Correct - all sorted
+
+habitat.test <- data_all %>% 
+  filter(coral==0 & mangrove==0 & seagrass==0) %>% 
+  select(Habitat.type)
+unique(habitat.test$Habitat.type) # should just be 0 - no other categories (we took out the "Other" category)       
+```
+
 # MORE Data Cleaning, For Categories Later - Year Change, Name Change!
 
 ```{r eval=T}
-
 # AID 344 is technically 2019, but was a 2018 paper, need to update the year
 data_all <-data_all %>% 
   mutate(Year.of.publication=gsub("2019","2018",Year.of.publication))  # 2019 should be 2018
@@ -242,7 +263,7 @@ data_all <-data_all %>%
 
 # fix data in country column
   ## the "admin" column in ne_countries joins to the country shapes from Natural Earth by name. This can get tricky because the names have to match exactly, which is what I do below
-ctry.fix <- data_all %>%
+data_all <- data_all %>%
   mutate(study.ctry=gsub(",",";",study.ctry),  # replace "," with ";" to help with splitting
          study.ctry=gsub("Bahamas","The Bahamas",study.ctry),
          study.ctry=gsub("Mauritiana","Mauritania",study.ctry),
@@ -275,7 +296,7 @@ ctry.fix <- data_all %>%
          ) 
 
 #Update the country data file to match two of the sites:
-country2 <- country %>%
+country <- country %>%
   mutate(Country=gsub("Bahamas","The Bahamas",Country)) %>% 
   mutate(code=gsub("BHM","BHS",code)) %>% #Bahamas had a dif country code in these two datasets
     #to match the name change above for this country
@@ -283,29 +304,7 @@ country2 <- country %>%
     # Note here: I picked Asia and Southern Asia because of the proximity to the Maldives
       # Next Closest were Mauritius and Seychelles, Technically Africa... hard pick...
 ```
-         
-# Habitat Field Checks
 
-```{r eval=T}  
-# Add habitat fields
-unique(data_all$Habitat.type) 
-data_all <- data_all %>% 
-mutate(coral=ifelse(grepl("Coral",Habitat.type,ignore.case = T),1,0),
-       seagrass=ifelse(grepl("Seagrass",Habitat.type,ignore.case = T),1,0), 
-       # note: ignores case, so the lowercase "seagrass" is fine!
-       mangrove=ifelse(grepl("Mangrove",Habitat.type,ignore.case = T),1,0),)
-
-# check habitat coding
-unique(data_all$Habitat.type[data_all$coral==1])
-unique(data_all$Habitat.type[data_all$seagrass==1])
-unique(data_all$Habitat.type[data_all$mangrove==1])
-  # Correct - all sorted
-
-habitat.test <- data_all %>% 
-  filter(coral==0 & mangrove==0 & seagrass==0) %>% 
-  select(Habitat.type)
-unique(habitat.test$Habitat.type) # should just be 0 - no other categories (we took out the "Other" category)       
-```
 
 # NEW Quick Checks to make sure data is sorting correctly - Intervention and Outcomes
 
@@ -596,16 +595,15 @@ https://ggplot2.tidyverse.org/reference/ggsf.html - geom_sf resource!
 Requires rnaturalearth and tidyverse packages (loaded at the top)
 
 ```{r eval=T}
-
-# Check cleaned data
-unique(ctry.all$study.ctry)
-
 # All Habitats  World Map
-ctry.all <- ctry.fix %>% 
+ctry.all <- data_all %>% 
   group_by(aid,study.ctry) %>%
   summarise() %>% 
   filter(!is.na(study.ctry))
 head(ctry.all)
+
+# Check cleaned data
+unique(ctry.all$study.ctry)
 
 # get no. articles per country (and percentage) to create vector of column names for each country by counting the number of ";" 
     # thus isn't working out well... this gets 18 as the number... but it looks like this highest number is 23 (Australia)
@@ -643,7 +641,7 @@ ctry_sum1 <- ctry_sum %>%  # ctry_sum is the data frame and world_countries is t
 ctry_sum1$admin[!ctry_sum1$admin%in%world_countries$admin] # any missing?
 
 # join cntry_sum1 with the regions and continents in the old "country" dataset (again, full_join)
-ctry_sum2 <- country2 %>%   
+ctry_sum2 <- country %>%   
   full_join(ctry_sum1, by = c("code" = "adm0_a3")) %>% 
   select(-Country) %>%
   #select(admin,n,pct,code,Subregion,Region) %>%
@@ -689,7 +687,7 @@ ggsave(paste0(plotdir,today.date,'_study_country_map.png'),width = 12,height = 5
 
 ```{r eval=T}
 # All Habitats  World Map
-ctry.coral <- ctry.fix %>% 
+ctry.coral <- data_all %>% 
   filter(coral==1) %>% 
   group_by(aid,study.ctry) %>%
   summarise() %>% 
@@ -784,38 +782,6 @@ https://observablehq.com/@d3/treemap-stratify?intent=fork
 
 ```{r eval=T}
 #---- Treemapping ----
-# - Outcomes
-unique(data_all$Outcome.subcategory)
-
-outcomes2 <-data_all %>% 
-  filter(!is.na(Outcome.subcategory)) %>% 
-  select(aid,Outcome_cat,Outcome.subcategory) %>% 
-  group_by(Outcome_cat) %>% 
-  mutate(out.cat=paste0(Outcome_cat,"\n (",n_distinct(aid),")")) %>% 
-  group_by(Outcome_cat,Outcome.subcategory) %>% 
-  mutate(n=n_distinct(aid)) %>% 
-  arrange(Outcome.subcategory)
-unique(outcomes2$out.cat)
-
-
-png(file=paste0(plotdir,today.date,"_outcome_treemap.png"), width=600, height=600) #switched to .png instead of .pdf
-treemap(outcomes2,index=c("out.cat","Outcome.subcategory"),
-        vSize="n",
-        type="index",
-        fontsize.labels = c(15,10),
-        fontcolor.labels=c("white","black"),
-        fontface.labels=c(2,1),
-        bg.labels=c("transparent"),
-        align.labels=list(
-          c("center","top"),
-          c("left","bottom")
-        ),
-        overlap.labels=0.5,
-        inflate.labels=F,
-        title="Study Outcomes")
-dev.off()
-  # SOMETHING isn't working here - the figure doesn't accurately represent the percentages!!!
-
 
 # - Interventions
 unique(data_all$Intervention.subcategory)
@@ -848,18 +814,53 @@ treemap(intervention2,index=c("int.cat","Intervention.subcategory"),
         title="Study interventions")
 dev.off()
 
+# - Outcomes
+unique(data_all$Outcome.subcategory)
 
-# ------------------ END OF OLD CODE
+outcomes2 <-data_all %>% 
+  filter(!is.na(Outcome.subcategory)) %>% 
+  select(aid,Outcome_cat,Outcome.subcategory) %>% 
+  group_by(Outcome_cat) %>% 
+  mutate(out.cat=paste0(Outcome_cat,"\n (",n_distinct(aid),")")) %>% 
+  group_by(Outcome_cat,Outcome.subcategory) %>% 
+  mutate(n=n_distinct(aid)) %>% 
+  arrange(Outcome.subcategory)
+unique(outcomes2$out.cat)
+
+png(file=paste0(plotdir,today.date,"_outcome_treemap.png"), width=600, height=600) #switched to .png instead of .pdf
+treemap(outcomes2,index=c("out.cat","Outcome.subcategory"),
+        vSize="n",
+        type="index",
+        fontsize.labels = c(15,10),
+        fontcolor.labels=c("white","black"),
+        fontface.labels=c(2,1),
+        bg.labels=c("transparent"),
+        align.labels=list(
+          c("center","top"),
+          c("left","bottom")
+        ),
+        overlap.labels=0.5,
+        inflate.labels=F,
+        title="Study Outcomes")
+dev.off()
+  # SOMETHING isn't working here - the figure doesn't accurately represent the percentages!!!
+```
+
+^NOTE, the above treemap is NOT working from a size representation perspective
+
+#Treemapping - trying ANOTHER treemap
+
+## IN PROGRESSS
 
 
-
-
+```{r eval=T}
+#---- Treemapping ----
+# ------------NEW CODE ATTEMPTS
 
 # Intervention Graphic
 (pInt_time_gps <- ggplot(Int_time_gps)  + 
     geom_line(aes(x = Year.of.publication, y = val, group = Intervention, colour = Intervention, linetype=Intervention), size = 1.3)  +
     labs(
-
     scale_color_manual(values=c(      # uses Okabe-Ito colors - color-blind friendly!
       "All Interventions" = "#000000",    #black Okabe-Ito
       "1. Land/Water Management" = "#0072B2", #blue Okabe-Ito
@@ -871,10 +872,8 @@ dev.off()
       "7. Legal & Policy Frameworks" =  "#BE0032", # from kelly by grafify - good on color-blindness.com
       "8. Education & Training" = '#882255', #wine - extra color by DIG - good on color-blindness.com
       "9. Institutional/Organizational Development" = "#CC79A7" )) #reddish purple Okabe-Ito
-      )
+      ))
 
-  
-  
   
 
 
@@ -925,12 +924,12 @@ max.out <- max(outcomes_tidy$n)
 ## manually add colors
 # hues
 hues <- c(50, 100, 250, 300) # brown, green, blue, purple
-hues <- outcomes_tidy_color$fill
 
 #ORIGINAL: filcols <- c(vapply(filcols, function(x) c(lighten(x, .9), lighten(x, .6), lighten(x, .3), x), character(4)))
-filcols2 <- c(vapply(filcols, function(x) c(lighten(x, .9), lighten(x, .8),lighten(x, .75),lighten(x, .7),lighten(x, .65),lighten(x, .6),lighten(x, .55),lighten(x, .5),lighten(x, .4),lighten(x, .35),lighten(x, .3),lighten(x, .2),lighten(x, .1), x), character(14)))
+#filcols2 <- c(vapply(filcols, function(x) c(lighten(x, .9), lighten(x, .8),lighten(x, .75),lighten(x, .7),lighten(x, .65),lighten(x, .6),lighten(x, .55),lighten(x, .5),lighten(x, .4),lighten(x, .35),lighten(x, .3),lighten(x, .2),lighten(x, .1), x), character(14)))
 
 #-----DIF attempts at making a COLOR -----#
+
 
 
 
@@ -940,6 +939,8 @@ outcomes_tidy_color <- outcomes_tidy %>%
   mutate(value = (n-min.out)/(max.out-min.out)) %>%
   ungroup()
 #### DID NOT FINISH - DO NOT KNOW WHAT TO DO NEXT!!!
+
+#hues <- outcomes_tidy_color$fill
 
 ggplot(outcomes_tidy_color, aes(area = n, subgroup = out.cat, fill = value, label = Outcome.subcategory)) + #fill = value gives gradients of color based on value column!
   geom_treemap() + # color = "white", size = 0.5*.pt, alpha = NA
@@ -974,6 +975,46 @@ ggplot(outcomes_tidy_color, aes(area = n, subgroup = out.cat, fill = value, labe
         ) 
   # scale_color_manual(values=fill)
   # scale_color_manual(values=outcomes_tidy_color$fill)
+ggsave(paste0(plotdir,today.date,'_intervention_treemap_INPROG.png'),width = 10,height = 10)
+
+
+
+
+
+# ---- OLD Outcomes Figure, but TWEAKED FOR MY COLORS!!!
+
+png(file=paste0(plotdir,today.date,"_outcome_treemap_BETTER.png"), width=600, height=600) 
+treemap(outcomes_tidy_color,
+        index=c("out.cat","Outcome.subcategory"),
+        vSize="n",
+        vColor = "fill", #means the vColor column is a vector in #RRGGBB format
+        type="color", #means the vColor column is a vector in #RRGGBB format
+          # range = ____ , #range of the color values scale
+                #ANOTHER color OPTION (can come back and try?)
+                  # vColor = "value", #column in my df
+                  # type="value", #means the vColor column is numeric!
+                  # palette("fill"), #numeric value type REQUIRES Palette
+                      # palette=terrain.colors(10) # e.g. 
+        fontsize.labels = c(20,11), # draw all labels at fontsizes - cat and subcat,
+        lowerbound.cex.labels=.2, # and if they don't fit ^, reduce to a minimum of .2*^ value
+        force.print.labels= FALSE, # Forces to print cats, not subcats
+        fontcolor.labels=c("white","black"),
+        fontface.labels=c("bold","plain"), # or could use "oblique", "bold.italic"
+        fontfamily.labels = "sans",   
+        overlap.labels=0.8, # tolerance of the overlap between labels. 0 to 1 
+            #0 = lower levels not printed if overlap, # 1 means that labels are always printed
+        inflate.labels=F,  #don't make bigger if they can expand
+        align.labels=list(
+          c("center","top"), # cat
+          c("left","bottom") # subcat
+        ),
+        bg.labels=c("transparent"), #background color - high aggregation labels, default to grey ("#CCCCCCDC")
+        border.col = "gray90", #matches gap map boarder color
+        fontfamily.title = "sans",
+        title="Study Outcomes",
+        fontsize.title = 15, #Change the font size of the title
+       )
+dev.off()
 
 ```
 
@@ -1345,32 +1386,28 @@ print(num.studies)
 ```
 
 
-
 # Studies Over Time Stats!
 
 ```{r eval=T}
 # STATS - growth by decade
 
-##Avg Count: Studies per year
-(max(All_time_gps$val)-min(All_time_gps$val))/(max(All_time_gps$Year.of.publication)-min(All_time_gps$Year.of.publication))
-### Avg %: Studies per year
-(max(All_time_gps$val)-min(All_time_gps$val))/(max(All_time_gps$Year.of.publication)-min(All_time_gps$Year.of.publication))/num.studies*100
-
-##late 1990s Count - starts in 1994 bc this is the first year
-(max(All_time_gps$val[All_time_gps$Year.of.publication<2000])-max(All_time_gps$val[All_time_gps$Year.of.publication<1994]))/6
-##late 1990s PERCEMT - starts in 1994 bc this is the first year
-(max(All_time_gps$val[All_time_gps$Year.of.publication<2000])-max(All_time_gps$val[All_time_gps$Year.of.publication<1994]))/6/num.studies*100
+##late 1990s Count - starts in 1994 bc this is the first year, <1995
+(max(All_time_gps$val[All_time_gps$Year.of.publication<2000])-max(All_time_gps$val[All_time_gps$Year.of.publication<1995]))/5
+##late 1990s PERCENT - starts in 1994 bc this is the first year
+(max(All_time_gps$val[All_time_gps$Year.of.publication<2000])-max(All_time_gps$val[All_time_gps$Year.of.publication<1995]))/5/num.studies*100
 
 ##2000-2010 Count
 (max(All_time_gps$val[All_time_gps$Year.of.publication<2010])-max(All_time_gps$val[All_time_gps$Year.of.publication<2000]))/10
-##2000-2010 Count
+##2000-2010 PERCENT
 (max(All_time_gps$val[All_time_gps$Year.of.publication<2010])-max(All_time_gps$val[All_time_gps$Year.of.publication<2000]))/10/num.studies*100
 
 ##2010-2019 Count (should be 2018 - 1 paper was just categorized as 2019 instead...)
 (max(All_time_gps$val[All_time_gps$Year.of.publication<2019])-max(All_time_gps$val[All_time_gps$Year.of.publication<2010]))/9
-##2010-2019 Count (should be 2018 - 1 paper was just categorized as 2019 instead...)
+##2010-2019 PERCENT (should be 2018 - 1 paper was just categorized as 2019 instead...)
 (max(All_time_gps$val[All_time_gps$Year.of.publication<2019])-max(All_time_gps$val[All_time_gps$Year.of.publication<2010]))/9/num.studies*100
 
+##Last 3 years of study STATS
+(171-129)/num.studies*100
 ```
 
 2. P: Geographies
@@ -1398,7 +1435,7 @@ region <- ctry.all %>%
   
 # join region with the regions and continents in the old "country" dataset (again, full_join)
 region2 <- region %>% 
-  left_join(country2, by = c("adm0_a3"  = "code")) %>% #left join only joins countries/territories represented in region dataset!
+  left_join(country, by = c("adm0_a3" = "code")) %>% #left join only joins countries/territories represented in region dataset!
   select(-Country) %>%
   ungroup() #need to ungroup, because in this datafile things are still GROUPED by "admin", but I want to take OUT admin!
     #class(region2) - tip, use this if I'm having issues with the dataframe to try and understand it
@@ -1414,6 +1451,20 @@ subregion_dat <- region2 %>%
 region_dat <- region2 %>% 
   count(Region) %>%     #count creates an "n" column
   mutate(region.pct=n/num.studies*100) %>%   #this creates the "pct" column
+  arrange(desc(n)) %>% 
+  print()
+
+# HOW MANY STUDIES have more than one coutry Join the Dataframe to rnaturalearth ne_countries (world_countries) 
+num_countries <- ctry.all %>% 
+  separate(study.ctry,max.ctry, sep="; ",fill="right") %>% # fill=right fills blanks with NAs
+  gather("X","admin", max.ctry) %>%   #gather is a tidyr function that reshapes columns into key pairs 
+      #renames "study.ctry" to "admin"
+  filter(!is.na(admin)) %>% 
+  ungroup() %>% 
+  select(-aid) %>% 
+  group_by(X) %>% 
+  count() %>%     #count creates an "n" column
+  mutate(pct=n/num.studies*100) %>%   #this creates the "pct" column
   arrange(desc(n)) %>% 
   print()
 ```
@@ -1601,6 +1652,42 @@ Multi_int_time_gps <- data_all %>%
   select(Year.of.publication,gp,pub.per.yr,val) %>% 
   filter(!is.na(Year.of.publication))
 View(Multi_int_time_gps)
+
+# STATS - growth over time
+
+##2005-2010 Count
+(max(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication<2010])-max(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication<2005]))/5
+##2005-2010 PERCENT
+(max(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication<2010])-max(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication<2005]))/5/num.studies*100
+
+##2010-2018 Count
+(max(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication<2019])-max(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication<2010]))/9
+##2010-2018 PERCENT
+(max(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication<2019])-max(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication<2010]))/9/num.studies*100
+
+```
+
+# Intervention and Outcome Pairs
+AND sub.int and sub.out!
+
+```{r eval=T}
+#Intervention and Outcome Pairs, with # of papers and %s
+#view(io_counts.all)
+io.counts.pct <- io_counts.all %>%
+  mutate(pct=n/num.studies*100)%>% 
+  arrange (desc(n)) %>% # this arranges them in descending order 
+  view()
+head(io.counts.pct)
+tail(io.counts.pct)
+
+# Sub-Interventions and Sub-Outcomes
+#view(io_counts.subintout)
+io.counts.pct.sub <- io_counts.subintout %>%
+  mutate(pct=n/num.studies*100)%>% 
+  arrange (desc(n)) %>% # this arranges them in descending order 
+  view()
+head(io.counts.pct.sub)
+tail(io.counts.pct.sub)
 ```
 
 6. O: Outcomes:
