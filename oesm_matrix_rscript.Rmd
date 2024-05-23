@@ -1252,10 +1252,10 @@ plot_grid(pOut_time_gps)
 
 #Plot BOTH Interventions and Outcomes together
 plot_grid(pInt_time_gps,pOut_time_gps, rel_widths = c(1.2,1))
-ggsave(paste0(plotdir,today.date,'_studies_over_time.png'),width = 12,height = 6)
+ggsave(paste0(plotdir,today.date,'_studies_over_time.png'),width = 12,height = 4)
 
-# plot_grid(pInt_time_gps, pOut_time_gps, ncol = 1, nrow = 2)
-# ggsave(paste0(plotdir,today.date,'_studies_over_time_2rows.png'),width = 12,height = 12)
+plot_grid(pInt_time_gps, pOut_time_gps, ncol = 1, nrow = 2,rel_widths = c(1.2,1))
+ggsave(paste0(plotdir,today.date,'_studies_over_time_2rows.png'),width = 8,height = 7)
 ```
 
 # Stats Section
