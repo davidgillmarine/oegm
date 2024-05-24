@@ -588,7 +588,7 @@ ggsave(paste0(plotdir,today.date,'_int_sub.out_map.png'),width = 8,height = 16)
 my_heat_map(data_all2,"Intervention.subcategory", "Outcome.subcategory")
 io_counts.subintout <- io_counts
 (heat.map.subint <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="All Ecosystems"))
-ggsave(paste0(plotdir,today.date,'_sub.int_sub.out_map.png'),width = 16,height = 12)
+ggsave(paste0(plotdir,today.date,'_sub.int_sub.out_map.png'),width = 10,height = 12)
 
 # Coral
 my_heat_map(filter(data_all2,coral==1),"Int_cat","Outcome_cat", high.col = "coral3")
@@ -1694,6 +1694,13 @@ data_all2 %>%
   # arrange (num) # for ascending order, swap
   
 ```
+
+
+#INTERDISCIPLINARY OUTCOME PAPERS!!!
+#THE SCRIPT BELOW CONTAINS INTERDISC OUTCOME PAPER SCRIPT, and has NOT been run through/edited!!! (e.g. for percentages, tweaks in figures, etc.)
+
+
+
 # Interdisciplinary Outcomes
 
 # Add eco vs soc outcome counts
