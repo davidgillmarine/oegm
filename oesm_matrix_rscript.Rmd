@@ -54,7 +54,7 @@ plotdir <- paste0(workdir,"output/plots/")
 tabledir <- paste0(workdir,"output/tables/")
 
 library(pacman) # I shouldn't need to do this, but pacman NEVER works for me with the :: below, so I need to add this
-pacman::p_load(rmarkdown,broom,rio,treemap,gtools,cowplot,rnaturalearth,rnaturalearthdata,devtools,sf,rnaturalearthhires,tidyverse,dplyr)
+pacman::p_load(rmarkdown,broom,rio,treemap,treemapify,gtools,cowplot,rnaturalearth,rnaturalearthdata,devtools,sf,rnaturalearthhires,tidyverse,dplyr)
   #WARNING: package ‘rgeos’ is not available for this version of R - take out? I think this is the OLD world map!
   # MAKE SURE rnaturalearthhires loads - installed via github -  devtools::install_github("ropensci/rnaturalearthhires")
 
@@ -725,7 +725,8 @@ class(ctry_sum3)
         legend.text=element_text(size=8),
         legend.position ="bottom",
         legend.justification.bottom = "center",
-        legend.key.width = unit(1, "null"), # making the legend wider, but no way to make it slightly smaller?
+        legend.key.width=grid::unit(1.5, "cm"), #1.5 cm - longer but not full!
+          # legend.key.width = unit(1, "null"), # not as good
         text=element_text(family="sans") # "serif"=TN Roman, "sans" = Arial
         ) +
   scale_fill_gradient2(
@@ -735,114 +736,27 @@ class(ctry_sum3)
         #the mid color here is the high color for the Gap Map
     midpoint=max(ctry_sum1$pct)/2,     #keep ctry_sum1 - doesnt read sum3
     limits=c(0,max(ctry_sum1$pct))) +
- coord_sf(xlim = c(-180, 180), ylim = c(-59, 84), expand = FALSE) )
-ggsave(paste0(plotdir,today.date,'_study_country_map.png'),width = 9,height = 4.5) #was 4.75 - some extra
+ coord_sf(xlim = c(-180, 180), ylim = c(-58, 55.5), expand = FALSE) )
+ggsave(paste0(plotdir,today.date,'_study_country_map.png'),width = 9,height = 3.68) #height fitted for specific latitudes
 ```
 
-# World Map - Coral
+# World Maps - Coral, Seagrass, and Mangrove
 
-###NOTE: this is MESSY - should try to make world map into a FUNCTIOn like gap map if I want habitat specific maps!
+###NOTE: should try to make world map into a FUNCTIOn like gap map if I want habitat specific maps!
 
 ```{r eval=T}
-# All Habitats  World Map
-ctry.coral <- data_all2 %>% 
-  filter(coral==1) %>% 
-  group_by(aid,study.ctry) %>%
-  summarise() %>% 
-  filter(!is.na(study.ctry))
-head(ctry.coral)
+# Coral World Map
+# ctry.coral <- data_all2 %>% 
+#   filter(coral==1) %>% 
+#   group_by(aid,study.ctry) %>%
+#   summarise() %>% 
+#   filter(!is.na(study.ctry))
+# head(ctry.coral)
+# 
+#     low="white",mid="darksalmon",high="coral3", 
+#         #the low color here is white - allows for better contrast
+#         #the high color here is the high color for the Gap Map
 
-# get no. articles per country (and percentage) to create vector of column names for each country by counting the number of ";" 
-    # thus isn't working out well... this gets 18 as the number... but it looks like this highest number is 23 (Australia)
-max.ctry.coral <- paste0("ctry",rep(1:max(str_count(ctry.all$study.ctry, ";")+1))) 
-
-# FIX the data with weird names, once in their own rows! 
-ctry_sum_coral <- ctry.coral %>% 
-  mutate(study.ctry=gsub("United Republic of Tanzania Mozambique","United Republic of Tanzania; Mozambique",study.ctry,fixed = TRUE), # need ; 
-         study.ctry=gsub("United Republic of Tanzania Comoros","United Republic of Tanzania; Comoros",study.ctry,fixed = TRUE)) %>% 
-  separate(study.ctry,max.ctry, sep="; ",fill="right") %>% # fill=right fills blanks with NAs
-  gather("X","admin", max.ctry) %>%   #gather is a tidyr function that reshapes columns into key pairs 
-      #renames "study.ctry" to "admin"
-      #admin is the sub-country column in world_countries dataframe
-  filter(!is.na(admin)) %>% 
-  filter(!(admin == "")) %>% 
-  select(-X) %>% 
-  ### COULD POTENTIALLY MOVE INTO 300s
-  mutate(admin=gsub(".*Hawaii*.","United States of America",admin), # parenthesis () names - no other way
-         admin=gsub(".*Palmyra Atoll near Kiribati but owned by United States of America*.","United States of America",admin),
-          admin=gsub(".*Tanzania*.","United Republic of Tanzania",admin),
-         admin=gsub(".*Guadeloupe*.","France",admin),
-         admin=gsub(".*Mayotte*.","France",admin),
-         admin=gsub(".*Reunion*.;","France",admin)
-  ) %>%
-  filter(!(aid == '705')) %>% # need this here to remove aid 705
-  distinct() %>% # no duplicate aids (e.g. France territories = lumped into France
-  group_by(admin) 
-
-ctry_sum_coral.5 <- ctry_sum_coral %>%
-  count() %>%     #count creates an "n" column
-  mutate(pct=round(n/num.studies*100)) %>%   #this creates the "pct" column
-  arrange(desc(n))
-
-# Countries that need to be fixed
-ctry_sum_coral.5$admin[!ctry_sum_coral.5$admin%in%world_countries$admin]
-
-
-# join to full world_countries country data with OEGM data in a df
-ctry_sum1 <- ctry_sum.5 %>%  # ctry_sum is the data frame and world_countries is the sf 
-  full_join(world_countries,by="admin") %>%  # full_join keeps all ROWS (even the n=0 rows!)
-  mutate(n=na.replace(n,0)) %>% 
-  mutate(pct=na.replace(pct,0))
-ctry_sum1$admin[!ctry_sum1$admin%in%world_countries$admin] # any missing?
-
-# join cntry_sum1 with the regions and continents in the old "country" dataset (again, full_join)
-ctry_sum_coral2 <- country %>%   
-  full_join(ctry_sum_coral1, by = c("code" = "adm0_a3")) %>% 
-  select(-Country) %>%
-  #select(admin,n,pct,code,Subregion,Region) %>%
-  arrange(desc(n))
-ctry_sum_coral2$admin[!ctry_sum_coral2$admin%in%world_countries$admin] # any missing?
-
-# TURN THE FILE BACK INTO AN SF
-ctry_sum_coral3 <- st_as_sf(ctry_sum_coral2)
-class(ctry_sum_coral3)
-
-# Plot study map
-(study_ctry_map_coral <- ggplot(data=ctry_sum_coral3) +
-  geom_sf(aes(fill=n), color=NA) + #note: color=NA takes out country boarders (otherwise grey)
-  theme(
-        panel.background = element_rect(fill = "#CCCCCC", colour = "#CCCCCC"), 
-          #this grey looks deep, but it allows for better contrast with the white than gray90
-        panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        panel.border=element_blank(),
-        plot.title=element_text(hjust=0,size=12), # face="bold"
-        axis.ticks = element_blank(), 
-        axis.text = element_blank(),
-        axis.title = element_blank(),
-        legend.title=element_text(size=10),
-        legend.title.align=1,
-        legend.text=element_text(size=8),
-        legend.position ="bottom",
-        text=element_text(family="sans") # "serif"=TN Roman, "sans" = Arial
-        ) +
-  scale_fill_gradient2(
-    name = "Number of Studies",
-    low="white",mid="darksalmon",high="coral3", 
-        #the low color here is white - allows for better contrast
-        #the high color here is the high color for the Gap Map
-    midpoint=max(ctry_sum_coral1$n)/2,     #keep ctry_sum_coral1 - doesnt read sum3
-    limits=c(0,max(ctry_sum_coral1$n))) +
- coord_sf(xlim = c(-180, 180), ylim = c(-59, 84), expand = FALSE) )
-ggsave(paste0(plotdir,today.date,'_study_country_map_CORAL.png'),width = 12,height = 5)
-```
-
-# World Map - Mangrove and Seagrass
-
-Haven't made, don't think we'll need these? Comment off for now?
-
-# Create heat maps 
-```{r eval=T}
 #GAP MAP COLORS
 # # Mangrove
 # high.col = "orange2"
@@ -930,7 +844,6 @@ dev.off()
 
 ## IN PROGRESSS
 
-
 ```{r eval=T}
 #---- Treemapping ----
 # ------------NEW CODE ATTEMPTS
@@ -958,7 +871,7 @@ dev.off()
 # ------ Outcomes ATTEMPT DIG---------
 
 ### Getting the data sorted
-#NOTE: REQUIRES treemapify package, ggforce package, AND colorspace package - NEED TO RE-ADD TO THE TOP OF THE SCRIPT
+#NOTE: may require ggforce package, AND colorspace package - NEED TO RE-ADD TO THE TOP OF THE SCRIPT
   
 unique(data_all2$Outcome.subcategory)
 
@@ -1715,7 +1628,7 @@ Multi_int_time_gps <- data_all2 %>%
          gp="Multi-intervention") %>% 
   select(Year.of.publication,gp,pub.per.yr,val) %>% 
   filter(!is.na(Year.of.publication))
-View(Multi_int_time_gps)
+# View(Multi_int_time_gps)
 
 # STATS - growth over time
 
@@ -1737,27 +1650,18 @@ AND sub.int and sub.out!
 ```{r eval=T}
 #Intervention and Outcome Pairs, with # of papers and %s
 #view(io_counts.all)
-io.counts.pct <- io_counts.all %>%
-  mutate(pct=n/num.studies*100)%>% 
-  arrange (desc(n)) %>% # this arranges them in descending order 
-  view()
-head(io.counts.pct)
-tail(io.counts.pct)
+head(io_counts.all)
+tail(io_counts.all)
 
 # Sub-Interventions and Sub-Outcomes
 #view(io_counts.subintout)
-io.counts.pct.sub <- io_counts.subintout %>%
-  mutate(pct=n/num.studies*100)%>% 
-  arrange (desc(n)) %>% # this arranges them in descending order 
-  view()
-head(io.counts.pct.sub)
-tail(io.counts.pct.sub)
+head(io_counts.subintout)
+tail(io_counts.subintout)
 ```
 
 6. O: Outcomes:
 
 ```{r eval=T}
-
 data_all2 %>%
   group_by(Outcome_cat) %>% 
   summarise(num=n_distinct(aid), pct=num/num.studies*100)%>% 
