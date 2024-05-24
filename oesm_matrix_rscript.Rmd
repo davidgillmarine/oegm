@@ -235,12 +235,43 @@ habitat.test <- data_all %>%
 unique(habitat.test$Habitat.type) # should just be 0 - no other categories (we took out the "Other" category)       
 ```
 
-# MORE Data Cleaning, For Categories Later - Year Change, Name Change!
+# MORE Data Cleaning, For Categories missed OR that need fixing in some way
+
+Entry issues: Year Change (1 paper), Country entry Change (aid 375), 
+
+Name Change for countries, to match country data :)
 
 ```{r eval=T}
 # AID 344 is technically 2019, but was a 2018 paper, need to update the year
 data_all <-data_all %>% 
   mutate(Year.of.publication=gsub("2019","2018",Year.of.publication))  # 2019 should be 2018
+
+#AID 375 - Issue with Bad Drop Down / Wrongly coded countries - must mutate
+    # Mutate AID 375, where the countries were improperly entered!
+    # Country names matched with study list taken from study (each place only entered once)
+      # Yemen; 
+          # 1. Arabian Sea (ARABS), 
+      # Indian Ocean Territories; Australia; 
+          # 2. Western Australia (AUSW: Scott Reef, Cocos–Keeling Islands, Christmas Island), 
+      # Chagos (British Indian Ocean Territory); Maldives; Seychelles; 
+          # 4. Central Indian Ocean Islands (CIOI: Chagos, Lakshadweep (India), Maldives, Seychelles),
+          # NOTE - see note in country names about Chagos
+      # Kenya; United Republic of Tanzania; Mozambique; 
+          # 5. East Africa (EAFR: Kenya, Tanzania), 
+      # India; Indonesia; Cambodia; Myanmar; Thailand; 
+          # 6. Eastern Indian Ocean (EIO: Andaman–Nicobar (India), Western Indonesia (Sumatra), Kambodia, Myanmar/Burma, Thailand), 
+      # Oman; United Arab Emirates; Qatar; Bahrain; Kuwait; Iraq; Iran; 
+          # 7. Arabian/Persian Gulf (GULF), 
+      # Sri Lanka; 
+          # 8. Southern India and Sri Lanka (IND–SRI), 
+      # South Africa; 
+          # 9. Mozambique and South Africa (MOZ–SAF), 
+      # Djibouti; Eritrea; Sudan; Egypt; Isreal; Jordan; Saudi Arabia; 
+          # 10. Red Sea–Gulf of Aden (RS–GA), 
+      # Comoros; Madagascar; Mauritius; France (Mayotte); France (Reunion); 
+          # 11. South Western Indian Ocean Islands (SWIOI: Comoros, Madagascar, Mauritius, Mayotte, Reunion, Rodrigues (Mauritius)). 
+data_all <- data_all %>%
+  mutate(study.ctry = ifelse(aid == "375", "Yemen; Indian Ocean Territories; Australia; Chagos (British Indian Ocean Territory); Maldives; Seychelles; Kenya; Tanzania; Mozambique; India; Indonesia; Cambodia; Myanmar; Thailand; Oman; United Arab Emirates; Qatar; Bahrain; Kuwait; Iraq; Iran; Sri Lanka; South Africa; Djibouti; Eritrea; Sudan; Egypt; Isreal; Jordan; Saudi Arabia; Comoros; Madagascar; Mauritius; France (Mayotte); France (Reunion)",study.ctry))
 
 #Intervention Updates
 # remove 8. Research and Monitoring as an intervention entirely, and adjust numbers
@@ -264,7 +295,8 @@ data_all <-data_all %>%
 # fix data in country column
   ## the "admin" column in ne_countries joins to the country shapes from Natural Earth by name. This can get tricky because the names have to match exactly, which is what I do below
 data_all <- data_all %>%
-  mutate(study.ctry=gsub(",",";",study.ctry),  # replace "," with ";" to help with splitting
+  mutate(study.ctry=gsub("Tanzania, United Republic of","Tanzania",study.ctry),  # first, before semi-colon
+        study.ctry=gsub(",",";",study.ctry),  # replace "," with ";" to help with splitting
          study.ctry=gsub("Bahamas","The Bahamas",study.ctry),
          study.ctry=gsub("Mauritiana","Mauritania",study.ctry),
          study.ctry=gsub("Saint Vincent And The Grenadines","Saint Vincent and the Grenadines",study.ctry),
@@ -272,9 +304,9 @@ data_all <- data_all %>%
          study.ctry=gsub("Korea; South","South Korea",study.ctry),
          study.ctry=gsub("Turks and Caicos","Turks and Caicos Islands",study.ctry),
          study.ctry=gsub("Tanzania*.","United Republic of Tanzania",study.ctry),
-             #Not sure if this will work, trying to do "Tanzania and anything after it"
+             # Not sure if this will work, trying to do "Tanzania and anything after it"
              # now is doubled... not sure why, will just have a 2nd code... 
-         study.ctry=gsub("United Republic of Tanzania United Republic Of","United Republic of Tanzania",study.ctry),
+         # study.ctry=gsub("United Republic of Tanzania United Republic Of","United Republic of Tanzania",study.ctry),
          study.ctry=gsub("Commonwealth of the Northern Mariana Islands","Northern Mariana Islands",study.ctry),
          study.ctry=gsub("Taiwan; Province Of China","Taiwan",study.ctry),
          study.ctry=gsub("Cote D'Ivoire","Ivory Coast",study.ctry),
@@ -432,6 +464,12 @@ The below script is commented off, but kept the code for how to easily check the
 #   filter(Outcome.subcategory=="5h. Culture")
 # # View(culture_out)
 # # write.csv(culture_out,paste0(tabledir,today.date,"_5h_culture.csv"))
+
+#CANANDA and RUSSIA as COUNTRIES!!
+# polar_countries <- data_all %>%
+#   filter(aid=="375")
+# View(polar_countries)
+# write.csv(polar_countries,paste0(tabledir,today.date,"_polar_countries.csv"))
 ```
 
 # Heat map function
