@@ -521,9 +521,12 @@ if(outc=="Outcome.subcategory"){out_list_full=out_sub_list}
   io_counts <<- typology_dat %>%
     group_by(int_val, out_val) %>% 
     count() %>%
+    mutate(pct=n/num.studies*100) %>% ###JUST added this in... SEE WHAT IT DOES!!!
     full_join(io_list,by = c("int_val", "out_val")) %>%   # inserts missing combinations
     filter(int_val!="NA (0)" &  out_val!="NA (0)") %>% 
     mutate(n=replace_na(n,0)) %>%
+    mutate(pct=replace_na(pct,0)) %>% # JUST added this in,  - fixes NAs
+    select(-n) %>% # JUST ADDED - Dropping COLUMN N so r doesnt get confused!!!
     ungroup() %>% 
     mutate(int_val=factor(int_val,levels=mixedsort(int_list$int_val)))  # set int list in right order
   
@@ -531,13 +534,12 @@ if(outc=="Outcome.subcategory"){out_list_full=out_sub_list}
   # nrow(int_list)*nrow(out_list)==nrow(io_counts) # quick check (should be true)
   
 # Create Heatmap
-  heat.map <<- ggplot(data=io_counts, aes(x=int_val,y=reorder(out_val, desc(out_val)),fill=n)) +
+  heat.map <<- ggplot(data=io_counts, aes(x=int_val,y=reorder(out_val, desc(out_val)),fill=pct)) + #fill changed from n to pct
       geom_tile(color="gray90",size=0.1) +
-      # geom_text(aes(label=n),show.legend = F) + # adds numbers into cells
-    scale_fill_gradient2(low="#f7fbff",high=high.col,name="Number of Studies",
-        na.value="black", limits=c(0,max(io_counts$n))) + 
+      # geom_text(aes(label=pct),show.legend = F) + # adds percents into cells
+    scale_fill_gradient2(low="#f7fbff",high=high.col,name="Percent of Studies",
+        na.value="black", limits=c(0,max(io_counts$pct))) +   #changed n to pct
       coord_equal() +
-      # theme_tufte(base_family="Helvetica") +	# having issues with font, font colour in windows...
       theme(axis.ticks=element_line(size=0.3),
         axis.text=element_text(size=10),
         axis.text.x = element_text(angle=45,hjust=0,vjust=1),
@@ -549,7 +551,7 @@ if(outc=="Outcome.subcategory"){out_list_full=out_sub_list}
         legend.position ="bottom",
         legend.direction ="horizontal",
         legend.key.size=grid::unit(1, "cm"),
-        legend.key.width=grid::unit(1, "cm"),
+        legend.key.width=grid::unit(1.5, "cm"), #1.5 cm - longer but not full!
         plot.background=element_blank(),
         panel.border=element_blank(),
         plot.title=element_text(hjust=0,size=12,face="bold"),
@@ -567,25 +569,25 @@ if(outc=="Outcome.subcategory"){out_list_full=out_sub_list}
 my_heat_map(data_all2,"Int_cat","Outcome_cat")
 io_counts.all <- io_counts
 (heat.map.all <- heat.map +
-    labs(x="Conservation Intervention", y="Outcome", title ="All ecosystems"))
+    labs(x="Conservation Intervention", y="Outcome", title ="All Ecosystems"))
 ggsave(paste0(plotdir,today.date,'_int_out_map.png'),width = 8,height = 8)
 
 # All ecosystems - Intervention subcategory X Outcome
 my_heat_map(data_all2,"Intervention.subcategory", "Outcome_cat")
 io_counts.subint <- io_counts
-(heat.map.subint <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="All ecosystems"))
+(heat.map.subint <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="All Ecosystems"))
 ggsave(paste0(plotdir,today.date,'_sub.int_out_map.png'),width = 16,height = 8)
 
 # All ecosystems - Intervention  X Outcome subcategory
 my_heat_map(data_all2,"Int_cat", "Outcome.subcategory")
 io_counts.subint <- io_counts
-(heat.map.subint <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="All ecosystems"))
+(heat.map.subint <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="All Ecosystems"))
 ggsave(paste0(plotdir,today.date,'_int_sub.out_map.png'),width = 8,height = 16)
 
 # All ecosystems - Intervention subcategory X Outcome subcategory
 my_heat_map(data_all2,"Intervention.subcategory", "Outcome.subcategory")
 io_counts.subintout <- io_counts
-(heat.map.subint <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="All ecosystems"))
+(heat.map.subint <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="All Ecosystems"))
 ggsave(paste0(plotdir,today.date,'_sub.int_sub.out_map.png'),width = 16,height = 12)
 
 # Coral
@@ -604,10 +606,10 @@ io_counts.seagrass <- io_counts
 (heat.map.seagrass <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="Seagrass")) 
 
 # Ecosystem maps on same scale
-max.val <- max(io_counts.mangrove$n,io_counts.coral$n,io_counts.seagrass$n)
-plot_grid(heat.map.coral + scale_fill_gradient2(low="#f7fbff",high= "coral3",name="# Cases",na.value="black", limits=c(0,max.val)),
-          heat.map.seagrass + scale_fill_gradient2(low="#f7fbff",high= "green4",name="# Cases",na.value="black", limits=c(0,max.val)),
-          heat.map.mangrove + scale_fill_gradient2(low="#f7fbff",high= "orange2",name="# Cases",na.value="black", limits=c(0,max.val)),
+max.val <- max(io_counts.mangrove$pct,io_counts.coral$pct,io_counts.seagrass$pct)
+plot_grid(heat.map.coral + scale_fill_gradient2(low="#f7fbff",high= "coral3",name="Percent of Studies",na.value="black", limits=c(0,max.val)),
+          heat.map.seagrass + scale_fill_gradient2(low="#f7fbff",high= "green4",name="Percent of Studies",na.value="black", limits=c(0,max.val)),
+          heat.map.mangrove + scale_fill_gradient2(low="#f7fbff",high= "orange2",name="Percent of Studies",na.value="black", limits=c(0,max.val)),
           labels=letters[1:3], ncol = 3, nrow = 1, hjust=-1, align = "hv")
 ggsave(paste0(plotdir,today.date,'_habitat_int_out_map.png'),width = 17,height = 8)
 
@@ -727,7 +729,7 @@ class(ctry_sum3)
         text=element_text(family="sans") # "serif"=TN Roman, "sans" = Arial
         ) +
   scale_fill_gradient2(
-    name = "Percent of Total Studies",
+    name = "Percent of Studies",
     low="white",mid="#2171b5",high="#08519c", 
         #the low color here is white - allows for better contrast
         #the mid color here is the high color for the Gap Map
@@ -933,22 +935,22 @@ dev.off()
 #---- Treemapping ----
 # ------------NEW CODE ATTEMPTS
 
-# Intervention Graphic
-(pInt_time_gps <- ggplot(Int_time_gps)  + 
-    geom_line(aes(x = Year.of.publication, y = val, group = Intervention, colour = Intervention, linetype=Intervention), size = 1.3)  +
-    labs(
-    scale_color_manual(values=c(      # uses Okabe-Ito colors - color-blind friendly!
-      "All Interventions" = "#000000",    #black Okabe-Ito
-      "1. Land/Water Management" = "#0072B2", #blue Okabe-Ito
-      "2. Species Management" = "#56B4E9",   #Sky Blue Okabe-Ito
-      "3. Awareness Raising" = "#009E73",    #Bluish Green Okabe-Ito
-      "4. Enforcement & Protection" = "#F0E442",    # Yellow Okabe-Ito
-      "5. Livelihood, Economic, & Other Incentives" = "#E69F00",  #Orange Okabe-Ito
-      "6. Conservation Designation & Planning" = "#D55E00", #Vermillion Okabe-Ito
-      "7. Legal & Policy Frameworks" =  "#BE0032", # from kelly by grafify - good on color-blindness.com
-      "8. Education & Training" = '#882255', #wine - extra color by DIG - good on color-blindness.com
-      "9. Institutional/Organizational Development" = "#CC79A7" )) #reddish purple Okabe-Ito
-      ))
+# # Intervention Graphic
+# (pInt_time_gps <- ggplot(Int_time_gps)  + 
+#     geom_line(aes(x = Year.of.publication, y = val, group = Intervention, colour = Intervention, linetype=Intervention), size = 1.3)  +
+#     labs(
+#     scale_color_manual(values=c(      # uses Okabe-Ito colors - color-blind friendly!
+#       "All Interventions" = "#000000",    #black Okabe-Ito
+#       "1. Land/Water Management" = "#0072B2", #blue Okabe-Ito
+#       "2. Species Management" = "#56B4E9",   #Sky Blue Okabe-Ito
+#       "3. Awareness Raising" = "#009E73",    #Bluish Green Okabe-Ito
+#       "4. Enforcement & Protection" = "#F0E442",    # Yellow Okabe-Ito
+#       "5. Livelihood, Economic, & Other Incentives" = "#E69F00",  #Orange Okabe-Ito
+#       "6. Conservation Designation & Planning" = "#D55E00", #Vermillion Okabe-Ito
+#       "7. Legal & Policy Frameworks" =  "#BE0032", # from kelly by grafify - good on color-blindness.com
+#       "8. Education & Training" = '#882255', #wine - extra color by DIG - good on color-blindness.com
+#       "9. Institutional/Organizational Development" = "#CC79A7" )) #reddish purple Okabe-Ito
+#       ))
 
   
 
