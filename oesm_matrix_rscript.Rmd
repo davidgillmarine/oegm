@@ -295,8 +295,7 @@ data_all <-data_all %>%
 # fix data in country column
   ## the "admin" column in ne_countries joins to the country shapes from Natural Earth by name. This can get tricky because the names have to match exactly, which is what I do below
 data_all <- data_all %>%
-  mutate(study.ctry=gsub("Tanzania, United Republic of","Tanzania",study.ctry),  # first, before semi-colon
-        study.ctry=gsub(",",";",study.ctry),  # replace "," with ";" to help with splitting
+  mutate(study.ctry=gsub(",",";",study.ctry),  # replace "," with ";" to help with splitting
          study.ctry=gsub("Bahamas","The Bahamas",study.ctry),
          study.ctry=gsub("Mauritiana","Mauritania",study.ctry),
          study.ctry=gsub("Saint Vincent And The Grenadines","Saint Vincent and the Grenadines",study.ctry),
@@ -306,22 +305,27 @@ data_all <- data_all %>%
          study.ctry=gsub("Tanzania*.","United Republic of Tanzania",study.ctry),
              # Not sure if this will work, trying to do "Tanzania and anything after it"
              # now is doubled... not sure why, will just have a 2nd code... 
-         # study.ctry=gsub("United Republic of Tanzania United Republic Of","United Republic of Tanzania",study.ctry),
+         study.ctry=gsub("United Republic of Tanzania United Republic Of","United Republic of Tanzania",study.ctry),
          study.ctry=gsub("Commonwealth of the Northern Mariana Islands","Northern Mariana Islands",study.ctry),
          study.ctry=gsub("Taiwan; Province Of China","Taiwan",study.ctry),
          study.ctry=gsub("Cote D'Ivoire","Ivory Coast",study.ctry),
          study.ctry=gsub("United States","United States of America",study.ctry),
          study.ctry=gsub("USA","United States of America",study.ctry),
-         study.ctry=gsub(".*Virgin Islands","United States Virgin Islands",study.ctry),
-            # Means "Virgin Islands" and anything before it - turns both "U.S. Virgin Islands" and "Virgin Islands" into above
+         study.ctry=gsub("Virgin Islands","United States Virgin Islands",study.ctry),
+         study.ctry=gsub("U.S. United States Virgin Islands","United States Virgin Islands",study.ctry),
+         study.ctry=gsub("British United States Virgin Islands","British Virgin Islands",study.ctry),
          study.ctry=gsub("Viet Nam","Vietnam",study.ctry),
-  ## Would Like a better Name / Map / Disputed... come back to
-         study.ctry=gsub("Chagos currently disputed between UK and Republic of Mauritius","British Indian Ocean Territory",study.ctry),
-         study.ctry=gsub(".*Hawaii)","United States of America",study.ctry),
-         study.ctry=gsub(".*Palmyra Atoll near Kiribati but owned by United States of America)","United States of America",study.ctry),
-         study.ctry=gsub(".*Guadeloupe)","France",study.ctry),
-         study.ctry=gsub(".*Mayotte)","France",study.ctry),
-         study.ctry=gsub(".*Reunion);","France",study.ctry),
+           # study.ctry=gsub("Comoros",";Comoros",study.ctry), # somehow lost its divider
+         ## Would Like a better Name / Map / Disputed... come back to
+                # study.ctry=gsub("Chagos*.","British Indian Ocean Territory",study.ctry), #should change all Chagos
+         study.ctry=gsub("`Chagos (British Indian Ocean Territory)`","British Indian Ocean Territory",study.ctry),
+            # study.ctry=gsub("United States of America*.","United States of America",study.ctry),
+         study.ctry=gsub("`United States of America (Hawaii)`","United States of America",study.ctry),
+         study.ctry=gsub("`United States of America (Palmyra Atoll near Kiribati but owned by United States of America)`","United States of America",study.ctry),
+             # study.ctry=gsub(".*Mayotte*.","France",study.ctry), # TAKES OUT EVERYTHING IN COLUMN, DOESN'T RESPECT ;
+          study.ctry=gsub("`France (Guadeloupe)`","France",study.ctry),
+          study.ctry=gsub("`France (Mayotte)`","France",study.ctry),
+          study.ctry=gsub("`France (Reunion)`","France",study.ctry),
   ## Want to check back on name changes / the way I'm referring to them
          study.ctry=gsub("Commonwealth of the Northern Mariana Islands","Northern Mariana Islands",study.ctry),
          study.ctry=gsub("Lao People's Democratic Republic","Laos",study.ctry),
@@ -662,14 +666,13 @@ ctry_sum <- ctry.all %>%
   separate(study.ctry,max.ctry, sep="; ",fill="right") %>% # fill=right fills blanks with NAs
   gather("X","admin", max.ctry) %>%   #gather is a tidyr function that reshapes columns into key pairs 
       #renames "study.ctry" to "admin"
-      #What does this "X" mean?! I really don't know, but it works
       #admin is the sub-country column in world_countries dataframe
   filter(!is.na(admin)) %>% 
   select(-X) %>% 
   group_by(admin) %>% 
   count() %>%     #count creates an "n" column
   mutate(pct=round(n/num.studies*100)) %>%   #this creates the "pct" column
-  arrange(desc(pct))
+  arrange(desc(n))
 
 # Countries that need to be fixed
 ctry_sum$admin[!ctry_sum$admin%in%world_countries$admin]
