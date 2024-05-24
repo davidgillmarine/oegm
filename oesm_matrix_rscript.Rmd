@@ -271,7 +271,7 @@ data_all <-data_all %>%
       # Comoros; Madagascar; Mauritius; France (Mayotte); France (Reunion); 
           # 11. South Western Indian Ocean Islands (SWIOI: Comoros, Madagascar, Mauritius, Mayotte, Reunion, Rodrigues (Mauritius)). 
 data_all <- data_all %>%
-  mutate(study.ctry = ifelse(aid == "375", "Yemen; Indian Ocean Territories; Australia; Chagos (British Indian Ocean Territory); Maldives; Seychelles; Kenya; Tanzania; Mozambique; India; Indonesia; Cambodia; Myanmar; Thailand; Oman; United Arab Emirates; Qatar; Bahrain; Kuwait; Iraq; Iran; Sri Lanka; South Africa; Djibouti; Eritrea; Sudan; Egypt; Isreal; Jordan; Saudi Arabia; Comoros; Madagascar; Mauritius; France (Mayotte); France (Reunion)",study.ctry))
+  mutate(study.ctry = ifelse(aid == "375", "Yemen; Indian Ocean Territories; Australia; Chagos - British Indian Ocean Territory; Maldives; Seychelles; Kenya; Tanzania; Mozambique; India; Indonesia; Cambodia; Myanmar; Thailand; Oman; United Arab Emirates; Qatar; Bahrain; Kuwait; Iraq; Iran; Sri Lanka; South Africa; Djibouti; Eritrea; Sudan; Egypt; Isreal; Jordan; Saudi Arabia; Comoros; Madagascar; Mauritius; France -Mayotte; France -Reunion",study.ctry))
 
 #Intervention Updates
 # remove 8. Research and Monitoring as an intervention entirely, and adjust numbers
@@ -317,15 +317,17 @@ data_all <- data_all %>%
          study.ctry=gsub("Viet Nam","Vietnam",study.ctry),
            # study.ctry=gsub("Comoros",";Comoros",study.ctry), # somehow lost its divider
          ## Would Like a better Name / Map / Disputed... come back to
-                # study.ctry=gsub("Chagos*.","British Indian Ocean Territory",study.ctry), #should change all Chagos
-         study.ctry=gsub("`Chagos (British Indian Ocean Territory)`","British Indian Ocean Territory",study.ctry),
-            # study.ctry=gsub("United States of America*.","United States of America",study.ctry),
-         study.ctry=gsub("`United States of America (Hawaii)`","United States of America",study.ctry),
-         study.ctry=gsub("`United States of America (Palmyra Atoll near Kiribati but owned by United States of America)`","United States of America",study.ctry),
-             # study.ctry=gsub(".*Mayotte*.","France",study.ctry), # TAKES OUT EVERYTHING IN COLUMN, DOESN'T RESPECT ;
-          study.ctry=gsub("`France (Guadeloupe)`","France",study.ctry),
-          study.ctry=gsub("`France (Mayotte)`","France",study.ctry),
-          study.ctry=gsub("`France (Reunion)`","France",study.ctry),
+         study.ctry=gsub("Chagos - British Indian Ocean Territory","British Indian Ocean Territory",study.ctry), 
+         study.ctry=gsub("France -Mayotte","France",study.ctry), 
+         study.ctry=gsub("France -Reunion","France",study.ctry), 
+         
+         # study.ctry=gsub("Chagos*.","British Indian Ocean Territory",study.ctry), #should change all Chagos
+         #    # study.ctry=gsub("United States of America*.","United States of America",study.ctry),
+         # study.ctry=gsub("`United States of America (Hawaii)`","United States of America",study.ctry),
+         # study.ctry=gsub("`United States of America (Palmyra Atoll near Kiribati but owned by United States of America)`","United States of America",study.ctry),
+         # study.ctry=gsub(".*Mayotte*.","France",study.ctry), # TAKES OUT EVERYTHING IN COLUMN, DOESN'T RESPECT ;
+          # study.ctry=gsub("`France (Guadeloupe)`","France",study.ctry),
+          # study.ctry=gsub("`France (Reunion)`","France",study.ctry),
   ## Want to check back on name changes / the way I'm referring to them
          study.ctry=gsub("Commonwealth of the Northern Mariana Islands","Northern Mariana Islands",study.ctry),
          study.ctry=gsub("Lao People's Democratic Republic","Laos",study.ctry),
@@ -640,6 +642,24 @@ More about legends:
 Requires rnaturalearth and tidyverse packages (loaded at the top)
 
 ```{r eval=T}
+
+
+
+  #        ## Would Like a better Name / Map / Disputed... come back to
+  #        study.ctry=gsub("Chagos - British Indian Ocean Territory","British Indian Ocean Territory",study.ctry), 
+  #        study.ctry=gsub("France -Mayotte","France",study.ctry), 
+  #        study.ctry=gsub("France -Reunion","France",study.ctry), 
+  #        
+  #        # study.ctry=gsub("Chagos*.","British Indian Ocean Territory",study.ctry), #should change all Chagos
+  #        #    # study.ctry=gsub("United States of America*.","United States of America",study.ctry),
+  #        # study.ctry=gsub("`United States of America (Hawaii)`","United States of America",study.ctry),
+  #        # study.ctry=gsub("`United States of America (Palmyra Atoll near Kiribati but owned by United States of America)`","United States of America",study.ctry),
+  #        # study.ctry=gsub(".*Mayotte*.","France",study.ctry), # TAKES OUT EVERYTHING IN COLUMN, DOESN'T RESPECT ;
+  #         # study.ctry=gsub("`France (Guadeloupe)`","France",study.ctry),
+  #         # study.ctry=gsub("`France (Reunion)`","France",study.ctry),
+  # ## Want to check back on name changes / the way I'm referring to them
+
+
 # All Habitats  World Map
 ctry.all <- data_all %>% 
   group_by(aid,study.ctry) %>%
