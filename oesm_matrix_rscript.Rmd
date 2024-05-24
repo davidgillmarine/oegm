@@ -271,7 +271,7 @@ data_all <-data_all %>%
       # Comoros; Madagascar; Mauritius; France (Mayotte); France (Reunion); 
           # 11. South Western Indian Ocean Islands (SWIOI: Comoros, Madagascar, Mauritius, Mayotte, Reunion, Rodrigues (Mauritius)). 
 data_all <- data_all %>%
-  mutate(study.ctry = ifelse(aid == "375", "Yemen; Indian Ocean Territories; Australia; Chagos (British Indian Ocean Territory); Maldives; Seychelles; Kenya; Tanzania; Mozambique; India; Indonesia; Cambodia; Myanmar; Thailand; Oman; United Arab Emirates; Qatar; Bahrain; Kuwait; Iraq; Iran; Sri Lanka; South Africa; Djibouti; Eritrea; Sudan; Egypt; Isreal; Jordan; Saudi Arabia; Comoros; Madagascar; Mauritius; France (Mayotte); France (Reunion)",study.ctry))
+  mutate(study.ctry = ifelse(aid == "375", "Yemen; Indian Ocean Territories; Australia; Chagos - British Indian Ocean Territory; Maldives; Seychelles; Kenya; Tanzania; Mozambique; India; Indonesia; Cambodia; Myanmar; Thailand; Oman; United Arab Emirates; Qatar; Bahrain; Kuwait; Iraq; Iran; Sri Lanka; South Africa; Djibouti; Eritrea; Sudan; Egypt; Israel; Jordan; Saudi Arabia; Comoros; Madagascar; Mauritius; France -Mayotte; France -Reunion",study.ctry))
 
 #Intervention Updates
 # remove 8. Research and Monitoring as an intervention entirely, and adjust numbers
@@ -302,30 +302,25 @@ data_all <- data_all %>%
          study.ctry=gsub("Timor-Leste","East Timor",study.ctry),
          study.ctry=gsub("Korea; South","South Korea",study.ctry),
          study.ctry=gsub("Turks and Caicos","Turks and Caicos Islands",study.ctry),
-         study.ctry=gsub("Tanzania*.","United Republic of Tanzania",study.ctry),
+         study.ctry=gsub("`Tanzania; United Republic Of`","United Republic of Tanzania",study.ctry, fixed=TRUE),
              # Not sure if this will work, trying to do "Tanzania and anything after it"
              # now is doubled... not sure why, will just have a 2nd code... 
-         study.ctry=gsub("United Republic of Tanzania United Republic Of","United Republic of Tanzania",study.ctry),
+         study.ctry=gsub("United Republic of Tanzania United Republic Of","United Republic of Tanzania",study.ctry, fixed=TRUE),
          study.ctry=gsub("Commonwealth of the Northern Mariana Islands","Northern Mariana Islands",study.ctry),
          study.ctry=gsub("Taiwan; Province Of China","Taiwan",study.ctry),
          study.ctry=gsub("Cote D'Ivoire","Ivory Coast",study.ctry),
-         study.ctry=gsub("United States","United States of America",study.ctry),
+         study.ctry=gsub("United States","United States of America",study.ctry,fixed=TRUE),
          study.ctry=gsub("USA","United States of America",study.ctry),
-         study.ctry=gsub("Virgin Islands","United States Virgin Islands",study.ctry),
-         study.ctry=gsub("U.S. United States Virgin Islands","United States Virgin Islands",study.ctry),
-         study.ctry=gsub("British United States Virgin Islands","British Virgin Islands",study.ctry),
+         study.ctry=gsub("Virgin Islands","United States Virgin Islands",study.ctry,fixed=TRUE),
+         study.ctry=gsub("U.S. United States Virgin Islands","United States Virgin Islands",study.ctry,fixed=TRUE),
+         study.ctry=gsub("British United States Virgin Islands","British Virgin Islands",study.ctry,fixed=TRUE),
          study.ctry=gsub("Viet Nam","Vietnam",study.ctry),
-           # study.ctry=gsub("Comoros",";Comoros",study.ctry), # somehow lost its divider
+         study.ctry=gsub("Comoros","; Comoros",study.ctry,fixed=TRUE), # somehow lost its divider
          ## Would Like a better Name / Map / Disputed... come back to
-                # study.ctry=gsub("Chagos*.","British Indian Ocean Territory",study.ctry), #should change all Chagos
-         study.ctry=gsub("`Chagos (British Indian Ocean Territory)`","British Indian Ocean Territory",study.ctry),
-            # study.ctry=gsub("United States of America*.","United States of America",study.ctry),
-         study.ctry=gsub("`United States of America (Hawaii)`","United States of America",study.ctry),
-         study.ctry=gsub("`United States of America (Palmyra Atoll near Kiribati but owned by United States of America)`","United States of America",study.ctry),
-             # study.ctry=gsub(".*Mayotte*.","France",study.ctry), # TAKES OUT EVERYTHING IN COLUMN, DOESN'T RESPECT ;
-          study.ctry=gsub("`France (Guadeloupe)`","France",study.ctry),
-          study.ctry=gsub("`France (Mayotte)`","France",study.ctry),
-          study.ctry=gsub("`France (Reunion)`","France",study.ctry),
+         study.ctry=gsub("Chagos - British Indian Ocean Territory","British Indian Ocean Territory",study.ctry),
+         study.ctry=gsub("Chagos currently disputed between UK and Republic of Mauritius","British Indian Ocean Territory",study.ctry),
+         study.ctry=gsub("France -Mayotte","France",study.ctry), 
+         study.ctry=gsub("France -Reunion","France",study.ctry), 
   ## Want to check back on name changes / the way I'm referring to them
          study.ctry=gsub("Commonwealth of the Northern Mariana Islands","Northern Mariana Islands",study.ctry),
          study.ctry=gsub("Lao People's Democratic Republic","Laos",study.ctry),
@@ -661,14 +656,28 @@ world_countries <- ne_countries(
   returnclass = "sf")
 # class(world_countries) # this tells me that this is an sf file and df - helpful!
 
-# Join the Dataframe to rnaturalearth ne_countries (world_countries) 
+# FIX the data with weird names, once in their own rows! 
 ctry_sum <- ctry.all %>% 
+  mutate(study.ctry=gsub("United Republic of Tanzania Mozambique","United Republic of Tanzania; Mozambique",study.ctry,fixed = TRUE), # need ; 
+         study.ctry=gsub("United Republic of Tanzania Comoros","United Republic of Tanzania; Comoros",study.ctry,fixed = TRUE)) %>% 
   separate(study.ctry,max.ctry, sep="; ",fill="right") %>% # fill=right fills blanks with NAs
   gather("X","admin", max.ctry) %>%   #gather is a tidyr function that reshapes columns into key pairs 
       #renames "study.ctry" to "admin"
       #admin is the sub-country column in world_countries dataframe
   filter(!is.na(admin)) %>% 
   select(-X) %>% 
+  ### COULD POTENTIALLY MOVE INTO 300s
+  mutate(admin=gsub(".*Hawaii*.","United States of America",admin), # parenthesis () names - no other way
+         admin=gsub(".*Palmyra Atoll near Kiribati but owned by United States of America*.","United States of America",admin),
+         admin=gsub(".*Guadeloupe*.","France",admin),
+         admin=gsub(".*Mayotte*.","France",admin),
+         admin=gsub(".*Reunion*.;","France",admin)
+           # admin=gsub(".*Chagos*.","British Indian Ocean Territory",admin) might be covered by the earlier one!
+           # admin=gsub("United Republic of Tanzania Comoros","United Republic of Tanzania; Comoros",admin),
+                # should be fixed in the 300s, just incase
+  ) %>%
+  filter(!(aid == '705')) %>% # need this here to remove aid 705
+  distinct() %>% # no duplicate aids (e.g. France territorie = lumped into France
   group_by(admin) %>% 
   count() %>%     #count creates an "n" column
   mutate(pct=round(n/num.studies*100)) %>%   #this creates the "pct" column
