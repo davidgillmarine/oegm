@@ -236,52 +236,43 @@ unique(habitat.test$Habitat.type) # should just be 0 - no other categories (we t
 ```
 
 # MORE Data Cleaning, For Categories missed OR that need fixing in some way
+- Entry issues: Year Change (1 paper), Country entry Change (aid 375), 
+- Name Change for countries, to match country data :)
+- data_all becomes data_all2
 
-Entry issues: Year Change (1 paper), Country entry Change (aid 375), 
-
-Name Change for countries, to match country data :)
+##AID 375 - Issue with Bad Drop Down / Wrongly coded countries - this is my key!
+- 1. Arabian Sea (ARABS): Yemen; 
+- 2. Western Australia (AUSW: Scott Reef, Cocos–Keeling Islands, Christmas Island): Indian Ocean Territories; Australia; 
+- 3. Didn't make it, not enough data... was Bangladesh
+- 4. Central Indian Ocean Islands (CIOI: Chagos, Lakshadweep (India), Maldives, Seychelles): Chagos - British Indian Ocean Territory; Maldives; Seychelles;
+- 5. East Africa (EAFR: Kenya, Tanzania): Kenya; United Republic of Tanzania; Mozambique; 
+- 6. Eastern Indian Ocean (EIO: Andaman–Nicobar (India), Western Indonesia (Sumatra), Kambodia, Myanmar/Burma, Thailand): India; Indonesia; Cambodia; Myanmar; Thailand; 
+- 7. Arabian/Persian Gulf (GULF): Oman; United Arab Emirates; Qatar; Bahrain; Kuwait; Iraq; Iran; 
+- 8. Southern India and Sri Lanka (IND–SRI): Sri Lanka; 
+- 9. Mozambique and South Africa (MOZ–SAF): South Africa; 
+- 10. Red Sea–Gulf of Aden (RS–GA): Djibouti; Eritrea; Sudan; Egypt; Isreal; Jordan; Saudi Arabia; 
+- 11. South Western Indian Ocean Islands (SWIOI: Comoros, Madagascar, Mauritius, Mayotte, Reunion, Rodrigues (Mauritius)): Comoros; Madagascar; Mauritius; France (Mayotte); France (Reunion); 
 
 ```{r eval=T}
-# AID 344 is technically 2019, but was a 2018 paper, need to update the year
-data_all <-data_all %>% 
-  mutate(Year.of.publication=gsub("2019","2018",Year.of.publication))  # 2019 should be 2018
-
 #AID 375 - Issue with Bad Drop Down / Wrongly coded countries - must mutate
     # Mutate AID 375, where the countries were improperly entered!
     # Country names matched with study list taken from study (each place only entered once)
-      # Yemen; 
-          # 1. Arabian Sea (ARABS), 
-      # Indian Ocean Territories; Australia; 
-          # 2. Western Australia (AUSW: Scott Reef, Cocos–Keeling Islands, Christmas Island), 
-      # Chagos (British Indian Ocean Territory); Maldives; Seychelles; 
-          # 4. Central Indian Ocean Islands (CIOI: Chagos, Lakshadweep (India), Maldives, Seychelles),
-          # NOTE - see note in country names about Chagos
-      # Kenya; United Republic of Tanzania; Mozambique; 
-          # 5. East Africa (EAFR: Kenya, Tanzania), 
-      # India; Indonesia; Cambodia; Myanmar; Thailand; 
-          # 6. Eastern Indian Ocean (EIO: Andaman–Nicobar (India), Western Indonesia (Sumatra), Kambodia, Myanmar/Burma, Thailand), 
-      # Oman; United Arab Emirates; Qatar; Bahrain; Kuwait; Iraq; Iran; 
-          # 7. Arabian/Persian Gulf (GULF), 
-      # Sri Lanka; 
-          # 8. Southern India and Sri Lanka (IND–SRI), 
-      # South Africa; 
-          # 9. Mozambique and South Africa (MOZ–SAF), 
-      # Djibouti; Eritrea; Sudan; Egypt; Isreal; Jordan; Saudi Arabia; 
-          # 10. Red Sea–Gulf of Aden (RS–GA), 
-      # Comoros; Madagascar; Mauritius; France (Mayotte); France (Reunion); 
-          # 11. South Western Indian Ocean Islands (SWIOI: Comoros, Madagascar, Mauritius, Mayotte, Reunion, Rodrigues (Mauritius)). 
-data_all <- data_all %>%
-  mutate(study.ctry = ifelse(aid == "375", "Yemen; Indian Ocean Territories; Australia; Chagos - British Indian Ocean Territory; Maldives; Seychelles; Kenya; Tanzania; Mozambique; India; Indonesia; Cambodia; Myanmar; Thailand; Oman; United Arab Emirates; Qatar; Bahrain; Kuwait; Iraq; Iran; Sri Lanka; South Africa; Djibouti; Eritrea; Sudan; Egypt; Israel; Jordan; Saudi Arabia; Comoros; Madagascar; Mauritius; France -Mayotte; France -Reunion",study.ctry))
+data_all2 <- data_all %>%
+  mutate(study.ctry = ifelse(aid == "375", "Yemen; Indian Ocean Territories; Australia; Chagos - British Indian Ocean Territory; Maldives; Seychelles; Kenya; United Republic of Tanzania; Mozambique; India; Indonesia; Cambodia; Myanmar; Thailand; Oman; United Arab Emirates; Qatar; Bahrain; Kuwait; Iraq; Iran; Sri Lanka; South Africa; Djibouti; Eritrea; Sudan; Egypt; Israel; Jordan; Saudi Arabia; Comoros; Madagascar; Mauritius; France -Mayotte; France -Reunion",study.ctry))
+
+# AID 344 is technically 2019, but was a 2018 paper, need to update the year
+data_all2 <-data_all2 %>% 
+  mutate(Year.of.publication=gsub("2019","2018",Year.of.publication))  # 2019 should be 2018
 
 #Intervention Updates
 # remove 8. Research and Monitoring as an intervention entirely, and adjust numbers
-data_all <-data_all %>% 
+data_all2 <-data_all2 %>% 
   filter(Int_cat!="8. Research & monitoring")%>% 
   mutate_at(vars(Int_cat,Intervention.subcategory), ~gsub("^9","8",.)) %>% 
   mutate_at(vars(Int_cat,Intervention.subcategory), ~gsub("^10","9",.))  
 
 # Intervention Capitalization
-data_all <-data_all %>% 
+data_all2 <-data_all2 %>% 
   mutate(Int_cat=gsub("1. Land/water management","1. Land/Water Management",Int_cat), 
     Int_cat=gsub("2. Species management","2. Species Management",Int_cat), 
     Int_cat=gsub("3. Awareness raising","3. Awareness Raising",Int_cat),
@@ -294,18 +285,17 @@ data_all <-data_all %>%
 
 # fix data in country column
   ## the "admin" column in ne_countries joins to the country shapes from Natural Earth by name. This can get tricky because the names have to match exactly, which is what I do below
-data_all <- data_all %>%
-  mutate(study.ctry=gsub(",",";",study.ctry),  # replace "," with ";" to help with splitting
+data_all2 <- data_all2 %>%
+  mutate(
+         study.ctry=gsub(",",";",study.ctry),  # replace "," with ";" to help with splitting
          study.ctry=gsub("Bahamas","The Bahamas",study.ctry),
          study.ctry=gsub("Mauritiana","Mauritania",study.ctry),
          study.ctry=gsub("Saint Vincent And The Grenadines","Saint Vincent and the Grenadines",study.ctry),
          study.ctry=gsub("Timor-Leste","East Timor",study.ctry),
          study.ctry=gsub("Korea; South","South Korea",study.ctry),
          study.ctry=gsub("Turks and Caicos","Turks and Caicos Islands",study.ctry),
-         study.ctry=gsub("`Tanzania; United Republic Of`","United Republic of Tanzania",study.ctry, fixed=TRUE),
-             # Not sure if this will work, trying to do "Tanzania and anything after it"
-             # now is doubled... not sure why, will just have a 2nd code... 
-         study.ctry=gsub("United Republic of Tanzania United Republic Of","United Republic of Tanzania",study.ctry, fixed=TRUE),
+         study.ctry=gsub("Tanzania; United Republic Of","United Republic of Tanzania",study.ctry, fixed=TRUE),
+         # study.ctry=gsub("United Republic of Tanzania United Republic Of","United Republic of Tanzania",study.ctry, fixed=TRUE),
          study.ctry=gsub("Commonwealth of the Northern Mariana Islands","Northern Mariana Islands",study.ctry),
          study.ctry=gsub("Taiwan; Province Of China","Taiwan",study.ctry),
          study.ctry=gsub("Cote D'Ivoire","Ivory Coast",study.ctry),
@@ -332,9 +322,11 @@ country <- country %>%
   mutate(Country=gsub("Bahamas","The Bahamas",Country)) %>% 
   mutate(code=gsub("BHM","BHS",code)) %>% #Bahamas had a dif country code in these two datasets
     #to match the name change above for this country
-  add_row(Country = "British Indian Ocean Territory", Region = "Asia", code = "IOT", Subregion = "Southern Asia")
+  add_row(Country="British Indian Ocean Territory", Region= "Asia", code= "IOT", Subregion= "Southern Asia") %>% 
     # Note here: I picked Asia and Southern Asia because of the proximity to the Maldives
-      # Next Closest were Mauritius and Seychelles, Technically Africa... hard pick...
+      # Next Closest were Mauritius and Seychelles, Technically Africa... 
+  add_row(Country="Indian Ocean Territories", Region= "Asia", code= "IOA", Subregion= "Southern Asia") 
+      # Christmas Island and Cocos - right under Indo
 ```
 
 
@@ -343,50 +335,50 @@ country <- country %>%
 ```{r eval=T}
          
 #quick checks
-unique(data_all$Int_cat)  # 9 Interventions (we took #8 out)
-unique(data_all$Outcome_cat) # 7 outcomes
-sort(unique(data_all$Intervention.subcategory)) # 32 sub-interventions (in int_sub_list)
+unique(data_all2$Int_cat)  # 9 Interventions (we took #8 out)
+unique(data_all2$Outcome_cat) # 7 outcomes
+sort(unique(data_all2$Intervention.subcategory)) # 32 sub-interventions (in int_sub_list)
   # Only 26 sub-interventions were coded for
-sort(unique(data_all$Outcome.subcategory)) # 43 sub-outcomes (bc we added in Catch/Yield x2)
+sort(unique(data_all2$Outcome.subcategory)) # 43 sub-outcomes (bc we added in Catch/Yield x2)
   # Only 41 sub-interventions were coded for
 
 # those that were not observed
-int_list$Int_cat_orig[!int_list$Int_cat_orig%in%data_all$Int_cat] # 8. Research and monitoring
-int_sub_list$int_sub[!int_sub_list$int_sub%in%data_all$Intervention.subcategory] # 6 sub-interventions. Correct: 32-26=6
-out_list$Outcome_cat_orig[!out_list$Outcome_cat_orig%in%data_all$Outcome_cat] #correct, 0 bc all were coded for
-out_sub_list$out_sub[!out_sub_list$out_sub%in%data_all$Outcome.subcategory] # 2 sub-outcomes. Correct: 43-41=2
+int_list$Int_cat_orig[!int_list$Int_cat_orig%in%data_all2$Int_cat] # 8. Research and monitoring
+int_sub_list$int_sub[!int_sub_list$int_sub%in%data_all2$Intervention.subcategory] # 6 sub-interventions. Correct: 32-26=6
+out_list$Outcome_cat_orig[!out_list$Outcome_cat_orig%in%data_all2$Outcome_cat] #correct, 0 bc all were coded for
+out_sub_list$out_sub[!out_sub_list$out_sub%in%data_all2$Outcome.subcategory] # 2 sub-outcomes. Correct: 43-41=2
 
 # incorrect values entered (all should be zero)
-data_all$Int_cat[!data_all$Int_cat%in%int_list$Int_cat_orig] #0
-data_all$Intervention.subcategory[!data_all$Intervention.subcategory%in%int_sub_list$int_sub] #0
-data_all$Outcome_cat[!data_all$Outcome_cat%in%out_list$Outcome_cat_orig] #0
-data_all$Outcome.subcategory[!data_all$Outcome.subcategory%in%out_sub_list$out_sub] #0
+data_all2$Int_cat[!data_all2$Int_cat%in%int_list$Int_cat_orig] #0
+data_all2$Intervention.subcategory[!data_all2$Intervention.subcategory%in%int_sub_list$int_sub] #0
+data_all2$Outcome_cat[!data_all2$Outcome_cat%in%out_list$Outcome_cat_orig] #0
+data_all2$Outcome.subcategory[!data_all2$Outcome.subcategory%in%out_sub_list$out_sub] #0
   # Correct - all are 0!
 
 #new quick checks
-unique(data_all$Int_cat)  # 9 interventions, #1-9
-unique(data_all$Outcome_cat) # 7 outcomes, #1-7
-sort(unique(data_all$Intervention.subcategory)) # 26 sub-interventions coded - no.1-9
-sort(unique(data_all$Outcome.subcategory)) # 41 sub-outcomes coded, no.1-7.
+unique(data_all2$Int_cat)  # 9 interventions, #1-9
+unique(data_all2$Outcome_cat) # 7 outcomes, #1-7
+sort(unique(data_all2$Intervention.subcategory)) # 26 sub-interventions coded - no.1-9
+sort(unique(data_all2$Outcome.subcategory)) # 41 sub-outcomes coded, no.1-7.
 
 # Get full intervention list
-  int_list <- data_all %>%
+  int_list <- data_all2 %>%
     ungroup() %>%
     distinct(Int_cat) %>%
     rename(int_val=Int_cat) %>% 
     arrange(int_val)
-  out_list <- data_all %>%
+  out_list <- data_all2 %>%
     ungroup() %>%
     distinct(Outcome_cat) %>%
     rename(out_val=Outcome_cat) %>% 
     arrange(out_val)
 # Get full sub-intervention list
-  int_sub_list <- data_all %>%
+  int_sub_list <- data_all2 %>%
     ungroup() %>%
     distinct(Intervention.subcategory) %>%
     rename(int_val=Intervention.subcategory) %>% 
     arrange(int_val)
-  out_sub_list <- data_all %>%
+  out_sub_list <- data_all2 %>%
     ungroup() %>%
     distinct(Outcome.subcategory) %>%
     rename(out_val=Outcome.subcategory) %>% 
@@ -401,16 +393,16 @@ The below script is commented off, but kept the code for how to easily check the
 ```{r eval=T}
 
 # # View all Outcome Subcategories!
-# unique(data_all$Outcome.subcategory)
+# unique(data_all2$Outcome.subcategory)
 
 # # CPUE (1c)
-# CPUE_outcomes <- data_all %>% 
+# CPUE_outcomes <- data_all2 %>% 
 #   filter(Outcome.subcategory=="1c. Yield/CPUE")
 # View(CPUE_outcomes)
 # write.csv(CPUE_outcomes,paste0(tabledir,today.date,"_CPUE_outcomes.csv"))
 
 # # 1e.BEHAVIOR!
-# Behavior_out <- data_all %>% 
+# Behavior_out <- data_all2 %>% 
 #   filter(Outcome.subcategory=="1e. Behavior")
 # # View(Behavior_out)
 # # write.csv(Behavior_out,paste0(tabledir,today.date,"_1e.csv"))
@@ -421,7 +413,7 @@ The below script is commented off, but kept the code for how to easily check the
 # # View(Behavior_out_aid)
 # 
 # # Coral Attachment Issues: Outcome 1k. Body Conditions. and 1l. Adaptability - Coral studies and issues!
-# Coral_issues <- data_all %>% 
+# Coral_issues <- data_all2 %>% 
 #   filter(Outcome.subcategory=="1k. Body Conditions"|
 #            Outcome.subcategory=="1l. Adaptability")
 # # View(Coral_issues)
@@ -429,7 +421,7 @@ The below script is commented off, but kept the code for how to easily check the
 # 
 # # 2b. Species Diversity - Undercoded
 # ## For Species Diversity, I will be pulling out SPECIFIC AIDs First (to check those)
-# Diversity_issues <- data_all %>% 
+# Diversity_issues <- data_all2 %>% 
 #   filter(aid=="508"|
 #            aid=="196"|
 #            aid=="193"|
@@ -438,7 +430,7 @@ The below script is commented off, but kept the code for how to easily check the
 # # View(Diversity_issues)
 # # write.csv(Diversity_issues,paste0(tabledir,today.date,"_Diversity_outcomes.csv"))
 # # Now I really need to Search for ALL Species Diversity Papers - GO back and do a complete run-through
-# Diversity_CODED <- data_all %>% 
+# Diversity_CODED <- data_all2 %>% 
 #   filter(Outcome.subcategory=="2b. Species Diversity") %>% 
 #   select(aid) %>%
 #   distinct(aid)
@@ -448,25 +440,25 @@ The below script is commented off, but kept the code for how to easily check the
 # # NEXT, I will want to pull out the Social Outcome papers, and get all of their AIDS
 # 
 # # KNOWLEDGE (6a)!
-# know_out <- data_all %>% 
+# know_out <- data_all2 %>% 
 #   filter(Outcome.subcategory=="6a. Knowledge")
 # # View(know_out)
 # # write.csv(know_out,paste0(tabledir,today.date,"_6a_knowledge.csv"))
 # 
 # # Behavior/Response to new practice (6b)!
-# behave_out <- data_all %>% 
+# behave_out <- data_all2 %>% 
 #   filter(Outcome.subcategory=="6b. Behavior/response to new practices or technologies")
 # # View(behave_out)
 # # write.csv(behave_out,paste0(tabledir,today.date,"_6b_behavior.csv"))
 # 
 # # Culture(5h) - also looking for WTP
-# culture_out <- data_all %>% 
+# culture_out <- data_all2 %>% 
 #   filter(Outcome.subcategory=="5h. Culture")
 # # View(culture_out)
 # # write.csv(culture_out,paste0(tabledir,today.date,"_5h_culture.csv"))
 
 #CANANDA and RUSSIA as COUNTRIES!!
-# polar_countries <- data_all %>%
+# polar_countries <- data_all2 %>%
 #   filter(aid=="375")
 # View(polar_countries)
 # write.csv(polar_countries,paste0(tabledir,today.date,"_polar_countries.csv"))
@@ -572,42 +564,42 @@ if(outc=="Outcome.subcategory"){out_list_full=out_sub_list}
 ```{r eval=T}
 #--- Create maps ----
 # All ecosystems
-my_heat_map(data_all,"Int_cat","Outcome_cat")
+my_heat_map(data_all2,"Int_cat","Outcome_cat")
 io_counts.all <- io_counts
 (heat.map.all <- heat.map +
     labs(x="Conservation Intervention", y="Outcome", title ="All ecosystems"))
 ggsave(paste0(plotdir,today.date,'_int_out_map.png'),width = 8,height = 8)
 
 # All ecosystems - Intervention subcategory X Outcome
-my_heat_map(data_all,"Intervention.subcategory", "Outcome_cat")
+my_heat_map(data_all2,"Intervention.subcategory", "Outcome_cat")
 io_counts.subint <- io_counts
 (heat.map.subint <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="All ecosystems"))
 ggsave(paste0(plotdir,today.date,'_sub.int_out_map.png'),width = 16,height = 8)
 
 # All ecosystems - Intervention  X Outcome subcategory
-my_heat_map(data_all,"Int_cat", "Outcome.subcategory")
+my_heat_map(data_all2,"Int_cat", "Outcome.subcategory")
 io_counts.subint <- io_counts
 (heat.map.subint <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="All ecosystems"))
 ggsave(paste0(plotdir,today.date,'_int_sub.out_map.png'),width = 8,height = 16)
 
 # All ecosystems - Intervention subcategory X Outcome subcategory
-my_heat_map(data_all,"Intervention.subcategory", "Outcome.subcategory")
+my_heat_map(data_all2,"Intervention.subcategory", "Outcome.subcategory")
 io_counts.subintout <- io_counts
 (heat.map.subint <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="All ecosystems"))
 ggsave(paste0(plotdir,today.date,'_sub.int_sub.out_map.png'),width = 16,height = 12)
 
 # Coral
-my_heat_map(filter(data_all,coral==1),"Int_cat","Outcome_cat", high.col = "coral3")
+my_heat_map(filter(data_all2,coral==1),"Int_cat","Outcome_cat", high.col = "coral3")
 io_counts.coral <- io_counts
 (heat.map.coral <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="Coral"))
 
 # Mangrove
-my_heat_map(filter(data_all,mangrove==1),"Int_cat","Outcome_cat", high.col = "orange2")
+my_heat_map(filter(data_all2,mangrove==1),"Int_cat","Outcome_cat", high.col = "orange2")
 io_counts.mangrove <- io_counts
 (heat.map.mangrove <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="Mangrove")) 
 
 # Seagrass
-my_heat_map(filter(data_all,seagrass==1),"Int_cat","Outcome_cat", high.col = "green4")
+my_heat_map(filter(data_all2,seagrass==1),"Int_cat","Outcome_cat", high.col = "green4")
 io_counts.seagrass <- io_counts
 (heat.map.seagrass <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="Seagrass")) 
 
@@ -636,26 +628,15 @@ More about legends:
 Requires rnaturalearth and tidyverse packages (loaded at the top)
 
 ```{r eval=T}
-
-
-
-  #        ## Would Like a better Name / Map / Disputed... come back to
-  #        study.ctry=gsub("Chagos - British Indian Ocean Territory","British Indian Ocean Territory",study.ctry), 
-  #        study.ctry=gsub("France -Mayotte","France",study.ctry), 
-  #        study.ctry=gsub("France -Reunion","France",study.ctry), 
-  #        
-  #        # study.ctry=gsub("Chagos*.","British Indian Ocean Territory",study.ctry), #should change all Chagos
-  #        #    # study.ctry=gsub("United States of America*.","United States of America",study.ctry),
-  #        # study.ctry=gsub("`United States of America (Hawaii)`","United States of America",study.ctry),
-  #        # study.ctry=gsub("`United States of America (Palmyra Atoll near Kiribati but owned by United States of America)`","United States of America",study.ctry),
-  #        # study.ctry=gsub(".*Mayotte*.","France",study.ctry), # TAKES OUT EVERYTHING IN COLUMN, DOESN'T RESPECT ;
-  #         # study.ctry=gsub("`France (Guadeloupe)`","France",study.ctry),
-  #         # study.ctry=gsub("`France (Reunion)`","France",study.ctry),
-  # ## Want to check back on name changes / the way I'm referring to them
-
+# Download country shapes from ne_countries map
+world_countries <- ne_countries(
+  scale = 10,
+  type = "countries",
+  returnclass = "sf")
+# class(world_countries) # this tells me that this is an sf file and df - helpful!
 
 # All Habitats  World Map
-ctry.all <- data_all %>% 
+ctry.all <- data_all2 %>% 
   group_by(aid,study.ctry) %>%
   summarise() %>% 
   filter(!is.na(study.ctry))
@@ -668,13 +649,6 @@ unique(ctry.all$study.ctry)
     # thus isn't working out well... this gets 18 as the number... but it looks like this highest number is 23 (Australia)
 max.ctry <- paste0("ctry",rep(1:max(str_count(ctry.all$study.ctry, ";")+1))) 
 
-# Download country shapes from ne_countries map
-world_countries <- ne_countries(
-  scale = 10,
-  type = "countries",
-  returnclass = "sf")
-# class(world_countries) # this tells me that this is an sf file and df - helpful!
-
 # FIX the data with weird names, once in their own rows! 
 ctry_sum <- ctry.all %>% 
   mutate(study.ctry=gsub("United Republic of Tanzania Mozambique","United Republic of Tanzania; Mozambique",study.ctry,fixed = TRUE), # need ; 
@@ -684,30 +658,34 @@ ctry_sum <- ctry.all %>%
       #renames "study.ctry" to "admin"
       #admin is the sub-country column in world_countries dataframe
   filter(!is.na(admin)) %>% 
-  select(-X) %>% 
-  ### COULD POTENTIALLY MOVE INTO 300s
+  filter(!(admin == "")) %>% 
+    ### COULD POTENTIALLY MOVE INTO 300s?
   mutate(admin=gsub(".*Hawaii*.","United States of America",admin), # parenthesis () names - no other way
          admin=gsub(".*Palmyra Atoll near Kiribati but owned by United States of America*.","United States of America",admin),
+          admin=gsub(".*Tanzania*.","United Republic of Tanzania",admin),
          admin=gsub(".*Guadeloupe*.","France",admin),
          admin=gsub(".*Mayotte*.","France",admin),
          admin=gsub(".*Reunion*.;","France",admin)
-           # admin=gsub(".*Chagos*.","British Indian Ocean Territory",admin) might be covered by the earlier one!
-           # admin=gsub("United Republic of Tanzania Comoros","United Republic of Tanzania; Comoros",admin),
-                # should be fixed in the 300s, just incase
   ) %>%
   filter(!(aid == '705')) %>% # need this here to remove aid 705
+  ungroup()
+
+ctry_sum.25 <- ctry_sum %>%
+  select(-X) %>%
   distinct() %>% # no duplicate aids (e.g. France territorie = lumped into France
-  group_by(admin) %>% 
+  group_by(admin) 
+
+ctry_sum.5 <- ctry_sum.25 %>%
   count() %>%     #count creates an "n" column
   mutate(pct=round(n/num.studies*100)) %>%   #this creates the "pct" column
   arrange(desc(n))
 
 # Countries that need to be fixed
-ctry_sum$admin[!ctry_sum$admin%in%world_countries$admin]
+ctry_sum.5$admin[!ctry_sum.5$admin%in%world_countries$admin]
   #Note: the NA country is AID 705 Campbell et al. - I emailed the corresponding author, they did not know the countries...
 
 # join to full world_countries country data with OEGM data in a df
-ctry_sum1 <- ctry_sum %>%  # ctry_sum is the data frame and world_countries is the sf 
+ctry_sum1 <- ctry_sum.5 %>%  # ctry_sum is the data frame and world_countries is the sf 
   full_join(world_countries,by="admin") %>%  # full_join keeps all ROWS (even the n=0 rows!)
   mutate(n=na.replace(n,0)) %>% 
   mutate(pct=na.replace(pct,0))
@@ -761,11 +739,11 @@ ggsave(paste0(plotdir,today.date,'_study_country_map.png'),width = 9,height = 4.
 
 # World Map - Coral
 
-###NOTE: WILL NEED TO BE ADJUSTED!!! I made updates to the world map since :)
+###NOTE: this is MESSY - should try to make world map into a FUNCTIOn like gap map if I want habitat specific maps!
 
 ```{r eval=T}
 # All Habitats  World Map
-ctry.coral <- data_all %>% 
+ctry.coral <- data_all2 %>% 
   filter(coral==1) %>% 
   group_by(aid,study.ctry) %>%
   summarise() %>% 
@@ -776,24 +754,44 @@ head(ctry.coral)
     # thus isn't working out well... this gets 18 as the number... but it looks like this highest number is 23 (Australia)
 max.ctry.coral <- paste0("ctry",rep(1:max(str_count(ctry.all$study.ctry, ";")+1))) 
 
-# Join the Dataframe to rnaturalearth ne_countries (world_countries) 
-ctry_sum_coral <- ctry.all %>% 
-  separate(study.ctry,max.ctry.coral, sep="; ",fill="right") %>% # fill=right fills blanks with NAs
-  gather("X","admin", max.ctry.coral) %>%   #gather is a tidyr function that reshapes columns into key pairs 
+# FIX the data with weird names, once in their own rows! 
+ctry_sum_coral <- ctry.coral %>% 
+  mutate(study.ctry=gsub("United Republic of Tanzania Mozambique","United Republic of Tanzania; Mozambique",study.ctry,fixed = TRUE), # need ; 
+         study.ctry=gsub("United Republic of Tanzania Comoros","United Republic of Tanzania; Comoros",study.ctry,fixed = TRUE)) %>% 
+  separate(study.ctry,max.ctry, sep="; ",fill="right") %>% # fill=right fills blanks with NAs
+  gather("X","admin", max.ctry) %>%   #gather is a tidyr function that reshapes columns into key pairs 
       #renames "study.ctry" to "admin"
-      #What does this "X" mean?! I really don't know, but it works
       #admin is the sub-country column in world_countries dataframe
   filter(!is.na(admin)) %>% 
+  filter(!(admin == "")) %>% 
   select(-X) %>% 
-  group_by(admin) %>% 
+  ### COULD POTENTIALLY MOVE INTO 300s
+  mutate(admin=gsub(".*Hawaii*.","United States of America",admin), # parenthesis () names - no other way
+         admin=gsub(".*Palmyra Atoll near Kiribati but owned by United States of America*.","United States of America",admin),
+          admin=gsub(".*Tanzania*.","United Republic of Tanzania",admin),
+         admin=gsub(".*Guadeloupe*.","France",admin),
+         admin=gsub(".*Mayotte*.","France",admin),
+         admin=gsub(".*Reunion*.;","France",admin)
+  ) %>%
+  filter(!(aid == '705')) %>% # need this here to remove aid 705
+  distinct() %>% # no duplicate aids (e.g. France territories = lumped into France
+  group_by(admin) 
+
+ctry_sum_coral.5 <- ctry_sum_coral %>%
   count() %>%     #count creates an "n" column
-  mutate(pct=n/num.studies) %>%   #this creates the "pct" column
+  mutate(pct=round(n/num.studies*100)) %>%   #this creates the "pct" column
   arrange(desc(n))
 
+# Countries that need to be fixed
+ctry_sum_coral.5$admin[!ctry_sum_coral.5$admin%in%world_countries$admin]
+
+
 # join to full world_countries country data with OEGM data in a df
-ctry_sum_coral1 <- ctry_sum_coral %>%  # ctry_sum is the data frame and world_countries is the sf 
+ctry_sum1 <- ctry_sum.5 %>%  # ctry_sum is the data frame and world_countries is the sf 
   full_join(world_countries,by="admin") %>%  # full_join keeps all ROWS (even the n=0 rows!)
-  mutate(n=na.replace(n,0)) 
+  mutate(n=na.replace(n,0)) %>% 
+  mutate(pct=na.replace(pct,0))
+ctry_sum1$admin[!ctry_sum1$admin%in%world_countries$admin] # any missing?
 
 # join cntry_sum1 with the regions and continents in the old "country" dataset (again, full_join)
 ctry_sum_coral2 <- country %>%   
@@ -862,9 +860,9 @@ https://observablehq.com/@d3/treemap-stratify?intent=fork
 #---- Treemapping ----
 
 # - Interventions
-unique(data_all$Intervention.subcategory)
+unique(data_all2$Intervention.subcategory)
 
-intervention2 <-data_all %>% 
+intervention2 <-data_all2 %>% 
   filter(!is.na(Intervention.subcategory)) %>% 
   select(aid,Int_cat,Intervention.subcategory) %>% 
   group_by(Int_cat) %>% 
@@ -893,9 +891,9 @@ treemap(intervention2,index=c("int.cat","Intervention.subcategory"),
 dev.off()
 
 # - Outcomes
-unique(data_all$Outcome.subcategory)
+unique(data_all2$Outcome.subcategory)
 
-outcomes2 <-data_all %>% 
+outcomes2 <-data_all2 %>% 
   filter(!is.na(Outcome.subcategory)) %>% 
   select(aid,Outcome_cat,Outcome.subcategory) %>% 
   group_by(Outcome_cat) %>% 
@@ -960,9 +958,9 @@ dev.off()
 ### Getting the data sorted
 #NOTE: REQUIRES treemapify package, ggforce package, AND colorspace package - NEED TO RE-ADD TO THE TOP OF THE SCRIPT
   
-unique(data_all$Outcome.subcategory)
+unique(data_all2$Outcome.subcategory)
 
-outcomes2 <-data_all %>% 
+outcomes2 <-data_all2 %>% 
   filter(!is.na(Outcome.subcategory)) %>% 
   select(aid,Outcome_cat,Outcome.subcategory) %>% 
   group_by(Outcome_cat) %>% 
@@ -1120,7 +1118,7 @@ I chose:
 
 ```{r eval=T}
 #---- Studies over time ----
-All_time_gps <- data_all %>%
+All_time_gps <- data_all2 %>%
   group_by(Year.of.publication) %>% 
   summarise(pub.per.yr= n_distinct(aid)) %>% 
   ungroup() %>% 
@@ -1134,7 +1132,7 @@ All_time_gps <- data_all %>%
 tail(All_time_gps)
 
 # Interventions
-Int_time_gps <-  data_all %>%
+Int_time_gps <-  data_all2 %>%
   group_by(Year.of.publication,Int_cat) %>% 
   summarise(int_per_yr= n_distinct(aid)) %>% 
   spread(Int_cat,value = int_per_yr) %>% 
@@ -1256,7 +1254,7 @@ plot_grid(pInt_time_gps)
           # "#848482"
 
 # Outcomes
-out_time_gps <-  data_all %>%
+out_time_gps <-  data_all2 %>%
   group_by(Year.of.publication,Outcome_cat) %>% 
   summarise(out_per_yr= n_distinct(aid)) %>% 
   spread(Outcome_cat,value = out_per_yr) %>% 
@@ -1343,10 +1341,10 @@ This section outputs a lot of the different stats used in the paper. Right now, 
 1. Basic Stats (Paper #s and %s)
 ```{r eval=T}
 # --- Percentages --- #
-# test <-  data_all %>%
+# test <-  data_all2 %>%
 #   select(aid, Int_cat, Intervention.subcategory, Outcome_cat,Outcome.subcategory)
 # List of data headings
-# head(data_all,0)
+# head(data_all2,0)
 
 # Total papers in Full Text Screening
 length(unique(all.data$Article.ID))
@@ -1497,18 +1495,9 @@ Geographical scale of intervention is used
 ##use data from world map I created!
 
 # Join the Dataframe to rnaturalearth ne_countries (world_countries) 
-region <- ctry.all %>% 
-  separate(study.ctry,max.ctry, sep="; ",fill="right") %>% # fill=right fills blanks with NAs
-  gather("X","admin", max.ctry) %>%   #gather is a tidyr function that reshapes columns into key pairs 
-      #renames "study.ctry" to "admin"
-      #What does this "X" mean?! I really don't know, but it works
-      #admin is the sub-country column in world_countries dataframe
-  filter(!is.na(admin)) %>% #weirdly doesn't remove aid 705
-  select(-X) %>% 
-  group_by(admin) %>%
+region <- ctry_sum %>% 
   full_join(world_countries,by="admin") %>%  # full_join keeps all ROWS (even the n=0 rows!) - need country CODES
   filter(!is.na(aid)) %>%
-  filter(!(aid == '705')) %>% # need this here to remove aid 705 - doesn't get removed with above
   select(aid, admin, adm0_a3, sovereignt, type, economy)
   
 # join region with the regions and continents in the old "country" dataset (again, full_join)
@@ -1532,13 +1521,8 @@ region_dat <- region2 %>%
   arrange(desc(n)) %>% 
   print()
 
-# HOW MANY STUDIES have more than one coutry Join the Dataframe to rnaturalearth ne_countries (world_countries) 
-num_countries <- ctry.all %>% 
-  separate(study.ctry,max.ctry, sep="; ",fill="right") %>% # fill=right fills blanks with NAs
-  gather("X","admin", max.ctry) %>%   #gather is a tidyr function that reshapes columns into key pairs 
-      #renames "study.ctry" to "admin"
-  filter(!is.na(admin)) %>% 
-  ungroup() %>% 
+# HOW MANY STUDIES have more than one country Join the Dataframe to rnaturalearth ne_countries (world_countries) 
+num_countries <- ctry_sum %>% 
   select(-aid) %>% 
   group_by(X) %>% 
   count() %>%     #count creates an "n" column
@@ -1551,34 +1535,34 @@ num_countries <- ctry.all %>%
 
 ```{r eval=T}
 # Coral
-data_all %>%
+data_all2 %>%
   filter(coral==1) %>% 
   summarise(habitat="Coral", num=n_distinct(aid), pct=num/num.studies*100)
 
 # Seagrass
-data_all %>%
+data_all2 %>%
   filter (seagrass==1) %>% 
   summarise(habitat="Seagrass", num=n_distinct(aid), pct=num/num.studies*100) 
 
 # Mangrove
-data_all %>%
+data_all2 %>%
   filter (mangrove==1) %>% 
   summarise(habitat="Mangrove", num=n_distinct(aid), pct=num/num.studies*100) 
 
 # Note: these DO contain overlap, ie. some studies have multiple habitats:
 
 # How many studies took place in only one of three habitats?
-data_all %>% 
+data_all2 %>% 
   filter(coral + seagrass + mangrove == 1) %>% 
   summarise(habitat="Only One",num=n_distinct(aid), pct=num/num.studies*100)
 
 # How many studies took place in multiple habitats? (2 or more)
-data_all %>% 
+data_all2 %>% 
   filter(coral + seagrass + mangrove >= 2) %>% 
   summarise(habitat="Multiple: 2 or more!", num=n_distinct(aid), pct=num/num.studies*100)
 
 # How many studies took place in all 3 habitats?
-data_all %>% 
+data_all2 %>% 
   filter(coral + seagrass + mangrove == 3) %>% 
   summarise(habitat="All 3 Habitats!", num=n_distinct(aid), pct=num/num.studies*100)
   
@@ -1589,23 +1573,23 @@ data_all %>%
 ```{r eval=T}
 
 # Primary vs Secondary Data (Mutually Exclusive)
-data_all %>%
+data_all2 %>%
   group_by(Primary.or.secondary.data.) %>% 
   summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
   arrange (desc(num))  # this arranges them in descending order 
 
 # Type of Data (Mutually Exclusive)
-data_all %>%
+data_all2 %>%
   group_by(What.type.of.data.does.this.study.consider.) %>% 
   summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
   arrange (desc(num))  # this arranges them in descending order 
 
 # Comparator Type
 ## get no. articles per comparator
-max.comp <- paste0("comp",rep(1:max(str_count(data_all$Comparator.type, ";")+1))) 
+max.comp <- paste0("comp",rep(1:max(str_count(data_all2$Comparator.type, ";")+1))) 
 
 ## now, get comparator types
-comparator.types <- data_all %>% 
+comparator.types <- data_all2 %>% 
   group_by(aid,Comparator.type) %>%
   summarise() %>% 
   filter(!is.na(Comparator.type)) %>% 
@@ -1621,22 +1605,22 @@ comparator.types <- data_all %>%
   print()
 
 ## Find and look at the 5 "None" comparator studies
-unique(data_all %>% 
+unique(data_all2 %>% 
   filter(Comparator.type== "None") %>% 
   select(aid))
 
 # Does the Study population considers human groups? (mutually exclusive)
-data_all %>%
+data_all2 %>%
   group_by(Does.the.study.explicitly.examine.impacts.on.different.human.groups.) %>% 
   summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
   arrange (desc(num))  # this arranges them in descending order 
 
 # If so, what types of human groups? - NEED TO get all groups!# Comparator Type
 ## get no. articles per
-max.groups <- paste0("comp",rep(1:max(str_count(data_all$If.so..what.types.of.different.groups., ";")+1))) 
+max.groups <- paste0("comp",rep(1:max(str_count(data_all2$If.so..what.types.of.different.groups., ";")+1))) 
 
 ## now, get human groups
-human.groups <- data_all %>% 
+human.groups <- data_all2 %>% 
   group_by(aid,If.so..what.types.of.different.groups.) %>%
   summarise() %>% 
   filter(!is.na(If.so..what.types.of.different.groups.)) %>% 
@@ -1652,7 +1636,7 @@ human.groups <- data_all %>%
   print()
 
 # Scale of Study - as related to the INTERVENTION (mutually exclusive)
-data_all %>%
+data_all2 %>%
   group_by(Scale.of.study) %>% 
   summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
   arrange (desc(num))  # this arranges them in descending order 
@@ -1662,40 +1646,40 @@ data_all %>%
 
 ```{r eval=T}
 # Looking at Fisheries Papers (as deemed by screeners) - mutually exclusive
-Fisheries_Papers <- data_all %>%
+Fisheries_Papers <- data_all2 %>%
   filter(Fisheries.Paper. == "Yes")
   # View() # spot check
   # write.csv(Fisheries_Papers,paste0(tabledir,today.date,"_Fisheries_Papers.csv"))
 
 ## How many studies are Fisheries Papers?
-n_distinct(data_all$aid[data_all$Fisheries.Paper. == "Yes"])
+n_distinct(data_all2$aid[data_all2$Fisheries.Paper. == "Yes"])
 ```
 
 4. I: Interventions
 
 ```{r eval=T}
 # I: Interventions
-data_all %>%
+data_all2 %>%
   group_by(Int_cat) %>% 
   summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
   arrange (desc(num))  # arranges them in descending order 
 
   # Highest: % - top 3 (tie for second highest)
-data_all %>%  
+data_all2 %>%  
   filter(Int_cat== "1. Land/Water Management"| 
            Int_cat== "2. Species Management"| 
            Int_cat== "7. Legal & Policy Frameworks") %>%  
   summarise(intervention="Highest 3", num=n_distinct(aid), pct=num/num.studies*100)
 
   # Lowest: % - bottom 3 (tie for lowest)
-data_all %>%  
+data_all2 %>%  
   filter(Int_cat== "3. Awareness Raising "| 
            Int_cat== "4. Enforcement & Protection"| 
            Int_cat== "8. Education & Training") %>%  
   summarise(intervention="Lowest 3", num=n_distinct(aid), pct=num/num.studies*100)
 
   # Subcategories (want % of each):
-data_all %>%
+data_all2 %>%
   group_by(Intervention.subcategory) %>% 
   summarise(num=n_distinct(aid), pct=num/num.studies*100)  %>%
   arrange (desc(num))  # arranges them in descending order 
@@ -1707,7 +1691,7 @@ data_all %>%
 In the paper, I look at rate of integrated (multiple) intervention studies over time... I just did this by hand based on the multi_int_time_gps table created in this script
 
 ```{r eval=T}
-(multi.int.studies <- data_all %>% 
+(multi.int.studies <- data_all2 %>% 
     #   filter(Int_cat!="8. Research & Monitoring") %>% 
     group_by(Year.of.publication,aid) %>% 
     summarise(n.int=n_distinct(Int_cat)) %>% 
@@ -1715,11 +1699,11 @@ In the paper, I look at rate of integrated (multiple) intervention studies over 
 )
 
 #Distinct PERCENT of Multiple Intervention Studies!
-n_distinct(multi.int.studies$aid)/n_distinct(data_all$aid)*100
+n_distinct(multi.int.studies$aid)/n_distinct(data_all2$aid)*100
 
 multi.int.aid <- multi.int.studies$aid[multi.int.studies$n.int>1]
 
-Multi_int_time_gps <- data_all %>%
+Multi_int_time_gps <- data_all2 %>%
   filter(aid%in%multi.int.aid) %>% 
   group_by(Year.of.publication) %>% 
   summarise(pub.per.yr= n_distinct(aid)) %>% 
@@ -1772,32 +1756,32 @@ tail(io.counts.pct.sub)
 
 ```{r eval=T}
 
-data_all %>%
+data_all2 %>%
   group_by(Outcome_cat) %>% 
   summarise(num=n_distinct(aid), pct=num/num.studies*100)%>% 
   arrange (desc(num))  # this arranges them in descending order 
 
 # % Pop/Species and Ecological Community combined (no overlaps):
-data_all %>%  
+data_all2 %>%  
   filter(Outcome_cat== "1. Population/Species"| 
          Outcome_cat==  "2. Ecological Community") %>%  
   summarise(num=n_distinct(aid), pct=num/num.studies*100)
 
   # % in social: human well-being, knowledge and behavior, and governance
-data_all %>%  
+data_all2 %>%  
   filter(Outcome_cat== "5. Human Wellbeing"| 
           Outcome_cat== "6. Knowledge and Behavior"| 
           Outcome_cat== "7. Governance") %>%  
   summarise(num=n_distinct(aid), pct=num/num.studies*100)
 
   # % in ecosystem function and ecosystem service
-data_all %>%  
+data_all2 %>%  
   filter(Outcome_cat== "3. Ecosystem Function"| 
           Outcome_cat==  "4. Ecosystem Services") %>%  
   summarise(num=n_distinct(aid), pct=num/num.studies*100)
 
   # Subcategories (want % of each):
-data_all %>% 
+data_all2 %>% 
   group_by(Outcome.subcategory) %>% 
   summarise(num=n_distinct(aid), pct=num/num.studies*100) %>%
   arrange (desc(num))  # this arranges them in descending order 
@@ -1808,11 +1792,11 @@ data_all %>%
 
 # Add eco vs soc outcome counts
 ```{r eval=T}
-unique(data_all$Outcome_cat)
+unique(data_all2$Outcome_cat)
 eco.outcomes <- c("2. Ecological Community", "1. Population/Species", "3. Ecosystem Function")
 soc.outcomes <- c("6. Knowledge and Behavior", "5. Human Wellbeing", "7. Governance")
         
-data_all <- data_all %>%
+data_all2 <- data_all2 %>%
   # select(aid, Outcome_cat) %>%
   mutate(eco.out=ifelse(Outcome_cat%in%eco.outcomes,1,0),
          soc.out=ifelse(Outcome_cat%in%soc.outcomes,1,0),
@@ -1825,16 +1809,16 @@ data_all <- data_all %>%
             es.eco.soc.aid=ifelse(eco.aid+es.aid>1 | soc.aid+es.aid>1,1,0),
             interdisc.aid=ifelse(eco.soc.aid==1 | es.eco.soc.aid==1,1,0)) 
 
-# View(select(data_all,Outcome_cat,eco.aid:interdisc.aid)) # spot check
+# View(select(data_all2,Outcome_cat,eco.aid:interdisc.aid)) # spot check
 
 # Which studies have both Ecological and Social outcomes? (No ecosystem services)
-n_distinct(data_all$aid[data_all$eco.soc.aid == 1])
+n_distinct(data_all2$aid[data_all2$eco.soc.aid == 1])
 
 # Which studies have both Ecological and Social outcomes? (includes ecosystem services)
-n_distinct(data_all$aid[data_all$interdisc.aid == 1])
+n_distinct(data_all2$aid[data_all2$interdisc.aid == 1])
 
 # Eco_Soc_ES_Out and export csv
-Eco_Soc_ES_Out <- data_all %>%
+Eco_Soc_ES_Out <- data_all2 %>%
   filter(interdisc.aid == 1)
 # View(select(Eco_Soc_ES_Out,Outcome_cat,eco.aid:interdisc.aid)) # spot check
 write.csv(Eco_Soc_ES_Out,paste0(tabledir,today.date,"_Eco_and_Soc_and_ES_Outcomes.csv"))
@@ -1843,7 +1827,7 @@ write.csv(Eco_Soc_ES_Out,paste0(tabledir,today.date,"_Eco_and_Soc_and_ES_Outcome
 ## Interdisciplinary outcome comparison heat maps
 ```{r eval=T}
 
-interd.dat <- data_all %>% 
+interd.dat <- data_all2 %>% 
   mutate(typ=case_when(
   soc.aid == 1 & interdisc.aid == 0 ~ "social only",
   eco.aid == 1 & interdisc.aid == 0 ~ "eco only",
@@ -1879,7 +1863,7 @@ ggplot(interd.int, aes(fill=typ, y=n, x=Int_cat)) +
     coord_flip(),
  nrow=2)
 
-Eco_Soc_ES_Out <- data_all %>%
+Eco_Soc_ES_Out <- data_all2 %>%
   filter(interdisc.aid == 1)
 
 # All ecosystems all  vs interdisc. studies
@@ -1891,17 +1875,17 @@ plot_grid(heat.map.all + labs(title= "all studies"),
 ggsave(paste0(plotdir,today.date,'_interdisc_int_out_map.png'),width = 16,height = 8)
 
 # Coral
-my_heat_map(filter(data_all,coral==1),"Int_cat","Outcome_cat", high.col = "coral3")
+my_heat_map(filter(data_all2,coral==1),"Int_cat","Outcome_cat", high.col = "coral3")
 io_counts.coral <- io_counts
 (heat.map.coral <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="Coral"))
 
 # Mangrove
-my_heat_map(filter(data_all,mangrove==1),"Int_cat","Outcome_cat", high.col = "orange2")
+my_heat_map(filter(data_all2,mangrove==1),"Int_cat","Outcome_cat", high.col = "orange2")
 io_counts.mangrove <- io_counts
 (heat.map.mangrove <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="Mangrove")) 
 
 # Seagrass
-my_heat_map(filter(data_all,seagrass==1),"Int_cat","Outcome_cat", high.col = "green4")
+my_heat_map(filter(data_all2,seagrass==1),"Int_cat","Outcome_cat", high.col = "green4")
 io_counts.seagrass <- io_counts
 (heat.map.seagrass <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="Seagrass")) 
 
@@ -1942,7 +1926,7 @@ ggsave(paste0(plotdir,today.date,'_interdisc_habitat_int_out_map.png'),width = 1
 ```{r eval=T}
 
 #  Interventions
-int.x.count <- data_all %>% 
+int.x.count <- data_all2 %>% 
   select(aid, Int_cat) %>% 
   filter(Int_cat!="" & !is.na(Int_cat)) %>%  # just in case
   arrange(aid,Int_cat) %>% 
@@ -1986,7 +1970,7 @@ ggplot(data=int.x.count.full, aes(x=Int2,y=reorder(Int1, desc(Int1)))) +
   
   
 # Sub-interventions
-sub.int.x.count <- data_all %>% 
+sub.int.x.count <- data_all2 %>% 
     select(aid, Intervention.subcategory) %>% 
     filter(Intervention.subcategory!="" & !is.na(Intervention.subcategory)) %>%  # just in case
     arrange(aid,Intervention.subcategory) %>% 
@@ -2030,7 +2014,7 @@ ggsave(paste0(plotdir,today.date,'_multiple_sub_int_map.png'),width = 12,height 
   
   
 # Outcomes
-out.x.count <- data_all %>% 
+out.x.count <- data_all2 %>% 
     select(aid, Outcome_cat) %>% 
     filter(Outcome_cat!="" & !is.na(Outcome_cat)) %>%  # just in case
     arrange(aid,Outcome_cat) %>% 
@@ -2073,7 +2057,7 @@ out.x.count <- data_all %>%
 ggsave(paste0(plotdir,today.date,'_multiple_out_map.png'),width = 8,height = 8)
   
   # sub-outcomes
-sub.out.x.count <- data_all %>% 
+sub.out.x.count <- data_all2 %>% 
     select(aid, Outcome.subcategory) %>% 
     filter(Outcome.subcategory!="" & !is.na(Outcome.subcategory)) %>%  # just in case
     arrange(aid,Outcome.subcategory) %>% 
@@ -2141,7 +2125,7 @@ ggsave(paste0(plotdir,today.date,'interdisc_multiple_out_map.png'),width = 11,he
 
 # Multi-intervention interdiscpl-outcomes
 # id multi-intervention studies
-mi.aid <- data_all %>%
+mi.aid <- data_all2 %>%
   group_by(aid,Int_cat) %>% 
   summarise %>% 
   group_by(aid) %>% 
@@ -2149,7 +2133,7 @@ mi.aid <- data_all %>%
   distinct(aid) %>% 
   pull(aid)
 
-mi.sub.out.x.count <- data_all %>% 
+mi.sub.out.x.count <- data_all2 %>% 
   filter(aid%in%mi.aid) %>% 
     select(aid, Outcome.subcategory) %>% 
     filter(Outcome.subcategory!="" & !is.na(Outcome.subcategory)) %>%  # just in case
@@ -2196,7 +2180,7 @@ ggplot(data=mi.sub.out.x.count.interdisc, aes(x=Out2,y=reorder(Out1, desc(Out1))
 ggsave(paste0(plotdir,today.date,'_multi-intervention_multiple_out_map.png'),width = 18,height = 18)
 
 #--- Chord diagram
-chord.dat <- data_all %>% 
+chord.dat <- data_all2 %>% 
   filter(interdisc.aid==1) %>% 
   group_by(Int_cat,Outcome_cat) %>% 
   summarise(value=n_distinct(aid))
@@ -2249,7 +2233,7 @@ IN PROGRESS
     # intervention and outcome for each year. Should be able to do this!
 
 # make barplot
-test.dat <- data_all %>%
+test.dat <- data_all2 %>%
             group_by(Outcome_cat) %>% 
             summarise(num=n_distinct(aid), pct=num/num.studies)
 ggplot(test.dates(Outcome_cat,num)) +
