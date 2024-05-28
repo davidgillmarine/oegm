@@ -669,18 +669,20 @@ ctry_sum <- ctry.all %>%
          admin=gsub(".*Mayotte*.","France",admin),
          admin=gsub(".*Reunion*.;","France",admin)
   ) %>%
-  filter(!(aid == '705')) %>% # need this here to remove aid 705
+  filter(!(aid == '705')) %>% # need this here to remove aid 705 - paper with no real countries
   ungroup()
 
 ctry_sum.25 <- ctry_sum %>%
   select(-X) %>%
-  distinct() %>% # no duplicate aids (e.g. France territorie = lumped into France
+  distinct() %>% # no duplicate aids (e.g. France territories = lumped into France) - this is HUGELY IMPORTANT here!!!
   group_by(admin) 
+    #Quick check = AID 10, there were 2 for France - now should only be 1 :)
 
 ctry_sum.5 <- ctry_sum.25 %>%
   count() %>%     #count creates an "n" column
   mutate(pct=round(n/num.studies*100)) %>%   #this creates the "pct" column
   arrange(desc(n))
+    #Quick check -> France should have n=3. If n=5, not de-duping correctly in ctry_sum.25
 
 # Countries that need to be fixed
 ctry_sum.5$admin[!ctry_sum.5$admin%in%world_countries$admin]
@@ -1409,12 +1411,15 @@ Geographical scale of intervention is used
 # P: Geographies (aka intervention location)
 ##use data from world map I created!
 
+#GET COUNTRY DATA
+print(ctry_sum.5, n=90)
+
+# GET REGION AND SUBREGION DATA
 # Join the Dataframe to rnaturalearth ne_countries (world_countries) 
 region <- ctry_sum %>% 
   full_join(world_countries,by="admin") %>%  # full_join keeps all ROWS (even the n=0 rows!) - need country CODES
   filter(!is.na(aid)) %>%
   select(aid, admin, adm0_a3, sovereignt, type, economy)
-  
 # join region with the regions and continents in the old "country" dataset (again, full_join)
 region2 <- region %>% 
   left_join(country, by = c("adm0_a3" = "code")) %>% #left join only joins countries/territories represented in region dataset!
@@ -1424,19 +1429,27 @@ region2 <- region %>%
 
 # sort Subregions of represented papers!
 subregion_dat <- region2 %>% 
-  count(Subregion) %>%     #count creates an "n" column
+  select(aid,Region,Subregion) %>% #didn't have this before, this is why my stats were OFF
+  group_by(aid) %>%     #didn't have this before, this is why my stats were OFF
+  distinct(Subregion) %>%  #didn't have this before, this is why my stats were OFF
+  ungroup() %>%
+  count(Subregion)%>%     #count creates an "n" column
   mutate(subregion.pct=n/num.studies*100) %>%   #this creates the "pct" column
   arrange(desc(n)) %>% 
   print()
 
 # sort Regions of represented papers!
 region_dat <- region2 %>% 
-  count(Region) %>%     #count creates an "n" column
-  mutate(region.pct=n/num.studies*100) %>%   #this creates the "pct" column
+  select(aid,Region,Subregion) %>% #didn't have this before, this is why my stats were OFF
+  group_by(aid) %>%     #didn't have this before, this is why my stats were OFF
+  distinct(Region) %>%  #didn't have this before, this is why my stats were OFF
+  ungroup() %>%
+  count(Region)%>%     #count creates an "n" column
+  mutate(Region.pct=n/num.studies*100) %>%   #this creates the "pct" column
   arrange(desc(n)) %>% 
   print()
 
-# HOW MANY STUDIES have more than one country Join the Dataframe to rnaturalearth ne_countries (world_countries) 
+# HOW MANY STUDIES have more than one country/territory
 num_countries <- ctry_sum %>% 
   select(-aid) %>% 
   group_by(X) %>% 
@@ -1444,6 +1457,10 @@ num_countries <- ctry_sum %>%
   mutate(pct=n/num.studies*100) %>%   #this creates the "pct" column
   arrange(desc(n)) %>% 
   print()
+    # NOTE HERE: DISPLAYING HIGHER stats (e.g. 7+ countries) may not be right, bc of double-counting (e.g. France), so keep it to lower (e.g. 3+)
+#WHICH studies do NOT have countries and territories listed? Should be 2 (bc ^, pct of ctry1 = 98.8, n=169 (not 171))
+  #394 is one of them... it actually has 6 studies, but in numbers 2-7 bc spot 1 was a ;
+  # other is just aid 705, countries were blank (authors did not know)
 ```
 
 3. P: Habitats
@@ -1656,7 +1673,7 @@ Multi_int_data <- data_all2 %>%
   print()
 
 # WHICH SUB - Interventions were used the most in Multi-int studies?!
-Multi_int_data <- data_all2 %>%
+Multi_subint_data <- data_all2 %>%
   filter(aid%in%multi.int.aid) %>% 
   distinct(Intervention.subcategory) %>%
   ungroup() %>%
