@@ -1606,15 +1606,16 @@ data_all2 %>%
 In the paper, I look at rate of integrated (multiple) intervention studies over time... I just did this by hand based on the multi_int_time_gps table created in this script
 
 ```{r eval=T}
-(multi.int.studies <- data_all2 %>% 
-    #   filter(Int_cat!="8. Research & Monitoring") %>% 
-    group_by(Year.of.publication,aid) %>% 
+#get multi-intervention studies
+multi.int.studies <- data_all2 %>% 
+    group_by(aid) %>% 
     summarise(n.int=n_distinct(Int_cat)) %>% 
    filter(n.int>1)
-)
 
+#Distinct NUMBER of Multiple Intervention Studies!
+n_distinct(multi.int.studies$aid)
 #Distinct PERCENT of Multiple Intervention Studies!
-n_distinct(multi.int.studies$aid)/n_distinct(data_all2$aid)*100
+n_distinct(multi.int.studies$aid)/num.studies*100
 
 multi.int.aid <- multi.int.studies$aid[multi.int.studies$n.int>1]
 
@@ -1642,6 +1643,29 @@ Multi_int_time_gps <- data_all2 %>%
 ##2010-2018 PERCENT
 (max(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication<2019])-max(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication<2010]))/9/num.studies*100
 
+
+# WHICH Interventions were used the most in Multi-int studies?!
+Multi_int_data <- data_all2 %>%
+  filter(aid%in%multi.int.aid) %>% 
+  distinct(Int_cat) %>%
+  ungroup() %>%
+  count(Int_cat)%>%     #count creates an "n" column
+    # mutate(pct=n/num.studies*100) %>%   #"pct" column - do we want it out of TOTAL studies? Not right now
+  mutate(pct.multi_int=n/n_distinct(multi.int.studies$aid)*100) %>%   #"pct" column - out of MULTI-INT Studies - 62 studies!
+  arrange(desc(n)) %>% 
+  print()
+
+# WHICH SUB - Interventions were used the most in Multi-int studies?!
+Multi_int_data <- data_all2 %>%
+  filter(aid%in%multi.int.aid) %>% 
+  distinct(Intervention.subcategory) %>%
+  ungroup() %>%
+  count(Intervention.subcategory)%>%     #count creates an "n" column
+    # mutate(pct=n/num.studies*100) %>%   #"pct" column - do we want it out of TOTAL studies? Not right now
+  mutate(pct.multi_int=n/n_distinct(multi.int.studies$aid)*100) %>%   #"pct" column - out of MULTI-INT Studies - 62 studies!
+  arrange(desc(n)) %>% 
+  print()
+  
 ```
 
 # Intervention and Outcome Pairs
