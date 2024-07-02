@@ -616,128 +616,35 @@ plot_grid(heat.map.coral + scale_fill_gradient2(low="#f7fbff",high= "coral3",nam
           labels=letters[1:3], ncol = 3, nrow = 1, hjust=-1, align = "hv")
 ggsave(paste0(plotdir,today.date,'_habitat_int_out_map.png'),width = 17,height = 8)
 
-# NOTE: maps might not show up below, but check folders - they should still come out fine
-```
 
 # Create STONY BROOK Heatmaps - Coral Reefs!!!
-```{r eval=T}
-#--- Create CORAL maps ----
-#FIRST, Update Function for PERCENTAGES!!!
-#--- Heat map function ----
-coral_heat_map <- function (.data,intc, outc, high.col="coral3") {
-  
-# don't know why... but this works
-  .data$intc<- as.vector(.data %>%  pull(intc))
-  .data$outc<- as.vector(.data %>%  pull(outc))
-
-# Set full intervention list type  
-if(intc=="Int_cat"){int_list_full=int_list}
-if(intc=="Intervention.subcategory"){int_list_full=int_sub_list}
-if(outc=="Outcome_cat"){out_list_full=out_list}
-if(outc=="Outcome.subcategory"){out_list_full=out_sub_list}
-
-# Get unique article ID, int. and out. list (and sum of articles)
-  typology_dat <- .data %>% 
-    select(aid, intc, outc) %>% 
-    filter(intc!="" & !is.na(intc)) %>%  # just in case
-    distinct() %>% 
-    full_join(int_list_full,by =c("intc"="int_val")) %>% 
-    full_join(out_list_full,by =c("outc"="out_val")) %>% 
-    group_by(intc) %>% 
-    mutate(int_val=paste0(intc)) %>% 
-      # mutate(int_val=paste0(intc," (",n_distinct(aid,na.rm = T),")")) %>%  #adds article counts to int names
-    group_by(outc) %>% 
-    mutate(out_val=paste0(outc)) %>% 
-      # mutate(out_val=paste0(outc," (",n_distinct(aid,na.rm = T),")")) %>% #adds article counts to out names
-    ungroup() %>% 
-    select(-c(intc,outc)) 
-  
-  # Get expanded intervention-outcome list for this dataset
-  int_list <- typology_dat %>%
-    ungroup() %>%
-    filter(int_val!="NA (0)") %>% 
-    distinct(int_val) %>%
-    arrange(int_val)
-  out_list <- typology_dat %>%
-    ungroup() %>%
-    distinct(out_val) %>%
-    filter(out_val!="NA (0)") %>% 
-    arrange(out_val)
-  io_list <- expand.grid(int_list$int_val,out_list$out_val) %>% 
-    rename(int_val=Var1,out_val=Var2)
-
-#head(io_list)
-  
-  #gather data and get counts 
-  io_counts <<- typology_dat %>%
-    group_by(int_val, out_val) %>% 
-    count() %>%
-    mutate(pct=n/num.studies*100) %>% ###JUST added this in... SEE WHAT IT DOES!!!
-    full_join(io_list,by = c("int_val", "out_val")) %>%   # inserts missing combinations
-    filter(int_val!="NA (0)" &  out_val!="NA (0)") %>% 
-    mutate(n=replace_na(n,0)) %>%
-    mutate(pct=replace_na(pct,0)) %>% # JUST added this in,  - fixes NAs
-    select(-n) %>% # JUST ADDED - Dropping COLUMN N so r doesnt get confused!!!
-    ungroup() %>% 
-    mutate(int_val=factor(int_val,levels=mixedsort(int_list$int_val)))  # set int list in right order
-  
-  # head(io_counts)
-  # nrow(int_list)*nrow(out_list)==nrow(io_counts) # quick check (should be true)
-  
-# Create Heatmap
-  heat.map <<- ggplot(data=io_counts, aes(x=int_val,y=reorder(out_val, desc(out_val)),fill=pct)) + #fill changed from n to pct
-      geom_tile(color="gray90",size=0.1) +
-      geom_text(aes(label=round(pct)),show.legend = F) + # ADDING THIS IN FOR WORKSHOP!!!adds percents into cells
-    scale_fill_gradient2(low="#f7fbff",high=high.col,name="Percent of Studies",
-        na.value="black", limits=c(0,max(io_counts$pct))) +   #changed n to pct
-      coord_equal() +
-      theme(axis.ticks=element_line(size=0.3),
-        axis.text=element_text(size=10),
-        axis.text.x = element_text(angle=45,hjust=0,vjust=1),
-        axis.text.y = element_text(angle=0,hjust=0,vjust=0),
-        legend.title=element_text(size=10),
-        legend.title.align=1,
-        legend.text=element_text(size=8),
-        legend.margin = margin(grid::unit(0,"cm")),
-        legend.position ="bottom",
-        legend.direction ="horizontal",
-        legend.key.size=grid::unit(1, "cm"),
-        legend.key.width=grid::unit(1.5, "cm"), #1.5 cm - longer but not full!
-        plot.background=element_blank(),
-        panel.border=element_blank(),
-        plot.title=element_text(hjust=0,size=12,face="bold"),
-        text=element_text(family="sans")) +  # "serif"=TN Roman, "sans" = Arial
-      scale_x_discrete(position = "top") +
-      scale_y_discrete(position = "right") 
-      #  labs(x="Conservation Intervention", y="Outcome", title ="All ecosystems") +
-}
-
 
 # Coral
-coral_heat_map(filter(data_all2,coral==1),"Int_cat","Outcome_cat")
+my_heat_map(filter(data_all2,coral==1),"Int_cat","Outcome_cat", high.col = "coral3")
 io_counts.coral <- io_counts
 (heat.map.coral <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="Coral"))
 ggsave(paste0(plotdir,today.date,'_CORAL_int_out_map.png'),width = 8,height = 8)
 
 # Coral - Intervention subcategory X Outcome
-coral_heat_map(filter(data_all2,coral==1),"Intervention.subcategory", "Outcome_cat")
-io_counts.subint <- io_counts
+my_heat_map(filter(data_all2,coral==1),"Intervention.subcategory", "Outcome_cat", high.col = "coral3")
+io_counts.subint <- io_counts2
 (heat.map.subint <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="Coral"))
 ggsave(paste0(plotdir,today.date,'_CORAL_sub.int_out_map.png'),width = 16,height = 8)
 
 # Coral - Intervention  X Outcome subcategory
-coral_heat_map(filter(data_all2,coral==1),"Int_cat", "Outcome.subcategory")
+my_heat_map(filter(data_all2,coral==1),"Int_cat", "Outcome.subcategory", high.col = "coral3")
 io_counts.subint <- io_counts
 (heat.map.subint <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="Coral"))
 ggsave(paste0(plotdir,today.date,'_CORAL_int_sub.out_map.png'),width = 8,height = 16)
 
 # Coral - Intervention subcategory X Outcome subcategory
-coral_heat_map(filter(data_all2,coral==1),"Intervention.subcategory", "Outcome.subcategory")
+my_heat_map(filter(data_all2,coral==1),"Intervention.subcategory", "Outcome.subcategory", high.col = "coral3")
 io_counts.subintout <- io_counts
 (heat.map.subint <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="Coral"))
 ggsave(paste0(plotdir,today.date,'_CORAL_sub.int_sub.out_map.png'),width = 10,height = 12)
 
 
+# NOTE: maps might not show up below, but check folders - they should still come out fine
 ```
 
 # World map
@@ -883,6 +790,9 @@ ggsave(paste0(plotdir,today.date,'_study_country_map.png'),width = 9,height = 3.
 #     low="white",mid="darksalmon",high="coral3", 
 #         #the low color here is white - allows for better contrast
 #         #the high color here is the high color for the Gap Map
+
+
+
 
 #GAP MAP COLORS
 # # Mangrove
@@ -1776,15 +1686,17 @@ Multi_int_time_gps <- data_all2 %>%
 # STATS - growth over time
 
 ##2005-2010 Count
-(max(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication<2010])-max(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication<2005]))/5
+# (max(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication<2010])-max(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication<2005]))/5
 ##2005-2010 PERCENT
 (max(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication<2010])-max(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication<2005]))/5/num.studies*100
 
 ##2010-2018 Count
-(max(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication<2019])-max(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication<2010]))/9
+# (max(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication<2019])-max(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication<2010]))/9
 ##2010-2018 PERCENT
 (max(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication<2019])-max(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication<2010]))/9/num.studies*100
 
+
+#NOTE: these two pieces of code ARE NOT working... not sure why...give all counts/ percents as 1 paper...
 
 # WHICH Interventions were used the most in Multi-int studies?!
 Multi_int_data <- data_all2 %>%
@@ -1807,7 +1719,91 @@ Multi_subint_data <- data_all2 %>%
   mutate(pct.multi_int=n/n_distinct(multi.int.studies$aid)*100) %>%   #"pct" column - out of MULTI-INT Studies - 62 studies!
   arrange(desc(n)) %>% 
   print()
+
+
+
+#################################################
+#MULTIPLE INTERVENTION STUDIES - UPDATED for EDITS 7/2/24 - DAVID's SCRIPT
+
+# get variables we want
+typology_dat2 <- data_all2 %>% 
+  select(aid, Int_cat) %>% 
+  filter(Int_cat!="" & !is.na(Int_cat)) %>%  # just in case
+  distinct() # only unique interventions per aid  
+unique(typology_dat2$Int_cat)
+
+# select only multi-intervention studies
+multi.int.studies2 <- typology_dat2 %>% 
+  group_by(aid) %>% 
+  filter(n()!=1) %>%  # only multi-intervention studies
+  arrange(aid, Int_cat)  # very impt so as not to get reverse pairs
   
+# all intervention combination pairs by study
+int.combos.by.aid <- multi.int.studies2 %>%
+  group_by(aid) %>%
+  do(as_tibble(t(combn(.$Int_cat, m = 2)))) %>% # SHOULD give us all possible pairs by group (need to manually check)
+  ungroup() %>%
+  mutate(int.pair=paste(V1,V2,sep=": ")) # create variable with pairs
+int.combos.by.aid %>% view  # check output to see if this is correct, e.g. interventions in order (V1<V2)
+
+# count all intervention combination pairs across all studies
+int.combos <- int.combos.by.aid %>% 
+  group_by(int.pair,V1,V2) %>% 
+  count %>% 
+  arrange(-n) %>%
+  mutate(pct.total=n/num.studies*100) %>%   #"pct" column - do we want it out of TOTAL studies? Not right now
+  mutate(pct.multi_int=n/n_distinct(multi.int.studies$aid)*100)  %>%  #"pct" column - out of MULTI-INT Studies - 62 studies!
+  view()
+
+```
+
+# MULTIPLE intervention visuals! - CHORD DIAGRAM
+
+"Int_cat" for both
+
+```{r eval=T} 
+#--- Chord diagram
+int.combos2 <- int.combos  %>%
+  ungroup() %>%
+  select(-c(int.pair,pct.total,n)) %>%
+  group_by(V1,V2)
+
+# original
+pacman::p_load(circlize)
+chordDiagram(int.combos2)
+circos.clear()
+
+mycolor <- (values=c(      # uses Okabe-Ito colors - color-blind friendly!
+    "1. Land/Water Management" = "#0072B2", #blue Okabe-Ito
+    "2. Species Management" = "#56B4E9",   #Sky Blue Okabe-Ito
+    "3. Awareness Raising" = "#009E73",    #Bluish Green Okabe-Ito
+    "4. Enforcement & Protection" = "#F0E442",    # Yellow Okabe-Ito
+    "5. Livelihood, Economic, & Other Incentives" = "#E69F00",  #Orange Okabe-Ito
+    "6. Conservation Designation & Planning" = "#D55E00", #Vermillion Okabe-Ito
+    "7. Legal & Policy Frameworks" =  "#BE0032", # from kelly by grafify - good on color-blindness.com
+    "8. Education & Training" = '#882255', #wine - extra color by DIG - good on color-blindness.com
+    "9. Institutional/Organizational Development" = "#CC79A7" )) #reddish purple Okabe-Ito
+
+#chord
+png(paste0(plotdir,today.date,'_multi-intervention_chord.png'), width = 10, height = 8, units = "in", res=600) 
+chordDiagram(int.combos2, grid.col = mycolor, annotationTrack = "grid",
+    preAllocateTracks = list(track.height = max(strwidth(unlist(dimnames(int.combos2))))))
+circos.track(track.index = 1, panel.fun = function(x, y) {
+    circos.text(CELL_META$xcenter, CELL_META$ylim[1], CELL_META$sector.index, 
+        facing = "inside", niceFacing = TRUE, adj = c(0, 0.5))
+}, bg.border = NA) 
+dev.off()
+
+# reverse chord
+png(paste0(plotdir,today.date,'_multi-intervention_chord_reverse.png'), width = 10, height = 8, units = "in", res=600) 
+chordDiagram(select(int.combos2,V2,V1,pct.multi_int), grid.col = mycolor, annotationTrack = "grid", 
+    preAllocateTracks = list(track.height = max(strwidth(unlist(dimnames(int.combos2))))))
+circos.track(track.index = 1, panel.fun = function(x, y) {
+    circos.text(CELL_META$xcenter, CELL_META$ylim[1], CELL_META$sector.index, 
+        facing = "inside", niceFacing = TRUE, adj = c(0, 0.5))
+}, bg.border = NA) 
+dev.off()
+
 ```
 
 # Intervention and Outcome Pairs
@@ -2109,7 +2105,7 @@ out.x.count <- data_all2 %>%
     count() %>% 
     rename(Out1=V1,Out2=V2)
   
-  out.x.list <- expand.grid(out_list$out_val,out_list$out_val)  %>% 
+  out.x.list <- expand.grid(out_list$out_val,out_list2$out_val)  %>% 
     rename(Out1=Var1,Out2=Var2)
   
   out.x.count.full <- out.x.count %>% 
