@@ -98,13 +98,12 @@ data_all <- all.data %>%
   rename(Int_cat=Intervention.category,Outcome_cat=Outcome.category, aid=Article.ID, study.ctry=Country.ies..of.study)
 length(unique(data_all$aid)) # = how many accepted & completely screened papers # should be 171 (as of 3/15/24)
 
-# read in full intervention lists
-int_list<-import(paste0(inputdir,"intervention abbreviations.csv"))
+# read in full intervention and outcome lists
+int_list<-import(paste0(inputdir,"intervention abbreviations.csv")) #adjusted for '24 name changes
 out_list<-import(paste0(inputdir,"outcome abbreviations 2.csv")) #adjusted for '24 name changes
 
 #NOTE: the DROP DOWN LISTS here, which collect ALL of the dropdowns, are taken from the ALL PAPERS Master Sheet!
 drop.down.lists<-import(paste0(inputdir,"20240315_All_Papers.xlsx"), which="Dropdowns", skip =1, .name_repair = "universal")
-
 int_sub_list <-  drop.down.lists %>% 
   select(Intervention.subcategory) %>% 
   na.omit() %>% 
@@ -196,7 +195,7 @@ for (i in 1:nrow(int_sub_list)){
   data_all <- data_all %>% 
     mutate(Intervention.subcategory=ifelse(grepl(num.val,Intervention.subcategory),
                                            grep(num.val,int_sub_list$int_sub,value = T),Intervention.subcategory))
-}
+} 
 # Outcomes
 for (i in 1:nrow(out_list)){
   num.val=paste0("^",i)
@@ -236,7 +235,7 @@ unique(habitat.test$Habitat.type) # should just be 0 - no other categories (we t
 ```
 
 # MORE Data Cleaning, For Categories missed OR that need fixing in some way
-- Entry issues: Year Change (1 paper), Country entry Change (aid 375), 
+- Entry issues: Country entry Change (aid 375), Year Change (1 paper)
 - Name Change for countries, to match country data :)
 - data_all becomes data_all2
 
@@ -259,30 +258,6 @@ unique(habitat.test$Habitat.type) # should just be 0 - no other categories (we t
     # Country names matched with study list taken from study (each place only entered once)
 data_all2 <- data_all %>%
   mutate(study.ctry = ifelse(aid == "375", "Yemen; Indian Ocean Territories; Australia; Chagos - British Indian Ocean Territory; Maldives; Seychelles; Kenya; United Republic of Tanzania; Mozambique; India; Indonesia; Cambodia; Myanmar; Thailand; Oman; United Arab Emirates; Qatar; Bahrain; Kuwait; Iraq; Iran; Sri Lanka; South Africa; Djibouti; Eritrea; Sudan; Egypt; Israel; Jordan; Saudi Arabia; Comoros; Madagascar; Mauritius; France -Mayotte; France -Reunion",study.ctry))
-
-# AID 344 is technically 2019, but was a 2018 paper, need to update the year
-data_all2 <-data_all2 %>% 
-  mutate(Year.of.publication=gsub("2019","2018",Year.of.publication))  # 2019 should be 2018
-
-#Intervention Updates
-# remove 8. Research and Monitoring as an intervention entirely, and adjust numbers
-data_all2 <-data_all2 %>% 
-  filter(Int_cat!="8. Research & monitoring")%>% 
-  mutate_at(vars(Int_cat,Intervention.subcategory), ~gsub("^9","8",.)) %>% 
-  mutate_at(vars(Int_cat,Intervention.subcategory), ~gsub("^10","9",.))  
-
-# Intervention Capitalization
-data_all2 <-data_all2 %>% 
-  mutate(Int_cat=gsub("1. Land/water management","1. Land/Water Management",Int_cat), 
-    Int_cat=gsub("2. Species management","2. Species Management",Int_cat), 
-    Int_cat=gsub("3. Awareness raising","3. Awareness Raising",Int_cat),
-    Int_cat=gsub("4. Enforcement & protection","4. Enforcement & Prosecution",Int_cat), # ALSO needed to change this name back 
-        #not sure how it became "protection"... I think I switched at some point by accident?
-    Int_cat=gsub("5. Livelihood, economic, and other incentives","5. Livelihood, Economic, & Other Incentives",Int_cat),
-    Int_cat=gsub("6. Conservation designation & planning","6. Conservation Designation & Planning",Int_cat),
-    Int_cat=gsub("7. Legal & policy frameworks","7. Legal & Policy Frameworks",Int_cat),
-    Int_cat=gsub("8. Education & training","8. Education & Training",Int_cat),
-    Int_cat=gsub("9. Institutional/organizational development","9. Institutional/Organizational Development",Int_cat)) 
 
 # fix data in country column
   ## the "admin" column in ne_countries joins to the country shapes from Natural Earth by name. This can get tricky because the names have to match exactly, which is what I do below
@@ -329,21 +304,22 @@ country <- country %>%
   add_row(Country="Indian Ocean Territories", Region= "Asia", code= "IOA", Subregion= "Southern Asia") 
       # Christmas Island and Cocos - right under Indo
 
-
+# AID 344 is technically 2019, but was a 2018 paper, need to update the year
+data_all2 <-data_all2 %>% 
+  mutate(Year.of.publication=gsub("2019","2018",Year.of.publication))  # 2019 should be 2018, can blanket bc no other 2019 papers
 ```
-
 
 # NEW Quick Checks to make sure data is sorting correctly - Intervention and Outcomes
 
 ```{r eval=T}
          
 #quick checks
-unique(data_all2$Int_cat)  # 9 Interventions (we took #8 out)
-unique(data_all2$Outcome_cat) # 7 outcomes
+sort(unique(data_all2$Int_cat))  # 9 interventions, #1-9
+sort(unique(data_all2$Outcome_cat)) # 7 outcomes, #1-7
 sort(unique(data_all2$Intervention.subcategory)) # 32 sub-interventions (in int_sub_list)
-  # Only 26 sub-interventions were coded for
+  # 26 sub-interventions coded - no.1-9
 sort(unique(data_all2$Outcome.subcategory)) # 43 sub-outcomes (bc we added in Catch/Yield x2)
-  # Only 41 sub-interventions were coded for
+  # 41 sub-outcomes coded, no.1-7.
 
 # those that were not observed
 int_list$Int_cat_orig[!int_list$Int_cat_orig%in%data_all2$Int_cat] # 8. Research and monitoring
@@ -357,12 +333,6 @@ data_all2$Intervention.subcategory[!data_all2$Intervention.subcategory%in%int_su
 data_all2$Outcome_cat[!data_all2$Outcome_cat%in%out_list$Outcome_cat_orig] #0
 data_all2$Outcome.subcategory[!data_all2$Outcome.subcategory%in%out_sub_list$out_sub] #0
   # Correct - all are 0!
-
-#new quick checks
-unique(data_all2$Int_cat)  # 9 interventions, #1-9
-unique(data_all2$Outcome_cat) # 7 outcomes, #1-7
-sort(unique(data_all2$Intervention.subcategory)) # 26 sub-interventions coded - no.1-9
-sort(unique(data_all2$Outcome.subcategory)) # 41 sub-outcomes coded, no.1-7.
 
 # Get full intervention list
   int_list <- data_all2 %>%
@@ -627,7 +597,7 @@ ggsave(paste0(plotdir,today.date,'_CORAL_int_out_map.png'),width = 8,height = 8)
 
 # Coral - Intervention subcategory X Outcome
 my_heat_map(filter(data_all2,coral==1),"Intervention.subcategory", "Outcome_cat", high.col = "coral3")
-io_counts.subint <- io_counts2
+io_counts.subint <- io_counts
 (heat.map.subint <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="Coral"))
 ggsave(paste0(plotdir,today.date,'_CORAL_sub.int_out_map.png'),width = 16,height = 8)
 
@@ -642,7 +612,6 @@ my_heat_map(filter(data_all2,coral==1),"Intervention.subcategory", "Outcome.subc
 io_counts.subintout <- io_counts
 (heat.map.subint <- heat.map + labs(x="Conservation Intervention", y="Outcome", title ="Coral"))
 ggsave(paste0(plotdir,today.date,'_CORAL_sub.int_sub.out_map.png'),width = 10,height = 12)
-
 
 # NOTE: maps might not show up below, but check folders - they should still come out fine
 ```
@@ -937,7 +906,7 @@ outcomes_tidy <- outcomes2 %>%
       fill=gsub("3. Ecosystem Function", "#009E73",fill),    #Bluish Green Okabe-Ito
       fill=gsub("4. Ecosystem Services", "#F0E442",fill),    # Yellow Okabe-Ito
       fill=gsub("5. Human Wellbeing", "#E69F00",fill),      #Orange Okabe-Ito
-      fill=gsub("6. Knowledge and Behavior", "#D55E00",fill), #Vermillion Okabe-Ito
+      fill=gsub("6. Knowledge & Behavior", "#D55E00",fill), #Vermillion Okabe-Ito
       fill=gsub("7. Governance", "#CC79A7",fill))  #reddish purple Okabe-Ito
 
 
@@ -1118,7 +1087,6 @@ Int_time_gps <- Int_time_gps %>%
     ggtitle('Intervention') )
    # scale_y_continuous(limits=c(0,80), breaks=seq(0,80,10), labels=c("0","","20","","40","","60","","80")))
 
-
 # Intervention Graphic
 (pInt_time_gps <- ggplot(Int_time_gps)  + 
     geom_line(aes(x = Year.of.publication, y = val, group = Intervention, colour = Intervention, linetype=Intervention), size = 1.3)  +
@@ -1150,7 +1118,7 @@ Int_time_gps <- Int_time_gps %>%
       "1. Land/Water Management" = "solid", 
       "2. Species Management" = "solid",
       "3. Awareness Raising" = "solid",
-      "4. Enforcement & Protection" = "solid",
+      "4. Enforcement & Prosecution" = "solid",
       "5. Livelihood, Economic, & Other Incentives" = "solid",
       "6. Conservation Designation & Planning"= "solid",
       "7. Legal & Policy Frameworks" = "solid",
@@ -1161,7 +1129,7 @@ Int_time_gps <- Int_time_gps %>%
       "1. Land/Water Management" = "#0072B2", #blue Okabe-Ito
       "2. Species Management" = "#56B4E9",   #Sky Blue Okabe-Ito
       "3. Awareness Raising" = "#009E73",    #Bluish Green Okabe-Ito
-      "4. Enforcement & Protection" = "#F0E442",    # Yellow Okabe-Ito
+      "4. Enforcement & Prosecution" = "#F0E442",    # Yellow Okabe-Ito
       "5. Livelihood, Economic, & Other Incentives" = "#E69F00",  #Orange Okabe-Ito
       "6. Conservation Designation & Planning" = "#D55E00", #Vermillion Okabe-Ito
       "7. Legal & Policy Frameworks" =  "#BE0032", # from kelly by grafify - good on color-blindness.com
@@ -1264,7 +1232,7 @@ out_time_gps <- out_time_gps %>%
       "3. Ecosystem Function" = "solid",
       "4. Ecosystem Services" = "solid",
       "5. Human Wellbeing" = "solid",
-      "6. Knowledge and Behavior" = "solid",
+      "6. Knowledge & Behavior" = "solid",
       "7. Governance" = "solid")) +
     scale_color_manual(values=c(      # uses Okabe-Ito colors - color-blind friendly!
       "All Outcomes" = "#000000",    #black Okabe-Ito
@@ -1273,7 +1241,7 @@ out_time_gps <- out_time_gps %>%
       "3. Ecosystem Function" = "#009E73",    #Bluish Green Okabe-Ito
       "4. Ecosystem Services" = "#F0E442",    # Yellow Okabe-Ito
       "5. Human Wellbeing" = "#E69F00",      #Orange Okabe-Ito
-      "6. Knowledge and Behavior" = "#D55E00", #Vermillion Okabe-Ito
+      "6. Knowledge & Behavior" = "#D55E00", #Vermillion Okabe-Ito
       "7. Governance" =  "#CC79A7"))    #reddish purple Okabe-Ito
   ) 
 plot_grid(pOut_time_gps)
@@ -1358,8 +1326,6 @@ Reject_data %>%
 
 
 
-
-
 # ------TRYING ANOTHER WAY ------------ COME BACK TO THIS
 # Reasons for Rejection
 ## get no. entries
@@ -1429,9 +1395,9 @@ print(num.studies)
 ##2000-2010 PERCENT
 (max(All_time_gps$val[All_time_gps$Year.of.publication<2010])-max(All_time_gps$val[All_time_gps$Year.of.publication<2000]))/10/num.studies*100
 
-##2010-2019 Count (should be 2018 - 1 paper was just categorized as 2019 instead...)
+##2010-2018 Count
 (max(All_time_gps$val[All_time_gps$Year.of.publication<2019])-max(All_time_gps$val[All_time_gps$Year.of.publication<2010]))/9
-##2010-2019 PERCENT (should be 2018 - 1 paper was just categorized as 2019 instead...)
+##2010-2018 PERCENT 
 (max(All_time_gps$val[All_time_gps$Year.of.publication<2019])-max(All_time_gps$val[All_time_gps$Year.of.publication<2010]))/9/num.studies*100
 
 ##Last 3 years of study STATS
@@ -1641,7 +1607,7 @@ data_all2 %>%
   # Lowest: % - bottom 3 (tie for lowest)
 data_all2 %>%  
   filter(Int_cat== "3. Awareness Raising "| 
-           Int_cat== "4. Enforcement & Protection"| 
+           Int_cat== "4. Enforcement & Prosecution"| 
            Int_cat== "8. Education & Training") %>%  
   summarise(intervention="Lowest 3", num=n_distinct(aid), pct=num/num.studies*100)
 
@@ -1777,7 +1743,7 @@ mycolor <- (values=c(      # uses Okabe-Ito colors - color-blind friendly!
     "1. Land/Water Management" = "#0072B2", #blue Okabe-Ito
     "2. Species Management" = "#56B4E9",   #Sky Blue Okabe-Ito
     "3. Awareness Raising" = "#009E73",    #Bluish Green Okabe-Ito
-    "4. Enforcement & Protection" = "#F0E442",    # Yellow Okabe-Ito
+    "4. Enforcement & Prosecution" = "#F0E442",    # Yellow Okabe-Ito
     "5. Livelihood, Economic, & Other Incentives" = "#E69F00",  #Orange Okabe-Ito
     "6. Conservation Designation & Planning" = "#D55E00", #Vermillion Okabe-Ito
     "7. Legal & Policy Frameworks" =  "#BE0032", # from kelly by grafify - good on color-blindness.com
@@ -1838,7 +1804,7 @@ data_all2 %>%
   # % in social: human well-being, knowledge and behavior, and governance
 data_all2 %>%  
   filter(Outcome_cat== "5. Human Wellbeing"| 
-          Outcome_cat== "6. Knowledge and Behavior"| 
+          Outcome_cat== "6. Knowledge & Behavior"| 
           Outcome_cat== "7. Governance") %>%  
   summarise(num=n_distinct(aid), pct=num/num.studies*100)
 
