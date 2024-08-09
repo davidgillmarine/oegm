@@ -681,7 +681,7 @@ ctry_sum.25 <- ctry_sum %>%
 
 ctry_sum.5 <- ctry_sum.25 %>%
   count() %>%     #count creates an "n" column
-  mutate(pct=round(n/num.studies*100)) %>%   #this creates the "pct" column
+  mutate(pct=(n/num.studies*100)) %>%   #this creates the "pct" column
   arrange(desc(n))
     #Quick check -> France should have n=3. If n=5, not de-duping correctly in ctry_sum.25
 
@@ -1380,28 +1380,48 @@ print(num.studies)
 ```
 
 
-# Studies Over Time Stats!
+# Studies Over Time Stats! - PERCENT CHANGE PER YEAR
+Measuring the change in PERCENT of TOTAL studies PER YEAR
+
+Stats - growth by 5-year increments (half-decades)(called demi-decades)
+
+This is ADDITIVE (number of studies per year) so we don't have to do the "max" command
 
 ```{r eval=T}
-# STATS - growth by decade
+#PERCENT of total CHANGE PER YEAR
 
-##late 1990s Count - starts in 1994 bc this is the first year, <1995
-(max(All_time_gps$val[All_time_gps$Year.of.publication<2000])-max(All_time_gps$val[All_time_gps$Year.of.publication<1995]))/5
-##late 1990s PERCENT - starts in 1994 bc this is the first year
-(max(All_time_gps$val[All_time_gps$Year.of.publication<2000])-max(All_time_gps$val[All_time_gps$Year.of.publication<1995]))/5/num.studies*100
+#1994-2000 (aka through 1999)
+  ##DON'T USE, USE 1995 below
+((All_time_gps$val[All_time_gps$Year.of.publication==1999])-(All_time_gps$val[All_time_gps$Year.of.publication==1994]))/num.studies/6*100
 
-##2000-2010 Count
-(max(All_time_gps$val[All_time_gps$Year.of.publication<2010])-max(All_time_gps$val[All_time_gps$Year.of.publication<2000]))/10
-##2000-2010 PERCENT
-(max(All_time_gps$val[All_time_gps$Year.of.publication<2010])-max(All_time_gps$val[All_time_gps$Year.of.publication<2000]))/10/num.studies*100
+#1995-2000 (aka through 1999)
+((All_time_gps$val[All_time_gps$Year.of.publication==1999])-(All_time_gps$val[All_time_gps$Year.of.publication==1995]))/num.studies/5*100
 
-##2010-2018 Count
-(max(All_time_gps$val[All_time_gps$Year.of.publication<2019])-max(All_time_gps$val[All_time_gps$Year.of.publication<2010]))/9
-##2010-2018 PERCENT 
-(max(All_time_gps$val[All_time_gps$Year.of.publication<2019])-max(All_time_gps$val[All_time_gps$Year.of.publication<2010]))/9/num.studies*100
+#1990-2000 DECADE (aka through 1999)
+  ## Just diving by 10 instead of 6, bc 1990-1993 years were 0!
+((All_time_gps$val[All_time_gps$Year.of.publication==1999])-(All_time_gps$val[All_time_gps$Year.of.publication==1994]))/num.studies/10*100
 
-##Last 3 years of study STATS
-(171-129)/num.studies*100
+#2000-2005 (aka through 2004)
+((All_time_gps$val[All_time_gps$Year.of.publication==2004])-(All_time_gps$val[All_time_gps$Year.of.publication==2000]))/num.studies/5*100
+
+#2005-2010 (aka through 2009)
+((All_time_gps$val[All_time_gps$Year.of.publication==2009])-(All_time_gps$val[All_time_gps$Year.of.publication==2005]))/num.studies/5*100
+
+#2000-2010 DECADE (aka through 2009)
+((All_time_gps$val[All_time_gps$Year.of.publication==2009])-(All_time_gps$val[All_time_gps$Year.of.publication==2000]))/num.studies/10*100
+
+#2010-2015 (aka through 2014)
+((All_time_gps$val[All_time_gps$Year.of.publication==2014])-(All_time_gps$val[All_time_gps$Year.of.publication==2010]))/num.studies/5*100
+
+#2015 THROUGH 2018 (aka 4 years)
+((All_time_gps$val[All_time_gps$Year.of.publication==2018])-(All_time_gps$val[All_time_gps$Year.of.publication==2015]))/num.studies/4*100
+
+#2010 THROUGH 2018 - ALMOST DECADE - (aka 9 years)
+((All_time_gps$val[All_time_gps$Year.of.publication==2018])-(All_time_gps$val[All_time_gps$Year.of.publication==2010]))/num.studies/9*100
+
+#2015 THROUGH 2018 (aka 4 years) - TOTAL PERCENT OF STUDIES (aka NOT Percent per year, different!)
+((All_time_gps$val[All_time_gps$Year.of.publication==2018])-(All_time_gps$val[All_time_gps$Year.of.publication==2015]))/num.studies*100
+
 ```
 
 2. P: Geographies
@@ -1450,7 +1470,7 @@ region_dat <- region2 %>%
   arrange(desc(n)) %>% 
   print()
 
-# HOW MANY STUDIES have more than one country/territory
+# HOW MANY STUDIES have more than one country/territory 
 num_countries <- ctry_sum %>% 
   select(-aid) %>% 
   group_by(X) %>% 
@@ -1462,6 +1482,48 @@ num_countries <- ctry_sum %>%
 #WHICH studies do NOT have countries and territories listed? Should be 2 (bc ^, pct of ctry1 = 98.8, n=169 (not 171))
   #394 is one of them... it actually has 6 studies, but in numbers 2-7 bc spot 1 was a ;
   # other is just aid 705, countries were blank (authors did not know)
+
+
+# FOR THE STUDIES WITH 3+ COUNTRIES / TERRITORIES, WHERE are they LOCATED?
+  ## Sadaf's Question on the final paper!!!
+
+#Get the AIDs of all studies that have 3+ countries!
+multi.ctry.aid <- ctry_sum$aid[ctry_sum$X=="ctry3"]
+  # print(multi.ctry.aid)
+
+#now, separate just these papers
+ctry_3_plus <- ctry_sum.25 %>%
+  filter(aid %in% multi.ctry.aid) %>%
+  arrange(aid)
+
+#GET REGION and SUBREGION LIST
+# join ctry_three_plus with the regions and continents
+ctry_3_plus2 <- ctry_3_plus %>%   
+  full_join(ctry_sum2, by = c("admin" = "admin")) %>% 
+  select(aid,admin,Subregion,Region,code) %>%
+  filter(!is.na(aid)) %>%
+  arrange(aid,Subregion,Region)
+#write.csv(ctry_3_plus2,paste0(tabledir,today.date,"_ctry_3_plus_studies.csv"))
+
+# GOING OFF OF THAT, what about ALL Multi-national studies?! AKA THE 2+
+
+#Get the AIDs of all studies that have 3+ countries!
+multi.ctry.aid2 <- ctry_sum$aid[ctry_sum$X=="ctry2"]
+  # print(multi.ctry.aid2)
+
+#now, separate just these papers
+ctry_2_plus <- ctry_sum.25 %>%
+  filter(aid %in% multi.ctry.aid2) %>%
+  arrange(aid)
+
+#GET REGION and SUBREGION LIST
+# join with the regions and continents
+ctry_2_plus2 <- ctry_2_plus %>%   
+  full_join(ctry_sum2, by = c("admin" = "admin")) %>% 
+  select(aid,admin,Subregion,Region,code) %>%
+  filter(!is.na(aid)) %>%
+  arrange(aid,Subregion,Region)
+# write.csv(ctry_2_plus2,paste0(tabledir,today.date,"_ctry_2_plus_studies.csv"))
 ```
 
 3. P: Habitats
@@ -1494,11 +1556,16 @@ data_all2 %>%
   filter(coral + seagrass + mangrove >= 2) %>% 
   summarise(habitat="Multiple: 2 or more!", num=n_distinct(aid), pct=num/num.studies*100)
 
+# How many studies took place in multiple habitats? (2 or more) where CORAL REEFS were 1 Habitat?!
+  ## Claudia's question on the final paper
+data_all2 %>% 
+  filter(coral + seagrass == 2 | coral + mangrove == 2) %>% 
+  summarise(habitat="Multiple: 2 or more W CORAL", num=n_distinct(aid), pct=num/num.studies*100)
+
 # How many studies took place in all 3 habitats?
 data_all2 %>% 
   filter(coral + seagrass + mangrove == 3) %>% 
   summarise(habitat="All 3 Habitats!", num=n_distinct(aid), pct=num/num.studies*100)
-  
 ```
 
 5. C: Comparators, Study designs used aka MANY Stats here!
@@ -1631,17 +1698,24 @@ multi.int.studies <- data_all2 %>%
    filter(n.int>1)
 
 #Distinct NUMBER of Multiple Intervention Studies!
-n_distinct(multi.int.studies$aid)
+num.multi.int.studies <- n_distinct(multi.int.studies$aid)
+
 #Distinct PERCENT of Multiple Intervention Studies!
 n_distinct(multi.int.studies$aid)/num.studies*100
 
 multi.int.aid <- multi.int.studies$aid[multi.int.studies$n.int>1]
+
+#######################################################################
 
 Multi_int_time_gps <- data_all2 %>%
   filter(aid%in%multi.int.aid) %>% 
   group_by(Year.of.publication) %>% 
   summarise(pub.per.yr= n_distinct(aid)) %>% 
   ungroup() %>% 
+  add_row(Year.of.publication = "1999", pub.per.yr = 0) %>% # a numerical value DOESN'T have "" around it! 
+  add_row(Year.of.publication = "2004", pub.per.yr = 0) %>% 
+      # Note here: there were no 1999 or 2004 Papers, so I needed to add an entry with 0. 
+      # There are other years missing, but I only need to add years I'm doing MATH with, since I'm not graphing this... could graph in supp tho!
   arrange(Year.of.publication) %>% 
   mutate(val=cumsum(pub.per.yr),
          gp="Multi-intervention") %>% 
@@ -1649,20 +1723,42 @@ Multi_int_time_gps <- data_all2 %>%
   filter(!is.na(Year.of.publication))
 # View(Multi_int_time_gps)
 
-# STATS - growth over time
+#######################################################################
+#MULTI-INTERVENTION STUDIES: PERCENT of total CHANGE PER YEAR
 
-##2005-2010 Count
-# (max(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication<2010])-max(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication<2005]))/5
-##2005-2010 PERCENT
-(max(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication<2010])-max(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication<2005]))/5/num.studies*100
+#1996-2000 (aka through 1999)
+  ## 1996 was first year!
+((Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication==1999])-(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication==1996]))/num.studies/6*100
 
-##2010-2018 Count
-# (max(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication<2019])-max(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication<2010]))/9
-##2010-2018 PERCENT
-(max(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication<2019])-max(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication<2010]))/9/num.studies*100
+#1990-2000 DECADE (aka through 1999)
+  ## Just diving by 10 instead of 6, bc 1990-1993 years were 0!
+((Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication==1999])-(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication==1996]))/num.studies/10*100
 
+#2000-2005 (aka through 2004)
+((Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication==2004])-(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication==2000]))/num.studies/5*100
 
-#NOTE: these two pieces of code ARE NOT working... not sure why...give all counts/ percents as 1 paper...
+#2005-2010 (aka through 2009)
+((Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication==2009])-(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication==2005]))/num.studies/5*100
+
+#2000-2010 DECADE (aka through 2009)
+((Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication==2009])-(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication==2000]))/num.studies/10*100
+
+#2010-2015 (aka through 2014)
+((Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication==2014])-(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication==2010]))/num.studies/5*100
+
+#2015 THROUGH 2018 (aka 4 years)
+((Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication==2018])-(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication==2015]))/num.studies/4*100
+
+#2010 THROUGH 2018 - ALMOST DECADE - (aka 9 years)
+((Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication==2018])-(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication==2010]))/num.studies/9*100
+
+#2015 THROUGH 2018 (aka 4 years) - TOTAL PERCENT OF STUDIES (aka NOT Percent per year, different!)
+((Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication==2018])-(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication==2015]))/num.studies*100
+
+#2015 THROUGH 2018 (aka 4 years) - TOTAL PERCENT OF *MULTI INTERVETION* STUDIES (aka NOT Percent per year, different!)
+((Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication==2018])-(Multi_int_time_gps$val[Multi_int_time_gps$Year.of.publication==2015]))/num.multi.int.studies*100
+
+##########################################
 
 # WHICH Interventions were used the most in Multi-int studies?!
 Multi_int_data <- data_all2 %>%
@@ -1815,7 +1911,7 @@ data_all2 %>%
   summarise(num=n_distinct(aid), pct=num/num.studies*100)
 
   # Subcategories (want % of each):
-data_all2 %>% 
+outcome_sub_order <- data_all2 %>% 
   group_by(Outcome.subcategory) %>% 
   summarise(num=n_distinct(aid), pct=num/num.studies*100) %>%
   arrange (desc(num))  # this arranges them in descending order 
@@ -1835,7 +1931,7 @@ data_all2 %>%
 ```{r eval=T}
 unique(data_all2$Outcome_cat)
 eco.outcomes <- c("2. Ecological Community", "1. Population/Species", "3. Ecosystem Function")
-soc.outcomes <- c("6. Knowledge and Behavior", "5. Human Wellbeing", "7. Governance")
+soc.outcomes <- c("6. Knowledge & Behavior", "5. Human Wellbeing", "7. Governance")
         
 data_all2 <- data_all2 %>%
   # select(aid, Outcome_cat) %>%
