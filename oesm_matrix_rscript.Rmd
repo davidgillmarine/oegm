@@ -1144,34 +1144,8 @@ plot_grid(pInt_time_gps)
           # "#DCD300" #Yellowgreen that may be easier to see?
           # "#882D17" #Red/brown/orange
         # # fishy by grafify - https://grafify-vignettes.netlify.app/colour_palettes.html
-          # "#6388b4"
-          # "#8cc2ca"
-          # "#55ad89"
-          # "#c3bc3f"
-          # "#ffae34"
-          # "#bb7693"
-          # "#ef6f6a"
-          # "#baa094"
-          # "#767676"
-        # # kelly by grafify
-          # "#0067A5"
-          # "#A1CAF1"
-          # "#008856"
-          # "#8DB600"
-          # "#DCD300"
-          # "#F3C300"
-          # "#F6A600"
-          # "#F38400"
-          # "#E25822"
-          # "#882D17"
-          # "#654522"
-          # "#F99379"
-          # "#BE0032"
-          # "#B3446C"
-          # "#875692"
-          # "#604E97"
-          # "#C2B280"
-          # "#848482"
+        # # kelly by grafify - has mroe colors
+
 
 # Outcomes
 out_time_gps <-  data_all2 %>%
@@ -1247,11 +1221,19 @@ out_time_gps <- out_time_gps %>%
 plot_grid(pOut_time_gps)
 
 #Plot BOTH Interventions and Outcomes together
-plot_grid(pInt_time_gps,pOut_time_gps, rel_widths = c(1.2,1))
+plot_grid(pInt_time_gps,pOut_time_gps,
+          labels=letters[1:2], ncol = 2, nrow = 1, 
+          hjust=-1, align = "hv") #column labels a and b
 ggsave(paste0(plotdir,today.date,'_studies_over_time.png'),width = 12,height = 4)
 
-plot_grid(pInt_time_gps, pOut_time_gps, ncol = 1, nrow = 2,rel_widths = c(1.2,1))
-ggsave(paste0(plotdir,today.date,'_studies_over_time_2rows.png'),width = 8,height = 7)
+#slighly more zoomed out map - going to use this one in pub!
+plot_grid(pInt_time_gps,pOut_time_gps,
+          labels=letters[1:2], ncol = 2, nrow = 1,
+          hjust=-1, align = "hv")
+ggsave(paste0(plotdir,today.date,'_studies_over_time2.png'),width = 16,height = 6)
+
+# plot_grid(pInt_time_gps, pOut_time_gps, ncol = 1, nrow = 2,rel_widths = c(1.2,1))
+# ggsave(paste0(plotdir,today.date,'_studies_over_time_2rows.png'),width = 8,height = 7)
 ```
 
 # Stats Section
